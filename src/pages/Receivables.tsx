@@ -22,17 +22,19 @@ import {
   MoreHorizontal,
   Users,
   DollarSign,
-  Clock,
   AlertCircle,
   FileText,
   ShoppingCart,
   Truck,
   CreditCard,
   ArrowRight,
-  CheckCircle2,
 } from "lucide-react";
 import { useReceivables } from "@/hooks/useReceivables";
 import { format } from "date-fns";
+import { SalesOrderForm } from "@/components/forms/SalesOrderForm";
+import { ShipmentForm } from "@/components/forms/ShipmentForm";
+import { InvoiceForm } from "@/components/forms/InvoiceForm";
+import { CustomerForm } from "@/components/forms/CustomerForm";
 
 const invoiceStatusConfig = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
@@ -193,10 +195,8 @@ const Receivables = () => {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input placeholder="Search orders..." className="w-64 pl-9" />
                 </div>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  New Order
-                </Button>
+                <CustomerForm />
+                <SalesOrderForm />
               </div>
             </div>
 
@@ -229,10 +229,14 @@ const Receivables = () => {
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <ShoppingCart className="h-8 w-8" />
                         <p>No sales orders found</p>
-                        <Button variant="outline" size="sm" className="mt-2 gap-2">
-                          <Plus className="h-4 w-4" />
-                          Create your first order
-                        </Button>
+                        <SalesOrderForm
+                          trigger={
+                            <Button variant="outline" size="sm" className="mt-2 gap-2">
+                              <Plus className="h-4 w-4" />
+                              Create your first order
+                            </Button>
+                          }
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -277,10 +281,7 @@ const Receivables = () => {
                 <p className="text-sm text-muted-foreground">Track order fulfillment</p>
               </div>
               <div className="flex items-center gap-3">
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create Shipment
-                </Button>
+                <ShipmentForm />
               </div>
             </div>
 
@@ -311,6 +312,14 @@ const Receivables = () => {
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <Truck className="h-8 w-8" />
                         <p>No shipments found</p>
+                        <ShipmentForm
+                          trigger={
+                            <Button variant="outline" size="sm" className="mt-2 gap-2">
+                              <Plus className="h-4 w-4" />
+                              Create shipment
+                            </Button>
+                          }
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -355,10 +364,7 @@ const Receivables = () => {
                 <Button variant="outline" size="icon">
                   <Download className="h-4 w-4" />
                 </Button>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  New Invoice
-                </Button>
+                <InvoiceForm />
               </div>
             </div>
 
@@ -393,10 +399,14 @@ const Receivables = () => {
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <FileText className="h-8 w-8" />
                         <p>No invoices found</p>
-                        <Button variant="outline" size="sm" className="mt-2 gap-2">
-                          <Plus className="h-4 w-4" />
-                          Create your first invoice
-                        </Button>
+                        <InvoiceForm
+                          trigger={
+                            <Button variant="outline" size="sm" className="mt-2 gap-2">
+                              <Plus className="h-4 w-4" />
+                              Create your first invoice
+                            </Button>
+                          }
+                        />
                       </div>
                     </TableCell>
                   </TableRow>

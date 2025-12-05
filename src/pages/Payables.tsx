@@ -17,7 +17,6 @@ import {
   Search,
   Plus,
   Filter,
-  Download,
   CreditCard,
   MoreHorizontal,
   DollarSign,
@@ -39,6 +38,11 @@ import {
   usePayablesSummary,
 } from "@/hooks/usePayables";
 import { format } from "date-fns";
+import { PurchaseOrderForm } from "@/components/forms/PurchaseOrderForm";
+import { GoodsReceiptForm } from "@/components/forms/GoodsReceiptForm";
+import { BillForm } from "@/components/forms/BillForm";
+import { PaymentRunForm } from "@/components/forms/PaymentRunForm";
+import { VendorForm } from "@/components/forms/VendorForm";
 
 const billStatusConfig = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
@@ -206,10 +210,8 @@ const Payables = () => {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input placeholder="Search POs..." className="w-full sm:w-64 pl-9" />
                 </div>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">New PO</span>
-                </Button>
+                <VendorForm />
+                <PurchaseOrderForm />
               </div>
             </div>
 
@@ -220,7 +222,7 @@ const Payables = () => {
                 icon={FileText}
                 title="No purchase orders"
                 description="Create your first PO to start the procure-to-pay cycle"
-                action="New Purchase Order"
+                actionButton={<PurchaseOrderForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />New Purchase Order</Button>} />}
               />
             ) : (
               <Table>
@@ -277,10 +279,7 @@ const Payables = () => {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input placeholder="Search receipts..." className="w-full sm:w-64 pl-9" />
                 </div>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Receive Goods</span>
-                </Button>
+                <GoodsReceiptForm />
               </div>
             </div>
 
@@ -291,7 +290,7 @@ const Payables = () => {
                 icon={Package}
                 title="No goods receipts"
                 description="Record received goods when PO deliveries arrive"
-                action="Receive Goods"
+                actionButton={<GoodsReceiptForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />Receive Goods</Button>} />}
               />
             ) : (
               <Table>
@@ -340,10 +339,7 @@ const Payables = () => {
                 <Button variant="outline" size="icon">
                   <Filter className="h-4 w-4" />
                 </Button>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">New Bill</span>
-                </Button>
+                <BillForm />
               </div>
             </div>
 
@@ -354,7 +350,7 @@ const Payables = () => {
                 icon={DollarSign}
                 title="No bills"
                 description="Enter vendor bills to track and pay"
-                action="New Bill"
+                actionButton={<BillForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />New Bill</Button>} />}
               />
             ) : (
               <Table>
@@ -448,7 +444,7 @@ const Payables = () => {
                     icon={CheckCircle2}
                     title="No bills to match"
                     description="Create POs and bills to start 3-way matching"
-                    action="View Bills"
+                    actionButton={<BillForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />Create Bill</Button>} />}
                   />
                 )}
               </div>
@@ -469,10 +465,7 @@ const Payables = () => {
                   <CreditCard className="h-4 w-4" />
                   <span className="hidden sm:inline">Quick Pay</span>
                 </Button>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">New Payment Run</span>
-                </Button>
+                <PaymentRunForm />
               </div>
             </div>
 
@@ -483,7 +476,7 @@ const Payables = () => {
                 icon={Banknote}
                 title="No payment runs"
                 description="Create a payment run to batch-pay vendor bills"
-                action="Create Payment Run"
+                actionButton={<PaymentRunForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />Create Payment Run</Button>} />}
               />
             ) : (
               <Table>
@@ -529,10 +522,7 @@ const Payables = () => {
                 <h3 className="text-lg font-semibold text-foreground">Vendors</h3>
                 <p className="text-sm text-muted-foreground">Manage vendor relationships</p>
               </div>
-              <Button variant="outline" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Vendor
-              </Button>
+              <VendorForm />
             </div>
 
             {vendorsLoading ? (
@@ -542,7 +532,7 @@ const Payables = () => {
                 icon={Building2}
                 title="No vendors"
                 description="Add vendors to create POs and track bills"
-                action="Add Vendor"
+                actionButton={<VendorForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />Add Vendor</Button>} />}
               />
             ) : (
               <Table>
@@ -609,20 +599,19 @@ interface EmptyStateProps {
   icon: React.ElementType;
   title: string;
   description: string;
-  action: string;
+  actionButton?: React.ReactNode;
 }
 
-const EmptyState = ({ icon: Icon, title, description, action }: EmptyStateProps) => (
+const EmptyState = ({ icon: Icon, title, description, actionButton }: EmptyStateProps) => (
   <div className="flex flex-col items-center justify-center py-12 text-center">
     <div className="rounded-full bg-muted p-3 mb-4">
       <Icon className="h-6 w-6 text-muted-foreground" />
     </div>
     <h4 className="font-medium text-foreground">{title}</h4>
     <p className="text-sm text-muted-foreground mt-1 max-w-sm">{description}</p>
-    <Button variant="outline" className="mt-4 gap-2">
-      <Plus className="h-4 w-4" />
-      {action}
-    </Button>
+    <div className="mt-4">
+      {actionButton}
+    </div>
   </div>
 );
 
