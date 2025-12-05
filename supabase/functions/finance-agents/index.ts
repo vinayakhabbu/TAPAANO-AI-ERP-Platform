@@ -48,6 +48,8 @@ Capabilities:
 - Classify bank transactions to GL accounts
 - Create draft journal entries
 - Provide key financial metrics (DSO, DPO, working capital)
+- Query all master data: customers, vendors, accounts
+- Query all transactions: sales orders, purchase orders, invoices, bills, shipments, goods receipts, payment runs, journal entries
 
 Be precise with numbers. Format currency as $X,XXX.XX. Use bullet points for clarity.`,
   tools: [
@@ -142,6 +144,166 @@ Be precise with numbers. Format currency as $X,XXX.XX. Use bullet points for cla
           properties: {
             account_type: { type: "string", enum: ["asset", "liability", "equity", "revenue", "expense"], description: "Filter by account type" },
             search: { type: "string", description: "Search term to filter accounts by name or code" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_customers",
+        description: "Get customer list with contact info and credit terms.",
+        parameters: {
+          type: "object",
+          properties: {
+            search: { type: "string", description: "Search term to filter customers by name or email" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_vendors",
+        description: "Get vendor list with contact info and payment terms.",
+        parameters: {
+          type: "object",
+          properties: {
+            search: { type: "string", description: "Search term to filter vendors by name or email" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_invoices",
+        description: "Get invoices with filtering options.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "sent", "paid", "overdue", "cancelled"], description: "Filter by status" },
+            customer_name: { type: "string", description: "Filter by customer name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_bills",
+        description: "Get bills/payables with filtering options.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "pending", "paid", "overdue", "cancelled"], description: "Filter by status" },
+            vendor_name: { type: "string", description: "Filter by vendor name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_sales_orders",
+        description: "Get sales orders with filtering options.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "approved", "shipped", "invoiced", "completed", "cancelled"], description: "Filter by status" },
+            customer_name: { type: "string", description: "Filter by customer name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_purchase_orders",
+        description: "Get purchase orders with filtering options.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "pending_approval", "approved", "partially_received", "received", "cancelled"], description: "Filter by status" },
+            vendor_name: { type: "string", description: "Filter by vendor name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_shipments",
+        description: "Get shipments with filtering options.",
+        parameters: {
+          type: "object",
+          properties: {
+            so_number: { type: "string", description: "Filter by sales order number" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_goods_receipts",
+        description: "Get goods receipts with filtering options.",
+        parameters: {
+          type: "object",
+          properties: {
+            po_number: { type: "string", description: "Filter by purchase order number" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_payment_runs",
+        description: "Get payment runs with filtering options.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "pending_approval", "approved", "processing", "completed", "failed"], description: "Filter by status" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_journal_entries",
+        description: "Get journal entries with filtering options.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "posted", "reversed"], description: "Filter by status" },
+            period: { type: "string", description: "Filter by period (YYYY-MM format)" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_bank_transactions",
+        description: "Get bank transactions with filtering options.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["pending", "matched", "reconciled"], description: "Filter by status" },
+            bank_account_name: { type: "string", description: "Filter by bank account name" },
           },
           required: [],
         },
@@ -1177,6 +1339,87 @@ async function executeToolCall(
           entries: entriesWithLines,
           count: filtered.length,
           note: filtered.length === 0 ? "No journal entries found." : undefined,
+        });
+      }
+
+      case "get_bills": {
+        const { status, vendor_name } = args as { status?: string; vendor_name?: string };
+
+        let query = supabase
+          .from("bills")
+          .select("*, vendors(name), purchase_orders(po_number)")
+          .eq("org_id", orgId)
+          .order("due_date", { ascending: true })
+          .limit(50);
+
+        if (status) {
+          query = query.eq("status", status);
+        }
+
+        const { data: bills } = await query;
+
+        let filtered = bills || [];
+        if (vendor_name) {
+          const searchLower = vendor_name.toLowerCase();
+          filtered = filtered.filter((b: any) =>
+            b.vendors?.name?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        return JSON.stringify({
+          bills: filtered.map((b: any) => ({
+            bill_number: b.bill_number,
+            vendor: b.vendors?.name,
+            po_number: b.purchase_orders?.po_number,
+            issue_date: b.issue_date,
+            due_date: b.due_date,
+            total: b.total,
+            amount_paid: b.amount_paid,
+            balance: b.total - b.amount_paid,
+            status: b.status,
+            match_status: b.match_status,
+          })),
+          count: filtered.length,
+        });
+      }
+
+      case "get_bank_transactions": {
+        const { status, bank_account_name } = args as { status?: string; bank_account_name?: string };
+
+        let query = supabase
+          .from("bank_transactions")
+          .select("*, bank_accounts(name, bank_name)")
+          .eq("org_id", orgId)
+          .order("transaction_date", { ascending: false })
+          .limit(50);
+
+        if (status) {
+          query = query.eq("status", status);
+        }
+
+        const { data: transactions } = await query;
+
+        let filtered = transactions || [];
+        if (bank_account_name) {
+          const searchLower = bank_account_name.toLowerCase();
+          filtered = filtered.filter((t: any) =>
+            t.bank_accounts?.name?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        return JSON.stringify({
+          transactions: filtered.map((t: any) => ({
+            id: t.id,
+            transaction_date: t.transaction_date,
+            description: t.description,
+            amount: t.amount,
+            bank_account: t.bank_accounts?.name,
+            bank_name: t.bank_accounts?.bank_name,
+            status: t.status,
+            matched_invoice_id: t.matched_invoice_id,
+            matched_bill_id: t.matched_bill_id,
+          })),
+          count: filtered.length,
         });
       }
 
