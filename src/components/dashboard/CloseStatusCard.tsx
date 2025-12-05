@@ -1,15 +1,9 @@
 import { CheckCircle2, Circle, Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
-
-const closeTasks = [
-  { id: 1, name: "Bank Reconciliation", status: "complete", assignee: "JD" },
-  { id: 2, name: "AP Cutoff Verification", status: "complete", assignee: "SM" },
-  { id: 3, name: "AR Aging Review", status: "in_progress", assignee: "JD" },
-  { id: 4, name: "Revenue Recognition", status: "in_progress", assignee: "MK" },
-  { id: 5, name: "Accruals Review", status: "pending", assignee: "SM" },
-  { id: 6, name: "Intercompany Eliminations", status: "pending", assignee: "MK" },
-];
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCloseTasks, useClosePeriods } from "@/hooks/usePeriodClose";
+import { format, addDays } from "date-fns";
 
 const statusConfig = {
   complete: {
@@ -39,19 +33,66 @@ const statusConfig = {
 };
 
 export function CloseStatusCard() {
-  const completedCount = closeTasks.filter((t) => t.status === "complete").length;
-  const progress = (completedCount / closeTasks.length) * 100;
+  const { data: periods, isLoading: periodsLoading } = useClosePeriods();
+  const currentPeriod = periods?.[0];
+  const { data: tasks, isLoading: tasksLoading } = useCloseTasks(currentPeriod?.id);
+
+  const isLoading = periodsLoading || tasksLoading;
+  const displayTasks = tasks?.slice(0, 6) || [];
+  const completedCount = tasks?.filter((t) => t.status === "complete").length || 0;
+  const totalCount = tasks?.length || 0;
+  const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+  // Estimate completion based on current progress
+  const estimatedCompletion = currentPeriod?.dueDate 
+    ? format(new Date(currentPeriod.dueDate), "MMM d, yyyy")
+    : format(addDays(new Date(), 5), "MMM d, yyyy");
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="mt-1 h-4 w-32" />
+          </div>
+          <div className="text-right">
+            <Skeleton className="h-8 w-12" />
+            <Skeleton className="mt-1 h-4 w-24" />
+          </div>
+        </div>
+        <Skeleton className="h-2 w-full mb-6" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentPeriod || displayTasks.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="text-center py-8">
+          <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-foreground">No Active Close Period</h3>
+          <p className="text-sm text-muted-foreground">Create close tasks to track period-end progress</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-border bg-card p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-foreground">November 2024 Close</h3>
+          <h3 className="text-lg font-semibold text-foreground">{currentPeriod.name} Close</h3>
           <p className="text-sm text-muted-foreground">Period close progress</p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-foreground">
-            {completedCount}/{closeTasks.length}
+            {completedCount}/{totalCount}
           </p>
           <p className="text-sm text-muted-foreground">Tasks Complete</p>
         </div>
@@ -66,9 +107,11 @@ export function CloseStatusCard() {
       </div>
 
       <div className="space-y-3">
-        {closeTasks.map((task) => {
-          const config = statusConfig[task.status as keyof typeof statusConfig];
+        {displayTasks.map((task) => {
+          const config = statusConfig[task.status as keyof typeof statusConfig] || statusConfig.pending;
           const Icon = config.icon;
+          // Get initials from task name if no assignee
+          const initials = task.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
           return (
             <div
@@ -90,7 +133,7 @@ export function CloseStatusCard() {
                   {config.label}
                 </span>
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-foreground">
-                  {task.assignee}
+                  {initials}
                 </div>
               </div>
             </div>
@@ -99,8 +142,8 @@ export function CloseStatusCard() {
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-        <span className="text-sm text-muted-foreground">Estimated completion</span>
-        <span className="text-sm font-medium text-foreground">Dec 5, 2024</span>
+        <span className="text-sm text-muted-foreground">Due date</span>
+        <span className="text-sm font-medium text-foreground">{estimatedCompletion}</span>
       </div>
     </div>
   );

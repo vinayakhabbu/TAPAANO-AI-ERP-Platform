@@ -1,6 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
@@ -13,23 +14,9 @@ import {
   Play,
   ChevronRight,
 } from "lucide-react";
-
-const closePeriods = [
-  { id: "2024-11", name: "November 2024", status: "in_progress", progress: 33, dueDate: "2024-12-05" },
-  { id: "2024-10", name: "October 2024", status: "complete", progress: 100, dueDate: "2024-11-05" },
-  { id: "2024-09", name: "September 2024", status: "complete", progress: 100, dueDate: "2024-10-05" },
-];
-
-const closeTasks = [
-  { id: 1, name: "Bank Reconciliation", description: "Reconcile all bank accounts", status: "complete", assignee: "John D.", estimatedHours: 2, completedAt: "2024-12-01" },
-  { id: 2, name: "AP Cutoff Verification", description: "Verify all invoices in correct period", status: "complete", assignee: "Sarah M.", estimatedHours: 1, completedAt: "2024-12-02" },
-  { id: 3, name: "AR Aging Review", description: "Review and update AR aging report", status: "in_progress", assignee: "John D.", estimatedHours: 1.5, completedAt: null },
-  { id: 4, name: "Revenue Recognition", description: "Apply ASC 606 revenue recognition", status: "in_progress", assignee: "Mike K.", estimatedHours: 3, completedAt: null },
-  { id: 5, name: "Accruals Review", description: "Review and adjust accrued expenses", status: "pending", assignee: "Sarah M.", estimatedHours: 2, completedAt: null },
-  { id: 6, name: "Intercompany Eliminations", description: "Process IC eliminations", status: "pending", assignee: "Mike K.", estimatedHours: 2, completedAt: null },
-  { id: 7, name: "Depreciation & Amortization", description: "Run depreciation schedules", status: "pending", assignee: "John D.", estimatedHours: 1, completedAt: null },
-  { id: 8, name: "Management Review", description: "Final review and sign-off", status: "pending", assignee: "CFO", estimatedHours: 1, completedAt: null },
-];
+import { useCloseTasks, useClosePeriods, useUpdateCloseTask } from "@/hooks/usePeriodClose";
+import { useState, useMemo } from "react";
+import { format, differenceInDays } from "date-fns";
 
 const statusConfig = {
   complete: {
@@ -59,10 +46,40 @@ const statusConfig = {
 };
 
 const PeriodClose = () => {
-  const currentPeriod = closePeriods[0];
-  const completedTasks = closeTasks.filter((t) => t.status === "complete").length;
-  const totalTasks = closeTasks.length;
-  const progress = (completedTasks / totalTasks) * 100;
+  const { data: periods, isLoading: periodsLoading } = useClosePeriods();
+  const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
+  
+  const currentPeriodId = selectedPeriod || periods?.[0]?.id;
+  const { data: tasks, isLoading: tasksLoading } = useCloseTasks(currentPeriodId);
+  const updateTask = useUpdateCloseTask();
+
+  const currentPeriod = useMemo(() => {
+    return periods?.find((p) => p.id === currentPeriodId);
+  }, [periods, currentPeriodId]);
+
+  const completedTasks = tasks?.filter((t) => t.status === "complete").length || 0;
+  const totalTasks = tasks?.length || 0;
+  const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  const estimatedHours = tasks?.reduce((sum, t) => {
+    // Estimate 2 hours per task as default
+    return sum + 2;
+  }, 0) || 0;
+
+  const daysRemaining = currentPeriod?.dueDate 
+    ? Math.max(0, differenceInDays(new Date(currentPeriod.dueDate), new Date()))
+    : 0;
+
+  const handleTaskClick = (taskId: string, currentStatus: string) => {
+    // Cycle through statuses: pending -> in_progress -> complete
+    const nextStatus = currentStatus === "pending" 
+      ? "in_progress" 
+      : currentStatus === "in_progress" 
+        ? "complete" 
+        : "pending";
+    
+    updateTask.mutate({ taskId, status: nextStatus as "pending" | "in_progress" | "complete" });
+  };
 
   return (
     <AppLayout title="Period Close" subtitle="Month-end close management">
@@ -74,10 +91,24 @@ const PeriodClose = () => {
               <Calendar className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-foreground">{currentPeriod.name}</h2>
-              <p className="text-sm text-muted-foreground">
-                Due: {currentPeriod.dueDate} • {completedTasks} of {totalTasks} tasks complete
-              </p>
+              {periodsLoading ? (
+                <>
+                  <Skeleton className="h-8 w-48" />
+                  <Skeleton className="mt-1 h-4 w-64" />
+                </>
+              ) : currentPeriod ? (
+                <>
+                  <h2 className="text-2xl font-bold text-foreground">{currentPeriod.name}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {currentPeriod.dueDate && `Due: ${format(new Date(currentPeriod.dueDate), "MMM d, yyyy")}`} • {completedTasks} of {totalTasks} tasks complete
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold text-foreground">No Active Period</h2>
+                  <p className="text-sm text-muted-foreground">Create close tasks to start a period</p>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -104,19 +135,23 @@ const PeriodClose = () => {
         <div className="mt-6 grid grid-cols-4 gap-4">
           <div className="rounded-lg bg-muted/50 p-4">
             <p className="text-sm text-muted-foreground">Estimated Time</p>
-            <p className="text-xl font-bold text-foreground">13.5 hrs</p>
+            <p className="text-xl font-bold text-foreground">{estimatedHours} hrs</p>
           </div>
           <div className="rounded-lg bg-muted/50 p-4">
-            <p className="text-sm text-muted-foreground">Time Spent</p>
-            <p className="text-xl font-bold text-foreground">4.5 hrs</p>
+            <p className="text-sm text-muted-foreground">Tasks Complete</p>
+            <p className="text-xl font-bold text-foreground">{completedTasks}/{totalTasks}</p>
           </div>
           <div className="rounded-lg bg-muted/50 p-4">
-            <p className="text-sm text-muted-foreground">Team Members</p>
-            <p className="text-xl font-bold text-foreground">4</p>
+            <p className="text-sm text-muted-foreground">In Progress</p>
+            <p className="text-xl font-bold text-foreground">
+              {tasks?.filter((t) => t.status === "in_progress").length || 0}
+            </p>
           </div>
           <div className="rounded-lg bg-muted/50 p-4">
             <p className="text-sm text-muted-foreground">Days Remaining</p>
-            <p className="text-xl font-bold text-warning">2</p>
+            <p className={cn("text-xl font-bold", daysRemaining <= 2 ? "text-warning" : "text-foreground")}>
+              {daysRemaining}
+            </p>
           </div>
         </div>
       </div>
@@ -126,7 +161,7 @@ const PeriodClose = () => {
         <div className="flex items-center justify-between border-b border-border p-4">
           <div>
             <h3 className="text-lg font-semibold text-foreground">Close Checklist</h3>
-            <p className="text-sm text-muted-foreground">Tasks for {currentPeriod.name}</p>
+            <p className="text-sm text-muted-foreground">Tasks for {currentPeriod?.name || "current period"}</p>
           </div>
           <Button variant="outline" className="gap-2">
             <Users className="h-4 w-4" />
@@ -135,91 +170,121 @@ const PeriodClose = () => {
         </div>
 
         <div className="divide-y divide-border">
-          {closeTasks.map((task, index) => {
-            const config = statusConfig[task.status as keyof typeof statusConfig];
-            const Icon = config.icon;
-
-            return (
-              <div
-                key={task.id}
-                className={cn(
-                  "flex items-center justify-between p-4 transition-colors hover:bg-muted/30",
-                  task.status === "complete" && "opacity-60"
-                )}
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
+          {tasksLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-4">
-                  <div className={cn("rounded-lg p-2", config.bg)}>
-                    <Icon className={cn("h-5 w-5", config.color)} />
-                  </div>
+                  <Skeleton className="h-9 w-9 rounded-lg" />
                   <div>
-                    <p className="font-medium text-foreground">{task.name}</p>
-                    <p className="text-sm text-muted-foreground">{task.description}</p>
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="mt-1 h-4 w-64" />
                   </div>
                 </div>
-
-                <div className="flex items-center gap-6">
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Assignee</p>
-                    <p className="font-medium text-foreground">{task.assignee}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Est. Time</p>
-                    <p className="font-medium text-foreground">{task.estimatedHours}h</p>
-                  </div>
-                  <div className="w-24">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                        config.bg,
-                        config.color
-                      )}
-                    >
-                      {config.label}
-                    </span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Skeleton className="h-6 w-20" />
               </div>
-            );
-          })}
+            ))
+          ) : tasks?.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              No close tasks found for this period
+            </div>
+          ) : (
+            tasks?.map((task, index) => {
+              const config = statusConfig[task.status as keyof typeof statusConfig] || statusConfig.pending;
+              const Icon = config.icon;
+
+              return (
+                <div
+                  key={task.id}
+                  className={cn(
+                    "flex items-center justify-between p-4 transition-colors hover:bg-muted/30 cursor-pointer",
+                    task.status === "complete" && "opacity-60"
+                  )}
+                  onClick={() => handleTaskClick(task.id, task.status)}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={cn("rounded-lg p-2", config.bg)}>
+                      <Icon className={cn("h-5 w-5", config.color)} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{task.name}</p>
+                      <p className="text-sm text-muted-foreground">{task.description || "No description"}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6">
+                    {task.due_date && (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Due</p>
+                        <p className="font-medium text-foreground">
+                          {format(new Date(task.due_date), "MMM d")}
+                        </p>
+                      </div>
+                    )}
+                    <div className="w-24">
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                          config.bg,
+                          config.color
+                        )}
+                      >
+                        {config.label}
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
       {/* Previous Periods */}
-      <div className="mt-6 rounded-xl border border-border bg-card">
-        <div className="border-b border-border p-4">
-          <h3 className="text-lg font-semibold text-foreground">Previous Periods</h3>
-          <p className="text-sm text-muted-foreground">Historical close records</p>
-        </div>
+      {periods && periods.length > 1 && (
+        <div className="mt-6 rounded-xl border border-border bg-card">
+          <div className="border-b border-border p-4">
+            <h3 className="text-lg font-semibold text-foreground">Previous Periods</h3>
+            <p className="text-sm text-muted-foreground">Historical close records</p>
+          </div>
 
-        <div className="divide-y divide-border">
-          {closePeriods.slice(1).map((period) => (
-            <div
-              key={period.id}
-              className="flex items-center justify-between p-4 hover:bg-muted/30"
-            >
-              <div className="flex items-center gap-4">
-                <div className="rounded-lg bg-success/10 p-2">
-                  <CheckCircle2 className="h-5 w-5 text-success" />
+          <div className="divide-y divide-border">
+            {periods.slice(1).map((period) => (
+              <div
+                key={period.id}
+                className="flex items-center justify-between p-4 hover:bg-muted/30 cursor-pointer"
+                onClick={() => setSelectedPeriod(period.id)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "rounded-lg p-2",
+                    period.status === "complete" ? "bg-success/10" : "bg-cash/10"
+                  )}>
+                    {period.status === "complete" ? (
+                      <CheckCircle2 className="h-5 w-5 text-success" />
+                    ) : (
+                      <Clock className="h-5 w-5 text-cash" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">{period.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {period.completedTasks}/{period.totalTasks} tasks • {period.progress}% complete
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-foreground">{period.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Closed on {period.dueDate}
-                  </p>
-                </div>
+                <Button variant="ghost" className="gap-2">
+                  View Details
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-              <Button variant="ghost" className="gap-2">
-                View Details
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </AppLayout>
   );
 };

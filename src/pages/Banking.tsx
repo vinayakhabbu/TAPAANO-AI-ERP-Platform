@@ -10,14 +10,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   Search,
-  Plus,
   Filter,
   Download,
   RefreshCw,
-  MoreHorizontal,
   Building2,
   ArrowUpRight,
   ArrowDownLeft,
@@ -26,23 +25,8 @@ import {
   Check,
   X,
 } from "lucide-react";
-
-const bankAccounts = [
-  { id: "1", name: "Operating Account", bank: "Chase Bank", number: "****4521", balance: 856200, currency: "USD" },
-  { id: "2", name: "Payroll Account", bank: "Chase Bank", number: "****7834", balance: 125000, currency: "USD" },
-  { id: "3", name: "Savings Account", bank: "Wells Fargo", number: "****2156", balance: 218800, currency: "USD" },
-];
-
-const transactions = [
-  { id: "1", date: "2024-12-05", description: "Wire Transfer - GlobalTech Corp", amount: 15600, type: "credit", status: "matched", matchedTo: "INV-1043" },
-  { id: "2", date: "2024-12-04", description: "ACH Payment - AWS Services", amount: -4500, type: "debit", status: "matched", matchedTo: "BILL-2024-089" },
-  { id: "3", date: "2024-12-04", description: "Bank Fee - Wire Transfer", amount: -25, type: "debit", status: "pending", suggestedAccount: "6100 - Bank Fees" },
-  { id: "4", date: "2024-12-03", description: "Check Deposit #1847", amount: 8200, type: "credit", status: "matched", matchedTo: "INV-1042" },
-  { id: "5", date: "2024-12-03", description: "ACH - Monthly Interest", amount: 142.50, type: "credit", status: "pending", suggestedAccount: "4200 - Interest Income" },
-  { id: "6", date: "2024-12-02", description: "Debit Card - Office Supplies", amount: -320, type: "debit", status: "pending", suggestedAccount: "6300 - Office Supplies" },
-  { id: "7", date: "2024-12-02", description: "ACH Payment - Salesforce", amount: -3100, type: "debit", status: "reconciled", matchedTo: "BILL-2024-092" },
-  { id: "8", date: "2024-12-01", description: "Wire Transfer - CloudFirst Ltd", amount: 12400, type: "credit", status: "reconciled", matchedTo: "INV-1038" },
-];
+import { useBankAccounts, useBankTransactions } from "@/hooks/useBanking";
+import { format } from "date-fns";
 
 const statusConfig = {
   pending: { label: "Unmatched", className: "bg-warning/10 text-warning" },
@@ -51,39 +35,52 @@ const statusConfig = {
 };
 
 const Banking = () => {
-  const totalBalance = bankAccounts.reduce((sum, a) => sum + a.balance, 0);
-  const unmatchedCount = transactions.filter((t) => t.status === "pending").length;
+  const { data: bankAccounts, isLoading: accountsLoading } = useBankAccounts();
+  const { data: transactions, isLoading: transactionsLoading } = useBankTransactions();
+
+  const totalBalance = bankAccounts?.reduce((sum, a) => sum + Number(a.current_balance), 0) || 0;
+  const unmatchedCount = transactions?.filter((t) => t.status === "pending").length || 0;
 
   return (
     <AppLayout title="Banking" subtitle="Bank accounts and transaction reconciliation">
       {/* Bank Accounts */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {bankAccounts.map((account) => (
-          <div
-            key={account.id}
-            className="rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/50"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-primary/10 p-2.5">
-                  <Building2 className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">{account.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {account.bank} • {account.number}
-                  </p>
+        {accountsLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))
+        ) : bankAccounts?.length === 0 ? (
+          <div className="col-span-full text-center py-8 text-muted-foreground">
+            No bank accounts configured
+          </div>
+        ) : (
+          bankAccounts?.map((account) => (
+            <div
+              key={account.id}
+              className="rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/50"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2.5">
+                    <Building2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">{account.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {account.bank_name || "Bank"} • ****{account.account_number?.slice(-4) || "****"}
+                    </p>
+                  </div>
                 </div>
               </div>
+              <div className="mt-4">
+                <p className="text-3xl font-bold text-foreground">
+                  ${Number(account.current_balance).toLocaleString()}
+                </p>
+                <p className="text-sm text-muted-foreground">{account.currency}</p>
+              </div>
             </div>
-            <div className="mt-4">
-              <p className="text-3xl font-bold text-foreground">
-                ${account.balance.toLocaleString()}
-              </p>
-              <p className="text-sm text-muted-foreground">{account.currency}</p>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Summary Row */}
@@ -146,83 +143,108 @@ const Banking = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions.map((tx) => {
-              const status = statusConfig[tx.status as keyof typeof statusConfig];
-              const isCredit = tx.amount > 0;
-              
-              return (
-                <TableRow key={tx.id} className="border-border">
-                  <TableCell className="text-muted-foreground">{tx.date}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={cn(
-                          "rounded-full p-1",
-                          isCredit ? "bg-success/10" : "bg-muted"
-                        )}
-                      >
-                        {isCredit ? (
-                          <ArrowDownLeft className="h-3 w-3 text-success" />
-                        ) : (
-                          <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
-                        )}
-                      </div>
-                      <span className="text-foreground">{tx.description}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      "text-right font-semibold",
-                      isCredit ? "text-success" : "text-foreground"
-                    )}
-                  >
-                    {isCredit ? "+" : ""}${Math.abs(tx.amount).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={cn("font-medium", status.className)}>
-                      {status.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {tx.matchedTo ? (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Link2 className="h-3 w-3 text-primary" />
-                        <span className="text-primary">{tx.matchedTo}</span>
-                      </div>
-                    ) : tx.suggestedAccount ? (
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-3 w-3 text-warning" />
-                        <span className="text-sm text-muted-foreground">
-                          {tx.suggestedAccount}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {tx.status === "pending" && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-success hover:bg-success/10 hover:text-success"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </TableCell>
+            {transactionsLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="border-border">
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                 </TableRow>
-              );
-            })}
+              ))
+            ) : transactions?.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  No transactions found
+                </TableCell>
+              </TableRow>
+            ) : (
+              transactions?.map((tx) => {
+                const status = statusConfig[tx.status as keyof typeof statusConfig] || statusConfig.pending;
+                const amount = Number(tx.amount);
+                const isCredit = amount > 0;
+                const matchedTo = tx.matched_invoice?.invoice_number || tx.matched_bill?.bill_number;
+                const suggestedAccount = tx.suggested_account ? 
+                  `${tx.suggested_account.code} - ${tx.suggested_account.name}` : null;
+
+                return (
+                  <TableRow key={tx.id} className="border-border">
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(tx.transaction_date), "yyyy-MM-dd")}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={cn(
+                            "rounded-full p-1",
+                            isCredit ? "bg-success/10" : "bg-muted"
+                          )}
+                        >
+                          {isCredit ? (
+                            <ArrowDownLeft className="h-3 w-3 text-success" />
+                          ) : (
+                            <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span className="text-foreground">{tx.description || "Transaction"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right font-semibold",
+                        isCredit ? "text-success" : "text-foreground"
+                      )}
+                    >
+                      {isCredit ? "+" : ""}${Math.abs(amount).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={cn("font-medium", status.className)}>
+                        {status.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {matchedTo ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Link2 className="h-3 w-3 text-primary" />
+                          <span className="text-primary">{matchedTo}</span>
+                        </div>
+                      ) : suggestedAccount ? (
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-3 w-3 text-warning" />
+                          <span className="text-sm text-muted-foreground">
+                            {suggestedAccount}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {tx.status === "pending" && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-success hover:bg-success/10 hover:text-success"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>
