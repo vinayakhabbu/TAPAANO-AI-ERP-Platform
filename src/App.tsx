@@ -12,6 +12,7 @@ import Payables from "./pages/Payables";
 import GeneralLedger from "./pages/GeneralLedger";
 import Banking from "./pages/Banking";
 import PeriodClose from "./pages/PeriodClose";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/gl" element={<GeneralLedger />} />
               <Route path="/banking" element={<Banking />} />
               <Route path="/close" element={<PeriodClose />} />
+              <Route path="/settings" element={<Settings />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
