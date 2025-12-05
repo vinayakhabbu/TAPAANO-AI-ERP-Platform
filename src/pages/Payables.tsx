@@ -174,7 +174,7 @@ const Payables = () => {
 
       {/* Tabs for P2P Workflow */}
       <Tabs defaultValue="purchase-orders" className="mt-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className="inline-flex h-10 w-auto">
           <TabsTrigger value="purchase-orders" className="gap-2">
             <FileText className="h-4 w-4 hidden sm:inline" />
             POs
