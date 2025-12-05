@@ -1335,6 +1335,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           address: string | null
@@ -1385,9 +1406,21 @@ export type Database = {
     }
     Functions: {
       get_user_org_id: { Args: never; Returns: string }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       account_type: "asset" | "liability" | "equity" | "revenue" | "expense"
+      app_role: "admin" | "moderator" | "user" | "viewer"
       bill_status: "draft" | "pending" | "paid" | "overdue" | "cancelled"
       close_task_status: "pending" | "in_progress" | "complete" | "overdue"
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
@@ -1535,6 +1568,7 @@ export const Constants = {
   public: {
     Enums: {
       account_type: ["asset", "liability", "equity", "revenue", "expense"],
+      app_role: ["admin", "moderator", "user", "viewer"],
       bill_status: ["draft", "pending", "paid", "overdue", "cancelled"],
       close_task_status: ["pending", "in_progress", "complete", "overdue"],
       invoice_status: ["draft", "sent", "paid", "overdue", "cancelled"],
