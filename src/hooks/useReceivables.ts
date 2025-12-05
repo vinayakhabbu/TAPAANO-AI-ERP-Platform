@@ -24,6 +24,24 @@ export interface InvoiceWithCustomer {
   days_overdue: number;
 }
 
+export interface SalesOrder {
+  id: string;
+  so_number: string;
+  customer_name: string;
+  order_date: string;
+  status: string;
+  total: number;
+}
+
+export interface Shipment {
+  id: string;
+  shipment_number: string;
+  ship_date: string;
+  carrier: string | null;
+  tracking_number: string | null;
+  sales_order_id: string;
+}
+
 export const useReceivables = () => {
   const customersQuery = useQuery({
     queryKey: ["customers-with-aging"],
@@ -43,7 +61,6 @@ export const useReceivables = () => {
 
       const today = new Date();
       
-      // Calculate aging for each customer
       const customersWithAging: CustomerWithAging[] = (customers || []).map((customer) => {
         const customerInvoices = (invoices || []).filter(
           (inv) => inv.customer_id === customer.id
@@ -83,7 +100,6 @@ export const useReceivables = () => {
         };
       });
 
-      // Filter to only show customers with outstanding balances
       return customersWithAging.filter((c) => c.totalOwed > 0);
     },
   });
@@ -121,6 +137,43 @@ export const useReceivables = () => {
     },
   });
 
+  const salesOrdersQuery = useQuery({
+    queryKey: ["sales-orders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales_orders")
+        .select(`
+          *,
+          customers (name)
+        `)
+        .order("order_date", { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map((so): SalesOrder => ({
+        id: so.id,
+        so_number: so.so_number,
+        customer_name: so.customers?.name || "Unknown",
+        order_date: so.order_date,
+        status: so.status,
+        total: so.total,
+      }));
+    },
+  });
+
+  const shipmentsQuery = useQuery({
+    queryKey: ["shipments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("shipments")
+        .select("*")
+        .order("ship_date", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const stats = {
     totalAR: customersQuery.data?.reduce((sum, c) => sum + c.totalOwed, 0) || 0,
     overdueAR:
@@ -129,13 +182,18 @@ export const useReceivables = () => {
         0
       ) || 0,
     customerCount: customersQuery.data?.length || 0,
+    salesOrderCount: salesOrdersQuery.data?.length || 0,
+    shipmentCount: shipmentsQuery.data?.length || 0,
+    invoiceCount: invoicesQuery.data?.length || 0,
   };
 
   return {
     customers: customersQuery.data || [],
     invoices: invoicesQuery.data || [],
+    salesOrders: salesOrdersQuery.data || [],
+    shipments: shipmentsQuery.data || [],
     stats,
-    isLoading: customersQuery.isLoading || invoicesQuery.isLoading,
-    error: customersQuery.error || invoicesQuery.error,
+    isLoading: customersQuery.isLoading || invoicesQuery.isLoading || salesOrdersQuery.isLoading || shipmentsQuery.isLoading,
+    error: customersQuery.error || invoicesQuery.error || salesOrdersQuery.error || shipmentsQuery.error,
   };
 };
