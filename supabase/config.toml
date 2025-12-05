@@ -2,3 +2,6 @@ project_id = "hmjfkdyxrapbteowszvg"
 
 [functions.finance-chat]
 verify_jwt = false
+
+[functions.finance-agents]
+verify_jwt = false

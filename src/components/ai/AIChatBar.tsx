@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sparkles,
   Send,
@@ -10,32 +12,33 @@ import {
   User,
   Loader2,
   X,
+  Wrench,
 } from "lucide-react";
-
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/finance-chat`;
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  toolCalls?: number;
 }
 
 const suggestedPrompts = [
   "Show me AR aging summary",
   "What's our DSO this month?",
-  "Start close for November",
+  "Get close status for November",
   "Draft collection emails for overdue invoices",
 ];
 
 export function AIChatBar() {
+  const { orgId, user } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       role: "assistant",
-      content: "Hi! I'm your Finance Copilot. I can help you with metrics, journal entries, collections, and period close. How can I assist you today?",
+      content: "Hi! I'm your Finance Copilot powered by OpenAI Agents. I can query your actual data, help with AR/AP, classify transactions, and assist with period close. How can I help?",
       timestamp: new Date(),
     },
   ]);
@@ -69,68 +72,37 @@ export function AIChatBar() {
     setIsLoading(true);
     setIsExpanded(true);
 
-    let assistantContent = "";
-
     try {
-      const response = await fetch(CHAT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].map((m) => ({
+      // Call the OpenAI Agents endpoint
+      const { data, error } = await supabase.functions.invoke("finance-agents", {
+        body: {
+          messages: [...messages.filter(m => m.id !== "1"), userMessage].map((m) => ({
             role: m.role,
             content: m.content,
           })),
-        }),
+          org_id: orgId,
+        },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to get response");
-      }
+      if (error) throw error;
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response || "I apologize, but I couldn't process that request.",
+        timestamp: new Date(),
+        toolCalls: data.tool_calls_made,
+      };
 
-      if (!reader) throw new Error("No reader available");
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ") && line !== "data: [DONE]") {
-            try {
-              const json = JSON.parse(line.slice(6));
-              const content = json.choices?.[0]?.delta?.content;
-              if (content) {
-                assistantContent += content;
-                setMessages((prev) => {
-                  const last = prev[prev.length - 1];
-                  if (last?.role === "assistant") {
-                    return prev.map((m, i) =>
-                      i === prev.length - 1 ? { ...m, content: assistantContent } : m
-                    );
-                  }
-                  return [
-                    ...prev,
-                    { id: Date.now().toString(), role: "assistant", content: assistantContent, timestamp: new Date() },
-                  ];
-                });
-              }
-            } catch {}
-          }
-        }
-      }
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error("Chat error:", error);
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now().toString(),
+          id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: "Sorry, I encountered an error. Please try again.",
+          content: "Sorry, I encountered an error connecting to the AI service. Please try again.",
           timestamp: new Date(),
         },
       ]);
@@ -148,7 +120,7 @@ export function AIChatBar() {
     <div
       className={cn(
         "fixed bottom-0 left-64 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl transition-all duration-300",
-        isExpanded ? "h-[420px]" : "h-auto"
+        isExpanded ? "h-[480px]" : "h-auto"
       )}
     >
       {/* Expanded Chat View */}
@@ -162,7 +134,7 @@ export function AIChatBar() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Finance Copilot</h3>
-                <p className="text-xs text-muted-foreground">Powered by AI</p>
+                <p className="text-xs text-muted-foreground">OpenAI Agents SDK • GPT-4.1</p>
               </div>
             </div>
             <Button
@@ -197,15 +169,23 @@ export function AIChatBar() {
                     <Bot className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
-                <div
-                  className={cn(
-                    "max-w-[70%] rounded-lg px-4 py-2.5 text-sm",
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground"
+                <div className={cn("max-w-[75%]", message.role === "user" ? "text-right" : "")}>
+                  <div
+                    className={cn(
+                      "rounded-lg px-4 py-2.5 text-sm whitespace-pre-wrap",
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
+                    )}
+                  >
+                    {message.content}
+                  </div>
+                  {message.toolCalls && message.toolCalls > 0 && (
+                    <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Wrench className="h-3 w-3" />
+                      {message.toolCalls} tool{message.toolCalls > 1 ? "s" : ""} used
+                    </div>
                   )}
-                >
-                  {message.content}
                 </div>
               </div>
             ))}
@@ -216,7 +196,7 @@ export function AIChatBar() {
                 </div>
                 <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2.5">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">Thinking...</span>
+                  <span className="text-sm text-muted-foreground">Querying data & reasoning...</span>
                 </div>
               </div>
             )}
@@ -264,13 +244,14 @@ export function AIChatBar() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything about your finances..."
-              className="h-11 w-full rounded-lg border border-border bg-muted/50 pl-10 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder={orgId ? "Ask about your finances..." : "Sign in to use AI assistant..."}
+              disabled={!orgId}
+              className="h-11 w-full rounded-lg border border-border bg-muted/50 pl-10 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
             />
             <Button
               type="submit"
               size="icon"
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || !orgId}
               className="absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2"
             >
               <Send className="h-4 w-4" />
@@ -280,26 +261,4 @@ export function AIChatBar() {
       </div>
     </div>
   );
-}
-
-function getSimulatedResponse(input: string): string {
-  const lowerInput = input.toLowerCase();
-  
-  if (lowerInput.includes("ar aging") || lowerInput.includes("receivable")) {
-    return "Here's your AR aging summary:\n\n• Current (0-30 days): $125,400\n• 31-60 days: $45,200\n• 61-90 days: $12,800\n• Over 90 days: $8,600 ⚠️\n\nTotal Outstanding: $192,000\n\nI noticed 3 customers with overdue balances over 90 days. Would you like me to draft collection emails for them?";
-  }
-  
-  if (lowerInput.includes("dso")) {
-    return "Your Days Sales Outstanding (DSO) metrics:\n\n• Current Month: 42 days\n• Last Month: 45 days\n• YTD Average: 44 days\n• Industry Benchmark: 35-40 days\n\nDSO improved by 3 days this month. The main contributors were faster collections from Enterprise accounts. Would you like to see a breakdown by customer segment?";
-  }
-  
-  if (lowerInput.includes("close") || lowerInput.includes("period")) {
-    return "I'll help you start the November 2024 close. Here's the checklist I've prepared:\n\n✅ Bank reconciliation - Ready\n✅ AP cutoff verification - Ready\n⏳ AR aging review - In Progress\n⏳ Accruals review - Pending\n⏳ Intercompany eliminations - Pending\n⏳ Management review - Pending\n\n4 of 8 tasks complete. Estimated completion: 2 days. Want me to generate the detailed close checklist?";
-  }
-  
-  if (lowerInput.includes("collection") || lowerInput.includes("email") || lowerInput.includes("overdue")) {
-    return "I found 5 customers with overdue invoices totaling $21,400:\n\n1. TechStart Inc - $8,200 (45 days overdue)\n2. Global Services - $6,100 (38 days overdue)\n3. CloudFirst Ltd - $4,200 (52 days overdue)\n4. DataFlow Corp - $1,800 (31 days overdue)\n5. WebSolutions - $1,100 (35 days overdue)\n\nWould you like me to draft collection emails? I can use a friendly or firm tone based on the aging.";
-  }
-  
-  return "I understand you're asking about your finances. I can help you with:\n\n• Metrics and reports (revenue, expenses, DSO)\n• AR/AP aging and collections\n• Bank transaction classification\n• Period close assistance\n• Journal entry proposals\n\nCould you be more specific about what you'd like to know?";
 }
