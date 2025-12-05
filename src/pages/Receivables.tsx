@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   Search,
@@ -18,86 +19,14 @@ import {
   Download,
   Mail,
   MoreHorizontal,
-  TrendingUp,
-  TrendingDown,
   Users,
   DollarSign,
   Clock,
   AlertCircle,
+  FileText,
 } from "lucide-react";
-
-// Demo data
-const customers = [
-  {
-    id: "1",
-    name: "TechStart Inc",
-    email: "billing@techstart.com",
-    totalOwed: 28200,
-    current: 12000,
-    overdue30: 8200,
-    overdue60: 5000,
-    overdue90: 3000,
-    lastPayment: "2024-11-15",
-    creditLimit: 50000,
-  },
-  {
-    id: "2",
-    name: "GlobalTech Corp",
-    email: "accounts@globaltech.com",
-    totalOwed: 45600,
-    current: 45600,
-    overdue30: 0,
-    overdue60: 0,
-    overdue90: 0,
-    lastPayment: "2024-11-28",
-    creditLimit: 100000,
-  },
-  {
-    id: "3",
-    name: "CloudFirst Ltd",
-    email: "finance@cloudfirst.io",
-    totalOwed: 16400,
-    current: 4200,
-    overdue30: 6100,
-    overdue60: 4200,
-    overdue90: 1900,
-    lastPayment: "2024-10-22",
-    creditLimit: 30000,
-  },
-  {
-    id: "4",
-    name: "DataFlow Corp",
-    email: "ap@dataflow.com",
-    totalOwed: 9800,
-    current: 8000,
-    overdue30: 1800,
-    overdue60: 0,
-    overdue90: 0,
-    lastPayment: "2024-11-20",
-    creditLimit: 25000,
-  },
-  {
-    id: "5",
-    name: "WebSolutions",
-    email: "billing@websolutions.net",
-    totalOwed: 7100,
-    current: 6000,
-    overdue30: 1100,
-    overdue60: 0,
-    overdue90: 0,
-    lastPayment: "2024-11-25",
-    creditLimit: 20000,
-  },
-];
-
-const invoices = [
-  { id: "INV-1042", customer: "TechStart Inc", amount: 8200, dueDate: "2024-10-15", status: "overdue", daysOverdue: 51 },
-  { id: "INV-1043", customer: "GlobalTech Corp", amount: 15600, dueDate: "2024-12-15", status: "sent", daysOverdue: 0 },
-  { id: "INV-1044", customer: "CloudFirst Ltd", amount: 4200, dueDate: "2024-11-01", status: "overdue", daysOverdue: 34 },
-  { id: "INV-1045", customer: "DataFlow Corp", amount: 3200, dueDate: "2024-12-10", status: "sent", daysOverdue: 0 },
-  { id: "INV-1046", customer: "TechStart Inc", amount: 5000, dueDate: "2024-10-25", status: "overdue", daysOverdue: 41 },
-  { id: "INV-1047", customer: "WebSolutions", amount: 1100, dueDate: "2024-11-10", status: "overdue", daysOverdue: 25 },
-];
+import { useReceivables } from "@/hooks/useReceivables";
+import { format } from "date-fns";
 
 const statusConfig = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
@@ -107,8 +36,7 @@ const statusConfig = {
 };
 
 const Receivables = () => {
-  const totalAR = customers.reduce((sum, c) => sum + c.totalOwed, 0);
-  const overdueAR = customers.reduce((sum, c) => sum + c.overdue30 + c.overdue60 + c.overdue90, 0);
+  const { customers, invoices, stats, isLoading } = useReceivables();
 
   return (
     <AppLayout title="Accounts Receivable" subtitle="Manage invoices and collections">
@@ -121,9 +49,13 @@ const Receivables = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total AR</p>
-              <p className="text-2xl font-bold text-foreground">
-                ${totalAR.toLocaleString()}
-              </p>
+              {isLoading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <p className="text-2xl font-bold text-foreground">
+                  ${stats.totalAR.toLocaleString()}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -135,9 +67,13 @@ const Receivables = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Overdue</p>
-              <p className="text-2xl font-bold text-destructive">
-                ${overdueAR.toLocaleString()}
-              </p>
+              {isLoading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <p className="text-2xl font-bold text-destructive">
+                  ${stats.overdueAR.toLocaleString()}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -149,7 +85,7 @@ const Receivables = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Avg DSO</p>
-              <p className="text-2xl font-bold text-foreground">42 days</p>
+              <p className="text-2xl font-bold text-foreground">— days</p>
             </div>
           </div>
         </div>
@@ -161,7 +97,11 @@ const Receivables = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Customers</p>
-              <p className="text-2xl font-bold text-foreground">{customers.length}</p>
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <p className="text-2xl font-bold text-foreground">{stats.customerCount}</p>
+              )}
             </div>
           </div>
         </div>
@@ -205,40 +145,69 @@ const Receivables = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {invoices.map((invoice) => {
-              const status = statusConfig[invoice.status as keyof typeof statusConfig];
-              return (
-                <TableRow key={invoice.id} className="border-border">
-                  <TableCell className="font-medium text-foreground">
-                    {invoice.id}
-                  </TableCell>
-                  <TableCell className="text-foreground">{invoice.customer}</TableCell>
-                  <TableCell className="font-medium text-foreground">
-                    ${invoice.amount.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{invoice.dueDate}</TableCell>
-                  <TableCell>
-                    <Badge className={cn("font-medium", status.className)}>
-                      {status.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {invoice.daysOverdue > 0 ? (
-                      <span className="text-destructive font-medium">
-                        {invoice.daysOverdue} days
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="border-border">
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
-              );
-            })}
+              ))
+            ) : invoices.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-32 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <FileText className="h-8 w-8" />
+                    <p>No invoices found</p>
+                    <Button variant="outline" size="sm" className="mt-2 gap-2">
+                      <Plus className="h-4 w-4" />
+                      Create your first invoice
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              invoices.map((invoice) => {
+                const status = statusConfig[invoice.status as keyof typeof statusConfig] || statusConfig.draft;
+                return (
+                  <TableRow key={invoice.id} className="border-border">
+                    <TableCell className="font-medium text-foreground">
+                      {invoice.invoice_number}
+                    </TableCell>
+                    <TableCell className="text-foreground">{invoice.customer_name}</TableCell>
+                    <TableCell className="font-medium text-foreground">
+                      ${invoice.total.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(invoice.due_date), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={cn("font-medium", status.className)}>
+                        {status.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {invoice.days_overdue > 0 ? (
+                        <span className="text-destructive font-medium">
+                          {invoice.days_overdue} days
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>
@@ -269,36 +238,59 @@ const Receivables = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {customers.map((customer) => (
-              <TableRow key={customer.id} className="border-border">
-                <TableCell>
-                  <div>
-                    <p className="font-medium text-foreground">{customer.name}</p>
-                    <p className="text-sm text-muted-foreground">{customer.email}</p>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="border-border">
+                  <TableCell><Skeleton className="h-10 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                </TableRow>
+              ))
+            ) : customers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-32 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Users className="h-8 w-8" />
+                    <p>No outstanding balances</p>
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-semibold text-foreground">
-                  ${customer.totalOwed.toLocaleString()}
-                </TableCell>
-                <TableCell className="text-right text-success">
-                  ${customer.current.toLocaleString()}
-                </TableCell>
-                <TableCell className="text-right text-warning">
-                  {customer.overdue30 > 0 ? `$${customer.overdue30.toLocaleString()}` : "—"}
-                </TableCell>
-                <TableCell className="text-right text-orange-500">
-                  {customer.overdue60 > 0 ? `$${customer.overdue60.toLocaleString()}` : "—"}
-                </TableCell>
-                <TableCell className="text-right text-destructive">
-                  {customer.overdue90 > 0 ? `$${customer.overdue90.toLocaleString()}` : "—"}
-                </TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Mail className="h-4 w-4" />
-                  </Button>
-                </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              customers.map((customer) => (
+                <TableRow key={customer.id} className="border-border">
+                  <TableCell>
+                    <div>
+                      <p className="font-medium text-foreground">{customer.name}</p>
+                      <p className="text-sm text-muted-foreground">{customer.email || "—"}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-foreground">
+                    ${customer.totalOwed.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right text-success">
+                    ${customer.current.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right text-warning">
+                    {customer.overdue30 > 0 ? `$${customer.overdue30.toLocaleString()}` : "—"}
+                  </TableCell>
+                  <TableCell className="text-right text-orange-500">
+                    {customer.overdue60 > 0 ? `$${customer.overdue60.toLocaleString()}` : "—"}
+                  </TableCell>
+                  <TableCell className="text-right text-destructive">
+                    {customer.overdue90 > 0 ? `$${customer.overdue90.toLocaleString()}` : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
