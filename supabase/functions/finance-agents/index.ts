@@ -132,6 +132,21 @@ Be precise with numbers. Format currency as $X,XXX.XX. Use bullet points for cla
         parameters: { type: "object", properties: {}, required: [] },
       },
     },
+    {
+      type: "function",
+      function: {
+        name: "get_accounts",
+        description: "Get chart of accounts / GL accounts. Use this to look up account codes, account types, and account names.",
+        parameters: {
+          type: "object",
+          properties: {
+            account_type: { type: "string", enum: ["asset", "liability", "equity", "revenue", "expense"], description: "Filter by account type" },
+            search: { type: "string", description: "Search term to filter accounts by name or code" },
+          },
+          required: [],
+        },
+      },
+    },
   ],
 };
 
@@ -834,6 +849,42 @@ async function executeToolCall(
           cash_position: totalCash,
           working_capital: totalCash + totalAR - totalAP,
           dso: totalAR > 0 && revenue > 0 ? Math.round((totalAR / (revenue / 30))) : 0,
+        });
+      }
+
+      case "get_accounts": {
+        const { account_type, search } = args as { account_type?: string; search?: string };
+
+        let query = supabase
+          .from("accounts")
+          .select("code, name, account_type, is_active")
+          .eq("org_id", orgId)
+          .eq("is_active", true)
+          .order("code", { ascending: true });
+
+        if (account_type) {
+          query = query.eq("account_type", account_type);
+        }
+
+        const { data: accounts } = await query;
+
+        let filteredAccounts = accounts || [];
+        if (search) {
+          const searchLower = search.toLowerCase();
+          filteredAccounts = filteredAccounts.filter((a: any) =>
+            a.name.toLowerCase().includes(searchLower) ||
+            a.code.toLowerCase().includes(searchLower)
+          );
+        }
+
+        return JSON.stringify({
+          accounts: filteredAccounts.map((a: any) => ({
+            code: a.code,
+            name: a.name,
+            type: a.account_type,
+          })),
+          count: filteredAccounts.length,
+          note: filteredAccounts.length === 0 ? "No accounts found. The chart of accounts may need to be set up." : undefined,
         });
       }
 
