@@ -1,5 +1,6 @@
-import { Bell, Search, ChevronDown } from "lucide-react";
+import { Bell, Search, ChevronDown, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
 
 interface HeaderProps {
   title: string;
@@ -7,6 +8,8 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
+  const { theme, setTheme } = useTheme();
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-xl">
       <div>
@@ -16,7 +19,7 @@ export function Header({ title, subtitle }: HeaderProps) {
 
       <div className="flex items-center gap-3">
         {/* Search */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
@@ -28,6 +31,17 @@ export function Header({ title, subtitle }: HeaderProps) {
           </kbd>
         </div>
 
+        {/* Theme Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        >
+          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-muted-foreground" />
+          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-muted-foreground" />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5 text-muted-foreground" />
@@ -35,7 +49,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </Button>
 
         {/* Period Selector */}
-        <Button variant="outline" className="gap-2 border-border text-sm">
+        <Button variant="outline" className="gap-2 border-border text-sm hidden sm:flex">
           <span className="text-muted-foreground">Period:</span>
           <span className="font-medium">Nov 2024</span>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
