@@ -634,6 +634,8 @@ export type Database = {
           issue_date: string
           notes: string | null
           org_id: string
+          sales_order_id: string | null
+          shipment_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
           tax: number
@@ -651,6 +653,8 @@ export type Database = {
           issue_date?: string
           notes?: string | null
           org_id: string
+          sales_order_id?: string | null
+          shipment_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
           tax?: number
@@ -668,6 +672,8 @@ export type Database = {
           issue_date?: string
           notes?: string | null
           org_id?: string
+          sales_order_id?: string | null
+          shipment_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
           tax?: number
@@ -694,6 +700,20 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
         ]
@@ -1072,6 +1092,245 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_order_lines: {
+        Row: {
+          account_id: string | null
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          quantity: number
+          sales_order_id: string
+          shipped_quantity: number
+          unit_price: number
+        }
+        Insert: {
+          account_id?: string | null
+          amount?: number
+          created_at?: string
+          description: string
+          id?: string
+          quantity?: number
+          sales_order_id: string
+          shipped_quantity?: number
+          unit_price?: number
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          quantity?: number
+          sales_order_id?: string
+          shipped_quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_lines_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_orders: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          entity_id: string
+          id: string
+          notes: string | null
+          order_date: string
+          org_id: string
+          requested_delivery_date: string | null
+          so_number: string
+          status: string
+          subtotal: number
+          tax: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          entity_id: string
+          id?: string
+          notes?: string | null
+          order_date?: string
+          org_id: string
+          requested_delivery_date?: string | null
+          so_number: string
+          status?: string
+          subtotal?: number
+          tax?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          entity_id?: string
+          id?: string
+          notes?: string | null
+          order_date?: string
+          org_id?: string
+          requested_delivery_date?: string | null
+          so_number?: string
+          status?: string
+          subtotal?: number
+          tax?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_lines: {
+        Row: {
+          created_at: string
+          id: string
+          quantity_shipped: number
+          sales_order_line_id: string
+          shipment_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          quantity_shipped?: number
+          sales_order_line_id: string
+          shipment_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          quantity_shipped?: number
+          sales_order_line_id?: string
+          shipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_lines_sales_order_line_id_fkey"
+            columns: ["sales_order_line_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_lines_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipments: {
+        Row: {
+          carrier: string | null
+          created_at: string
+          entity_id: string
+          id: string
+          notes: string | null
+          org_id: string
+          sales_order_id: string
+          ship_date: string
+          shipment_number: string
+          shipped_by: string | null
+          tracking_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          carrier?: string | null
+          created_at?: string
+          entity_id: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          sales_order_id: string
+          ship_date?: string
+          shipment_number: string
+          shipped_by?: string | null
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          carrier?: string | null
+          created_at?: string
+          entity_id?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          sales_order_id?: string
+          ship_date?: string
+          shipment_number?: string
+          shipped_by?: string | null
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
         ]
