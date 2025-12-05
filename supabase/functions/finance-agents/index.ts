@@ -240,6 +240,35 @@ Always maintain professionalism. Be firm but fair. Consider customer relationshi
         },
       },
     },
+    {
+      type: "function",
+      function: {
+        name: "get_customers",
+        description: "Get customer list with contact info and credit terms. Use this to look up customer details.",
+        parameters: {
+          type: "object",
+          properties: {
+            search: { type: "string", description: "Search term to filter customers by name or email" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_invoices",
+        description: "Get invoices with filtering. Use to look up specific invoices or invoice statuses.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "sent", "paid", "overdue", "cancelled"], description: "Filter by status" },
+            customer_name: { type: "string", description: "Filter by customer name" },
+          },
+          required: [],
+        },
+      },
+    },
   ],
 };
 
@@ -327,6 +356,52 @@ Be organized and systematic. Prioritize critical path items. Help teams close fa
           },
           required: ["task_name", "status"],
         },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_accounts",
+        description: "Get chart of accounts / GL accounts. Use this to look up account codes, account types, and account names.",
+        parameters: {
+          type: "object",
+          properties: {
+            account_type: { type: "string", enum: ["asset", "liability", "equity", "revenue", "expense"], description: "Filter by account type" },
+            search: { type: "string", description: "Search term to filter accounts by name or code" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_journal_entries",
+        description: "Get journal entries with filtering. Use to review posted or draft entries.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "posted", "reversed"], description: "Filter by status" },
+            period: { type: "string", description: "Filter by period (YYYY-MM format)" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_ar_aging",
+        description: "Get accounts receivable aging summary for reconciliation",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_ap_summary",
+        description: "Get accounts payable summary for reconciliation",
+        parameters: { type: "object", properties: {}, required: [] },
       },
     },
   ],
@@ -468,6 +543,35 @@ Be thorough with matching and validation. Flag discrepancies. Help optimize cash
         parameters: { type: "object", properties: {}, required: [] },
       },
     },
+    {
+      type: "function",
+      function: {
+        name: "get_vendors",
+        description: "Get vendor list with contact info and payment terms. Use this to look up vendor details.",
+        parameters: {
+          type: "object",
+          properties: {
+            search: { type: "string", description: "Search term to filter vendors by name or email" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_accounts",
+        description: "Get chart of accounts / GL accounts. Use this to look up expense accounts for PO coding.",
+        parameters: {
+          type: "object",
+          properties: {
+            account_type: { type: "string", enum: ["asset", "liability", "equity", "revenue", "expense"], description: "Filter by account type" },
+            search: { type: "string", description: "Search term to filter accounts by name or code" },
+          },
+          required: [],
+        },
+      },
+    },
   ],
 };
 
@@ -586,6 +690,35 @@ Be thorough with order fulfillment tracking. Help accelerate cash conversion. Ma
         name: "get_ar_aging",
         description: "Get accounts receivable aging summary",
         parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_customers",
+        description: "Get customer list with contact info and credit terms. Use this to look up customer details.",
+        parameters: {
+          type: "object",
+          properties: {
+            search: { type: "string", description: "Search term to filter customers by name or email" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_accounts",
+        description: "Get chart of accounts / GL accounts. Use this to look up revenue accounts.",
+        parameters: {
+          type: "object",
+          properties: {
+            account_type: { type: "string", enum: ["asset", "liability", "equity", "revenue", "expense"], description: "Filter by account type" },
+            search: { type: "string", description: "Search term to filter accounts by name or code" },
+          },
+          required: [],
+        },
       },
     },
   ],
@@ -885,6 +1018,165 @@ async function executeToolCall(
           })),
           count: filteredAccounts.length,
           note: filteredAccounts.length === 0 ? "No accounts found. The chart of accounts may need to be set up." : undefined,
+        });
+      }
+
+      case "get_customers": {
+        const { search } = args as { search?: string };
+
+        let query = supabase
+          .from("customers")
+          .select("id, name, email, phone, address, payment_terms, credit_limit")
+          .eq("org_id", orgId)
+          .order("name", { ascending: true });
+
+        const { data: customers } = await query;
+
+        let filtered = customers || [];
+        if (search) {
+          const searchLower = search.toLowerCase();
+          filtered = filtered.filter((c: any) =>
+            c.name?.toLowerCase().includes(searchLower) ||
+            c.email?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        return JSON.stringify({
+          customers: filtered.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            phone: c.phone,
+            payment_terms: c.payment_terms,
+            credit_limit: c.credit_limit,
+          })),
+          count: filtered.length,
+          note: filtered.length === 0 ? "No customers found." : undefined,
+        });
+      }
+
+      case "get_vendors": {
+        const { search } = args as { search?: string };
+
+        let query = supabase
+          .from("vendors")
+          .select("id, name, email, phone, address, payment_terms")
+          .eq("org_id", orgId)
+          .order("name", { ascending: true });
+
+        const { data: vendors } = await query;
+
+        let filtered = vendors || [];
+        if (search) {
+          const searchLower = search.toLowerCase();
+          filtered = filtered.filter((v: any) =>
+            v.name?.toLowerCase().includes(searchLower) ||
+            v.email?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        return JSON.stringify({
+          vendors: filtered.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            email: v.email,
+            phone: v.phone,
+            payment_terms: v.payment_terms,
+          })),
+          count: filtered.length,
+          note: filtered.length === 0 ? "No vendors found." : undefined,
+        });
+      }
+
+      case "get_invoices": {
+        const { status, customer_name } = args as { status?: string; customer_name?: string };
+
+        let query = supabase
+          .from("invoices")
+          .select("*, customers(name, email)")
+          .eq("org_id", orgId)
+          .order("issue_date", { ascending: false })
+          .limit(50);
+
+        if (status) {
+          query = query.eq("status", status);
+        }
+
+        const { data: invoices } = await query;
+
+        let filtered = invoices || [];
+        if (customer_name) {
+          const searchLower = customer_name.toLowerCase();
+          filtered = filtered.filter((i: any) =>
+            i.customers?.name?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        return JSON.stringify({
+          invoices: filtered.map((inv: any) => ({
+            invoice_number: inv.invoice_number,
+            customer: inv.customers?.name,
+            issue_date: inv.issue_date,
+            due_date: inv.due_date,
+            total: inv.total,
+            amount_paid: inv.amount_paid,
+            balance: inv.total - inv.amount_paid,
+            status: inv.status,
+          })),
+          count: filtered.length,
+        });
+      }
+
+      case "get_journal_entries": {
+        const { status, period } = args as { status?: string; period?: string };
+
+        let query = supabase
+          .from("journal_entries")
+          .select("id, entry_number, entry_date, memo, status, posted_at")
+          .eq("org_id", orgId)
+          .order("entry_date", { ascending: false })
+          .limit(50);
+
+        if (status) {
+          query = query.eq("status", status);
+        }
+
+        const { data: entries } = await query;
+
+        let filtered = entries || [];
+        if (period) {
+          filtered = filtered.filter((e: any) =>
+            e.entry_date?.startsWith(period)
+          );
+        }
+
+        // Get lines for each entry
+        const entriesWithLines = await Promise.all(
+          filtered.slice(0, 20).map(async (entry: any) => {
+            const { data: lines } = await supabase
+              .from("journal_lines")
+              .select("debit, credit, memo, accounts(code, name)")
+              .eq("journal_entry_id", entry.id);
+
+            const totalDebit = (lines || []).reduce((sum: number, l: any) => sum + Number(l.debit || 0), 0);
+            const totalCredit = (lines || []).reduce((sum: number, l: any) => sum + Number(l.credit || 0), 0);
+
+            return {
+              entry_number: entry.entry_number,
+              entry_date: entry.entry_date,
+              memo: entry.memo,
+              status: entry.status,
+              total_debit: totalDebit,
+              total_credit: totalCredit,
+              line_count: (lines || []).length,
+            };
+          })
+        );
+
+        return JSON.stringify({
+          entries: entriesWithLines,
+          count: filtered.length,
+          note: filtered.length === 0 ? "No journal entries found." : undefined,
         });
       }
 
