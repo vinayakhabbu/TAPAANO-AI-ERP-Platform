@@ -21,6 +21,7 @@ interface Message {
   content: string;
   timestamp: Date;
   toolCalls?: number;
+  agentUsed?: string;
 }
 
 const suggestedPrompts = [
@@ -92,6 +93,7 @@ export function AIChatBar() {
         content: data.response || "I apologize, but I couldn't process that request.",
         timestamp: new Date(),
         toolCalls: data.tool_calls_made,
+        agentUsed: data.agent_used,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -180,10 +182,19 @@ export function AIChatBar() {
                   >
                     {message.content}
                   </div>
-                  {message.toolCalls && message.toolCalls > 0 && (
-                    <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Wrench className="h-3 w-3" />
-                      {message.toolCalls} tool{message.toolCalls > 1 ? "s" : ""} used
+                  {(message.toolCalls || message.agentUsed) && (
+                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                      {message.agentUsed && (
+                        <span className="rounded bg-muted px-1.5 py-0.5">
+                          {message.agentUsed.replace("_agent", "").replace("_", " ")}
+                        </span>
+                      )}
+                      {message.toolCalls && message.toolCalls > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Wrench className="h-3 w-3" />
+                          {message.toolCalls} tool{message.toolCalls > 1 ? "s" : ""}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
