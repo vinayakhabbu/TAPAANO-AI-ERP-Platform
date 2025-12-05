@@ -24,13 +24,17 @@ Available agents:
 1. bookkeeper_agent: General finance queries, AR/AP summaries, metrics, cash position, transaction classification, journal entries, key metrics
 2. collections_agent: Overdue invoices, dunning emails, collection strategies, customer payment follow-ups, payment reminders
 3. close_assistant_agent: Period close tasks, close checklists, reconciliation status, month-end procedures, close progress
+4. p2p_agent: Procure-to-Pay - Purchase orders, goods receipts, bills, vendor management, 3-way matching, payment runs
+5. o2c_agent: Order-to-Cash - Sales orders, shipments, invoices, customer management, revenue tracking
 
 Route based on intent:
-- Questions about money owed TO the company, aging, overdue invoices, collection emails → collections_agent
+- Questions about purchasing, POs, vendors, goods receipts, bills to pay, payment runs → p2p_agent
+- Questions about sales orders, shipments, customer invoices, revenue, O2C cycle → o2c_agent
+- Questions about overdue invoices, dunning emails, collection strategies → collections_agent
 - Questions about period close, month-end, reconciliation, close tasks → close_assistant_agent
-- Everything else (metrics, AP, cash, transactions, journal entries) → bookkeeper_agent
+- Everything else (general metrics, cash, transactions, journal entries) → bookkeeper_agent
 
-Respond with ONLY the agent name: "bookkeeper_agent", "collections_agent", or "close_assistant_agent"`,
+Respond with ONLY the agent name: "bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", or "o2c_agent"`,
 };
 
 const BOOKKEEPER_AGENT = {
@@ -314,6 +318,265 @@ Be organized and systematic. Prioritize critical path items. Help teams close fa
 };
 
 // ============================================================================
+// P2P AGENT - Procure-to-Pay
+// ============================================================================
+
+const P2P_AGENT = {
+  name: "p2p_agent",
+  model: "gpt-4.1-2025-04-14",
+  instructions: `You are a Procure-to-Pay (P2P) specialist AI. You help manage the full procurement cycle from purchase orders to payments.
+
+Capabilities:
+- View and analyze purchase orders and their status
+- Track goods receipts and delivery status
+- Manage bills and payment schedules
+- Perform 3-way matching (PO, GR, Bill)
+- Analyze vendor performance and spending
+- Create and manage payment runs
+- Identify AP optimization opportunities
+
+Be thorough with matching and validation. Flag discrepancies. Help optimize cash flow timing.`,
+  tools: [
+    {
+      type: "function",
+      function: {
+        name: "get_purchase_orders",
+        description: "Get purchase orders with status and vendor details",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "pending_approval", "approved", "partially_received", "received", "cancelled"], description: "Filter by PO status" },
+            vendor_name: { type: "string", description: "Filter by vendor name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_goods_receipts",
+        description: "Get goods receipts with PO linkage and receipt details",
+        parameters: {
+          type: "object",
+          properties: {
+            po_number: { type: "string", description: "Filter by PO number" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_bills_status",
+        description: "Get bills with status, vendor, and matching information",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "pending", "paid", "overdue", "cancelled"], description: "Filter by bill status" },
+            vendor_name: { type: "string", description: "Filter by vendor name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "perform_three_way_match",
+        description: "Perform 3-way match between PO, goods receipt, and bill",
+        parameters: {
+          type: "object",
+          properties: {
+            po_number: { type: "string", description: "Purchase order number" },
+          },
+          required: ["po_number"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_vendor_analysis",
+        description: "Get vendor spending analysis and performance metrics",
+        parameters: {
+          type: "object",
+          properties: {
+            vendor_name: { type: "string", description: "Specific vendor to analyze (optional)" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_payment_runs",
+        description: "Get payment run status and scheduled payments",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "pending_approval", "approved", "processing", "completed", "failed"], description: "Filter by status" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_bills_due_for_payment",
+        description: "Get bills that are due for payment within a date range",
+        parameters: {
+          type: "object",
+          properties: {
+            days_ahead: { type: "number", description: "Number of days to look ahead for due bills" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_p2p_cycle_summary",
+        description: "Get end-to-end P2P cycle summary with metrics",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_ap_summary",
+        description: "Get accounts payable summary with pending and overdue bills",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// O2C AGENT - Order-to-Cash
+// ============================================================================
+
+const O2C_AGENT = {
+  name: "o2c_agent",
+  model: "gpt-4.1-2025-04-14",
+  instructions: `You are an Order-to-Cash (O2C) specialist AI. You help manage the full revenue cycle from sales orders to cash collection.
+
+Capabilities:
+- View and analyze sales orders and their status
+- Track shipments and delivery status
+- Manage customer invoices and payments
+- Analyze customer performance and credit
+- Track revenue recognition pipeline
+- Identify O2C bottlenecks and optimization opportunities
+
+Be thorough with order fulfillment tracking. Help accelerate cash conversion. Maintain customer relationships.`,
+  tools: [
+    {
+      type: "function",
+      function: {
+        name: "get_sales_orders",
+        description: "Get sales orders with status and customer details",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "approved", "shipped", "invoiced", "completed", "cancelled"], description: "Filter by SO status" },
+            customer_name: { type: "string", description: "Filter by customer name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_shipments",
+        description: "Get shipments with SO linkage and tracking details",
+        parameters: {
+          type: "object",
+          properties: {
+            so_number: { type: "string", description: "Filter by SO number" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_customer_invoices",
+        description: "Get customer invoices with status and payment details",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "sent", "paid", "overdue", "cancelled"], description: "Filter by invoice status" },
+            customer_name: { type: "string", description: "Filter by customer name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_customer_analysis",
+        description: "Get customer revenue analysis and payment performance",
+        parameters: {
+          type: "object",
+          properties: {
+            customer_name: { type: "string", description: "Specific customer to analyze (optional)" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_o2c_cycle_summary",
+        description: "Get end-to-end O2C cycle summary with metrics",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_orders_pending_shipment",
+        description: "Get sales orders that are approved but not yet shipped",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_shipments_pending_invoice",
+        description: "Get shipments that haven't been invoiced yet",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_revenue_pipeline",
+        description: "Get revenue pipeline from orders to cash collection",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_ar_aging",
+        description: "Get accounts receivable aging summary",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+  ],
+};
+
+// ============================================================================
 // TOOL IMPLEMENTATIONS
 // ============================================================================
 
@@ -327,6 +590,7 @@ async function executeToolCall(
 
   try {
     switch (toolName) {
+      // ============ BOOKKEEPER TOOLS ============
       case "get_ar_aging": {
         const { data: invoices } = await supabase
           .from("invoices")
@@ -573,7 +837,7 @@ async function executeToolCall(
         });
       }
 
-      // Collections Agent Tools
+      // ============ COLLECTIONS TOOLS ============
       case "get_collection_priority_list": {
         const { data: invoices } = await supabase
           .from("invoices")
@@ -766,7 +1030,7 @@ Collections Department`,
         });
       }
 
-      // Close Assistant Agent Tools
+      // ============ CLOSE ASSISTANT TOOLS ============
       case "get_close_status": {
         const period = (args as { period?: string }).period || new Date().toISOString().slice(0, 7);
 
@@ -900,6 +1164,619 @@ Collections Department`,
         });
       }
 
+      // ============ P2P TOOLS ============
+      case "get_purchase_orders": {
+        const { status, vendor_name } = args as { status?: string; vendor_name?: string };
+
+        let query = supabase
+          .from("purchase_orders")
+          .select("*, vendors(name)")
+          .eq("org_id", orgId)
+          .order("order_date", { ascending: false })
+          .limit(20);
+
+        if (status) query = query.eq("status", status);
+
+        const { data: pos } = await query;
+
+        let filteredPOs = pos || [];
+        if (vendor_name) {
+          filteredPOs = filteredPOs.filter((po: any) => 
+            po.vendors?.name?.toLowerCase().includes(vendor_name.toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          purchase_orders: filteredPOs.map((po: any) => ({
+            po_number: po.po_number,
+            vendor: po.vendors?.name,
+            order_date: po.order_date,
+            expected_delivery: po.expected_delivery_date,
+            status: po.status,
+            total: po.total,
+          })),
+          count: filteredPOs.length,
+        });
+      }
+
+      case "get_goods_receipts": {
+        const { po_number } = args as { po_number?: string };
+
+        let query = supabase
+          .from("goods_receipts")
+          .select("*, purchase_orders(po_number, vendors(name))")
+          .eq("org_id", orgId)
+          .order("receipt_date", { ascending: false })
+          .limit(20);
+
+        const { data: receipts } = await query;
+
+        let filteredReceipts = receipts || [];
+        if (po_number) {
+          filteredReceipts = filteredReceipts.filter((gr: any) =>
+            gr.purchase_orders?.po_number?.toLowerCase().includes(po_number.toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          goods_receipts: filteredReceipts.map((gr: any) => ({
+            receipt_number: gr.receipt_number,
+            po_number: gr.purchase_orders?.po_number,
+            vendor: gr.purchase_orders?.vendors?.name,
+            receipt_date: gr.receipt_date,
+            notes: gr.notes,
+          })),
+          count: filteredReceipts.length,
+        });
+      }
+
+      case "get_bills_status": {
+        const { status, vendor_name } = args as { status?: string; vendor_name?: string };
+
+        let query = supabase
+          .from("bills")
+          .select("*, vendors(name), purchase_orders(po_number)")
+          .eq("org_id", orgId)
+          .order("due_date", { ascending: true })
+          .limit(20);
+
+        if (status) query = query.eq("status", status);
+
+        const { data: bills } = await query;
+
+        let filteredBills = bills || [];
+        if (vendor_name) {
+          filteredBills = filteredBills.filter((b: any) =>
+            b.vendors?.name?.toLowerCase().includes(vendor_name.toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          bills: filteredBills.map((b: any) => ({
+            bill_number: b.bill_number,
+            vendor: b.vendors?.name,
+            po_number: b.purchase_orders?.po_number,
+            issue_date: b.issue_date,
+            due_date: b.due_date,
+            total: b.total,
+            amount_paid: b.amount_paid,
+            balance: b.total - b.amount_paid,
+            status: b.status,
+            match_status: b.match_status,
+          })),
+          count: filteredBills.length,
+        });
+      }
+
+      case "perform_three_way_match": {
+        const { po_number } = args as { po_number: string };
+
+        const { data: pos } = await supabase
+          .from("purchase_orders")
+          .select("*, vendors(name)")
+          .eq("org_id", orgId)
+          .ilike("po_number", `%${po_number}%`)
+          .limit(1);
+
+        if (!pos?.length) {
+          return JSON.stringify({ error: "Purchase order not found", po_number });
+        }
+
+        const po = pos[0] as any;
+
+        const { data: receipts } = await supabase
+          .from("goods_receipts")
+          .select("*")
+          .eq("purchase_order_id", po.id);
+
+        const { data: bills } = await supabase
+          .from("bills")
+          .select("*")
+          .eq("purchase_order_id", po.id);
+
+        const hasReceipt = (receipts?.length || 0) > 0;
+        const hasBill = (bills?.length || 0) > 0;
+        const billTotal = (bills || []).reduce((sum: number, b: any) => sum + Number(b.total), 0);
+
+        let matchStatus = "unmatched";
+        let issues: string[] = [];
+
+        if (hasReceipt && hasBill) {
+          if (Math.abs(billTotal - po.total) < 0.01) {
+            matchStatus = "matched";
+          } else {
+            matchStatus = "variance";
+            issues.push(`Bill amount ($${billTotal}) differs from PO amount ($${po.total})`);
+          }
+        } else {
+          if (!hasReceipt) issues.push("No goods receipt found");
+          if (!hasBill) issues.push("No bill found");
+        }
+
+        return JSON.stringify({
+          po_number: po.po_number,
+          vendor: po.vendors?.name,
+          po_total: po.total,
+          goods_receipts: receipts?.length || 0,
+          bills_count: bills?.length || 0,
+          bill_total: billTotal,
+          match_status: matchStatus,
+          issues,
+          recommendation: matchStatus === "matched" 
+            ? "Ready for payment" 
+            : matchStatus === "variance" 
+              ? "Review variance before payment" 
+              : "Complete missing documents before processing",
+        });
+      }
+
+      case "get_vendor_analysis": {
+        const { vendor_name } = args as { vendor_name?: string };
+
+        let vendorQuery = supabase
+          .from("vendors")
+          .select("*")
+          .eq("org_id", orgId);
+
+        if (vendor_name) {
+          vendorQuery = vendorQuery.ilike("name", `%${vendor_name}%`);
+        }
+
+        const { data: vendors } = await vendorQuery.limit(10);
+
+        const vendorAnalysis = await Promise.all((vendors || []).map(async (v: any) => {
+          const { data: bills } = await supabase
+            .from("bills")
+            .select("total, amount_paid, status, due_date")
+            .eq("vendor_id", v.id);
+
+          const totalSpend = (bills || []).reduce((sum: number, b: any) => sum + Number(b.total), 0);
+          const pendingPayment = (bills || [])
+            .filter((b: any) => b.status !== "paid")
+            .reduce((sum: number, b: any) => sum + (Number(b.total) - Number(b.amount_paid)), 0);
+
+          return {
+            name: v.name,
+            email: v.email,
+            payment_terms: v.payment_terms,
+            total_spend: totalSpend,
+            pending_payment: pendingPayment,
+            bill_count: bills?.length || 0,
+          };
+        }));
+
+        return JSON.stringify({
+          vendors: vendorAnalysis.sort((a, b) => b.total_spend - a.total_spend),
+          count: vendorAnalysis.length,
+        });
+      }
+
+      case "get_payment_runs": {
+        const { status } = args as { status?: string };
+
+        let query = supabase
+          .from("payment_runs")
+          .select("*, bank_accounts(name)")
+          .eq("org_id", orgId)
+          .order("run_date", { ascending: false })
+          .limit(20);
+
+        if (status) query = query.eq("status", status);
+
+        const { data: runs } = await query;
+
+        return JSON.stringify({
+          payment_runs: (runs || []).map((r: any) => ({
+            run_number: r.run_number,
+            run_date: r.run_date,
+            status: r.status,
+            total_amount: r.total_amount,
+            payment_method: r.payment_method,
+            bank_account: r.bank_accounts?.name,
+          })),
+          count: runs?.length || 0,
+        });
+      }
+
+      case "get_bills_due_for_payment": {
+        const { days_ahead = 7 } = args as { days_ahead?: number };
+
+        const today = new Date();
+        const futureDate = new Date(today.getTime() + days_ahead * 24 * 60 * 60 * 1000);
+
+        const { data: bills } = await supabase
+          .from("bills")
+          .select("*, vendors(name)")
+          .eq("org_id", orgId)
+          .in("status", ["pending", "overdue"])
+          .lte("due_date", futureDate.toISOString().split("T")[0])
+          .order("due_date", { ascending: true });
+
+        const totalDue = (bills || []).reduce((sum: number, b: any) => 
+          sum + (Number(b.total) - Number(b.amount_paid)), 0
+        );
+
+        return JSON.stringify({
+          bills_due: (bills || []).map((b: any) => ({
+            bill_number: b.bill_number,
+            vendor: b.vendors?.name,
+            due_date: b.due_date,
+            amount_due: b.total - b.amount_paid,
+            status: b.status,
+          })),
+          count: bills?.length || 0,
+          total_due: totalDue,
+          days_ahead,
+        });
+      }
+
+      case "get_p2p_cycle_summary": {
+        const [posResult, grResult, billsResult, runsResult] = await Promise.all([
+          supabase.from("purchase_orders").select("status, total").eq("org_id", orgId),
+          supabase.from("goods_receipts").select("id").eq("org_id", orgId),
+          supabase.from("bills").select("status, total, amount_paid").eq("org_id", orgId),
+          supabase.from("payment_runs").select("status, total_amount").eq("org_id", orgId),
+        ]);
+
+        const pos = posResult.data || [];
+        const bills = billsResult.data || [];
+        const runs = runsResult.data || [];
+
+        const posByStatus: Record<string, number> = {};
+        pos.forEach((po: any) => {
+          posByStatus[po.status] = (posByStatus[po.status] || 0) + 1;
+        });
+
+        const billsByStatus: Record<string, number> = {};
+        bills.forEach((b: any) => {
+          billsByStatus[b.status] = (billsByStatus[b.status] || 0) + 1;
+        });
+
+        const totalPOValue = pos.reduce((sum: number, po: any) => sum + Number(po.total), 0);
+        const totalBillValue = bills.reduce((sum: number, b: any) => sum + Number(b.total), 0);
+        const totalPaid = bills.reduce((sum: number, b: any) => sum + Number(b.amount_paid), 0);
+
+        return JSON.stringify({
+          purchase_orders: {
+            total: pos.length,
+            by_status: posByStatus,
+            total_value: totalPOValue,
+          },
+          goods_receipts: {
+            total: grResult.data?.length || 0,
+          },
+          bills: {
+            total: bills.length,
+            by_status: billsByStatus,
+            total_value: totalBillValue,
+            total_paid: totalPaid,
+            outstanding: totalBillValue - totalPaid,
+          },
+          payment_runs: {
+            total: runs.length,
+            total_processed: runs
+              .filter((r: any) => r.status === "completed")
+              .reduce((sum: number, r: any) => sum + Number(r.total_amount), 0),
+          },
+        });
+      }
+
+      // ============ O2C TOOLS ============
+      case "get_sales_orders": {
+        const { status, customer_name } = args as { status?: string; customer_name?: string };
+
+        let query = supabase
+          .from("sales_orders")
+          .select("*, customers(name)")
+          .eq("org_id", orgId)
+          .order("order_date", { ascending: false })
+          .limit(20);
+
+        if (status) query = query.eq("status", status);
+
+        const { data: sos } = await query;
+
+        let filteredSOs = sos || [];
+        if (customer_name) {
+          filteredSOs = filteredSOs.filter((so: any) =>
+            so.customers?.name?.toLowerCase().includes(customer_name.toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          sales_orders: filteredSOs.map((so: any) => ({
+            so_number: so.so_number,
+            customer: so.customers?.name,
+            order_date: so.order_date,
+            requested_delivery: so.requested_delivery_date,
+            status: so.status,
+            total: so.total,
+          })),
+          count: filteredSOs.length,
+        });
+      }
+
+      case "get_shipments": {
+        const { so_number } = args as { so_number?: string };
+
+        let query = supabase
+          .from("shipments")
+          .select("*, sales_orders(so_number, customers(name))")
+          .eq("org_id", orgId)
+          .order("ship_date", { ascending: false })
+          .limit(20);
+
+        const { data: shipments } = await query;
+
+        let filteredShipments = shipments || [];
+        if (so_number) {
+          filteredShipments = filteredShipments.filter((s: any) =>
+            s.sales_orders?.so_number?.toLowerCase().includes(so_number.toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          shipments: filteredShipments.map((s: any) => ({
+            shipment_number: s.shipment_number,
+            so_number: s.sales_orders?.so_number,
+            customer: s.sales_orders?.customers?.name,
+            ship_date: s.ship_date,
+            carrier: s.carrier,
+            tracking_number: s.tracking_number,
+          })),
+          count: filteredShipments.length,
+        });
+      }
+
+      case "get_customer_invoices": {
+        const { status, customer_name } = args as { status?: string; customer_name?: string };
+
+        let query = supabase
+          .from("invoices")
+          .select("*, customers(name), sales_orders(so_number)")
+          .eq("org_id", orgId)
+          .order("issue_date", { ascending: false })
+          .limit(20);
+
+        if (status) query = query.eq("status", status);
+
+        const { data: invoices } = await query;
+
+        let filteredInvoices = invoices || [];
+        if (customer_name) {
+          filteredInvoices = filteredInvoices.filter((i: any) =>
+            i.customers?.name?.toLowerCase().includes(customer_name.toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          invoices: filteredInvoices.map((i: any) => ({
+            invoice_number: i.invoice_number,
+            customer: i.customers?.name,
+            so_number: i.sales_orders?.so_number,
+            issue_date: i.issue_date,
+            due_date: i.due_date,
+            total: i.total,
+            amount_paid: i.amount_paid,
+            balance: i.total - i.amount_paid,
+            status: i.status,
+          })),
+          count: filteredInvoices.length,
+        });
+      }
+
+      case "get_customer_analysis": {
+        const { customer_name } = args as { customer_name?: string };
+
+        let customerQuery = supabase
+          .from("customers")
+          .select("*")
+          .eq("org_id", orgId);
+
+        if (customer_name) {
+          customerQuery = customerQuery.ilike("name", `%${customer_name}%`);
+        }
+
+        const { data: customers } = await customerQuery.limit(10);
+
+        const customerAnalysis = await Promise.all((customers || []).map(async (c: any) => {
+          const { data: invoices } = await supabase
+            .from("invoices")
+            .select("total, amount_paid, status, due_date")
+            .eq("customer_id", c.id);
+
+          const { data: orders } = await supabase
+            .from("sales_orders")
+            .select("total, status")
+            .eq("customer_id", c.id);
+
+          const totalRevenue = (invoices || [])
+            .filter((i: any) => i.status === "paid")
+            .reduce((sum: number, i: any) => sum + Number(i.total), 0);
+
+          const outstandingAR = (invoices || [])
+            .filter((i: any) => i.status !== "paid" && i.status !== "cancelled")
+            .reduce((sum: number, i: any) => sum + (Number(i.total) - Number(i.amount_paid)), 0);
+
+          const overdueCount = (invoices || []).filter((i: any) => i.status === "overdue").length;
+
+          return {
+            name: c.name,
+            email: c.email,
+            credit_limit: c.credit_limit,
+            payment_terms: c.payment_terms,
+            total_revenue: totalRevenue,
+            outstanding_ar: outstandingAR,
+            order_count: orders?.length || 0,
+            invoice_count: invoices?.length || 0,
+            overdue_invoices: overdueCount,
+            health: overdueCount === 0 ? "good" : overdueCount <= 2 ? "moderate" : "at_risk",
+          };
+        }));
+
+        return JSON.stringify({
+          customers: customerAnalysis.sort((a, b) => b.total_revenue - a.total_revenue),
+          count: customerAnalysis.length,
+        });
+      }
+
+      case "get_o2c_cycle_summary": {
+        const [sosResult, shipmentsResult, invoicesResult] = await Promise.all([
+          supabase.from("sales_orders").select("status, total").eq("org_id", orgId),
+          supabase.from("shipments").select("id").eq("org_id", orgId),
+          supabase.from("invoices").select("status, total, amount_paid").eq("org_id", orgId),
+        ]);
+
+        const sos = sosResult.data || [];
+        const invoices = invoicesResult.data || [];
+
+        const sosByStatus: Record<string, number> = {};
+        sos.forEach((so: any) => {
+          sosByStatus[so.status] = (sosByStatus[so.status] || 0) + 1;
+        });
+
+        const invoicesByStatus: Record<string, number> = {};
+        invoices.forEach((i: any) => {
+          invoicesByStatus[i.status] = (invoicesByStatus[i.status] || 0) + 1;
+        });
+
+        const totalOrderValue = sos.reduce((sum: number, so: any) => sum + Number(so.total), 0);
+        const totalInvoiced = invoices.reduce((sum: number, i: any) => sum + Number(i.total), 0);
+        const totalCollected = invoices.reduce((sum: number, i: any) => sum + Number(i.amount_paid), 0);
+
+        return JSON.stringify({
+          sales_orders: {
+            total: sos.length,
+            by_status: sosByStatus,
+            total_value: totalOrderValue,
+          },
+          shipments: {
+            total: shipmentsResult.data?.length || 0,
+          },
+          invoices: {
+            total: invoices.length,
+            by_status: invoicesByStatus,
+            total_invoiced: totalInvoiced,
+            total_collected: totalCollected,
+            outstanding_ar: totalInvoiced - totalCollected,
+          },
+          conversion_rate: totalOrderValue > 0 
+            ? Math.round((totalInvoiced / totalOrderValue) * 100) 
+            : 0,
+          collection_rate: totalInvoiced > 0 
+            ? Math.round((totalCollected / totalInvoiced) * 100) 
+            : 0,
+        });
+      }
+
+      case "get_orders_pending_shipment": {
+        const { data: orders } = await supabase
+          .from("sales_orders")
+          .select("*, customers(name)")
+          .eq("org_id", orgId)
+          .eq("status", "approved")
+          .order("requested_delivery_date", { ascending: true });
+
+        return JSON.stringify({
+          pending_shipment: (orders || []).map((so: any) => ({
+            so_number: so.so_number,
+            customer: so.customers?.name,
+            order_date: so.order_date,
+            requested_delivery: so.requested_delivery_date,
+            total: so.total,
+          })),
+          count: orders?.length || 0,
+        });
+      }
+
+      case "get_shipments_pending_invoice": {
+        const { data: shipments } = await supabase
+          .from("shipments")
+          .select("*, sales_orders(so_number, total, customers(name))")
+          .eq("org_id", orgId)
+          .order("ship_date", { ascending: true });
+
+        // Get invoices to check which shipments are already invoiced
+        const { data: invoices } = await supabase
+          .from("invoices")
+          .select("shipment_id")
+          .eq("org_id", orgId)
+          .not("shipment_id", "is", null);
+
+        const invoicedShipmentIds = new Set((invoices || []).map((i: any) => i.shipment_id));
+        const pendingInvoice = (shipments || []).filter((s: any) => !invoicedShipmentIds.has(s.id));
+
+        return JSON.stringify({
+          pending_invoice: pendingInvoice.map((s: any) => ({
+            shipment_number: s.shipment_number,
+            so_number: s.sales_orders?.so_number,
+            customer: s.sales_orders?.customers?.name,
+            ship_date: s.ship_date,
+            order_total: s.sales_orders?.total,
+          })),
+          count: pendingInvoice.length,
+        });
+      }
+
+      case "get_revenue_pipeline": {
+        const [ordersResult, invoicesResult] = await Promise.all([
+          supabase.from("sales_orders").select("status, total").eq("org_id", orgId),
+          supabase.from("invoices").select("status, total, amount_paid").eq("org_id", orgId),
+        ]);
+
+        const orders = ordersResult.data || [];
+        const invoices = invoicesResult.data || [];
+
+        const draftOrders = orders.filter((o: any) => o.status === "draft")
+          .reduce((sum: number, o: any) => sum + Number(o.total), 0);
+        const approvedOrders = orders.filter((o: any) => o.status === "approved")
+          .reduce((sum: number, o: any) => sum + Number(o.total), 0);
+        const shippedOrders = orders.filter((o: any) => o.status === "shipped")
+          .reduce((sum: number, o: any) => sum + Number(o.total), 0);
+
+        const draftInvoices = invoices.filter((i: any) => i.status === "draft")
+          .reduce((sum: number, i: any) => sum + Number(i.total), 0);
+        const sentInvoices = invoices.filter((i: any) => i.status === "sent")
+          .reduce((sum: number, i: any) => sum + Number(i.total), 0);
+        const overdueInvoices = invoices.filter((i: any) => i.status === "overdue")
+          .reduce((sum: number, i: any) => sum + Number(i.total), 0);
+        const collectedCash = invoices.reduce((sum: number, i: any) => sum + Number(i.amount_paid), 0);
+
+        return JSON.stringify({
+          pipeline: [
+            { stage: "Draft Orders", value: draftOrders },
+            { stage: "Approved (Pending Ship)", value: approvedOrders },
+            { stage: "Shipped (Pending Invoice)", value: shippedOrders },
+            { stage: "Draft Invoices", value: draftInvoices },
+            { stage: "Sent (Awaiting Payment)", value: sentInvoices },
+            { stage: "Overdue", value: overdueInvoices },
+            { stage: "Cash Collected", value: collectedCash },
+          ],
+          total_pipeline: draftOrders + approvedOrders + shippedOrders + draftInvoices + sentInvoices + overdueInvoices,
+          cash_collected: collectedCash,
+        });
+      }
+
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -937,7 +1814,7 @@ async function routeToAgent(userMessage: string): Promise<string> {
 
   console.log("Router selected agent:", agentName);
 
-  if (["bookkeeper_agent", "collections_agent", "close_assistant_agent"].includes(agentName)) {
+  if (["bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", "o2c_agent"].includes(agentName)) {
     return agentName;
   }
   return "bookkeeper_agent";
@@ -949,6 +1826,10 @@ function getAgentConfig(agentName: string) {
       return COLLECTIONS_AGENT;
     case "close_assistant_agent":
       return CLOSE_ASSISTANT_AGENT;
+    case "p2p_agent":
+      return P2P_AGENT;
+    case "o2c_agent":
+      return O2C_AGENT;
     default:
       return BOOKKEEPER_AGENT;
   }

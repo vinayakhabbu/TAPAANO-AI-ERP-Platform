@@ -26,9 +26,11 @@ interface Message {
 
 const suggestedPrompts = [
   "Show me AR aging summary",
-  "What's our DSO this month?",
-  "Get close status for November",
-  "Draft collection emails for overdue invoices",
+  "Get P2P cycle summary",
+  "What sales orders are pending shipment?",
+  "Perform 3-way match for PO-001",
+  "Get O2C cycle summary",
+  "Get close status for this month",
 ];
 
 export function AIChatBar() {
@@ -39,7 +41,7 @@ export function AIChatBar() {
     {
       id: "1",
       role: "assistant",
-      content: "Hi! I'm your Finance Copilot powered by OpenAI Agents. I can query your actual data, help with AR/AP, classify transactions, and assist with period close. How can I help?",
+      content: "Hi! I'm your Finance Copilot powered by OpenAI Agents with 5 specialized assistants: Bookkeeper, Collections, Close Assistant, P2P (Procure-to-Pay), and O2C (Order-to-Cash). Ask me about purchase orders, sales orders, shipments, invoices, 3-way matching, and more!",
       timestamp: new Date(),
     },
   ]);
