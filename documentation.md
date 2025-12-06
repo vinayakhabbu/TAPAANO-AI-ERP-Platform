@@ -118,7 +118,7 @@ Organization
 
 ---
 
-### 3. Accounts Payable - P2P (`/ap`)
+### 3. Procure to Pay (`/ap`)
 **Purpose**: Manage the Procure-to-Pay cycle
 
 **Sub-modules**:
@@ -375,7 +375,7 @@ src/
 │   ├── Banking.tsx         # Banking module
 │   ├── GeneralLedger.tsx   # GL module
 │   ├── Index.tsx           # Dashboard
-│   ├── Payables.tsx        # AP module
+│   ├── Payables.tsx        # Procure to Pay module
 │   ├── PeriodClose.tsx     # Close module
 │   ├── Receivables.tsx     # AR module
 │   └── Settings.tsx        # User settings
