@@ -2517,6 +2517,158 @@ export type Database = {
           },
         ]
       }
+      purchase_requisition_lines: {
+        Row: {
+          created_at: string
+          description: string
+          estimated_total: number | null
+          estimated_unit_cost: number
+          id: string
+          notes: string | null
+          product_id: string | null
+          quantity: number
+          requisition_id: string
+          suggested_vendor_id: string | null
+          unit_of_measure: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          estimated_total?: number | null
+          estimated_unit_cost?: number
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          quantity?: number
+          requisition_id: string
+          suggested_vendor_id?: string | null
+          unit_of_measure?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          estimated_total?: number | null
+          estimated_unit_cost?: number
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          quantity?: number
+          requisition_id?: string
+          suggested_vendor_id?: string | null
+          unit_of_measure?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_requisition_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisition_lines_requisition_id_fkey"
+            columns: ["requisition_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisition_lines_suggested_vendor_id_fkey"
+            columns: ["suggested_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_requisitions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          converted_at: string | null
+          created_at: string
+          department: string | null
+          entity_id: string
+          id: string
+          notes: string | null
+          org_id: string
+          priority: string
+          purchase_order_id: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          requester_id: string | null
+          required_date: string | null
+          requisition_number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          converted_at?: string | null
+          created_at?: string
+          department?: string | null
+          entity_id: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          priority?: string
+          purchase_order_id?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          requester_id?: string | null
+          required_date?: string | null
+          requisition_number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          converted_at?: string | null
+          created_at?: string
+          department?: string | null
+          entity_id?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          priority?: string
+          purchase_order_id?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          requester_id?: string | null
+          required_date?: string | null
+          requisition_number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_requisitions_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotation_lines: {
         Row: {
           account_id: string | null

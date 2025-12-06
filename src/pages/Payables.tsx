@@ -28,6 +28,7 @@ import {
   Banknote,
   CheckCircle2,
   ArrowRight,
+  FileInput,
 } from "lucide-react";
 import {
   useVendors,
@@ -37,6 +38,10 @@ import {
   usePaymentRuns,
   usePayablesSummary,
 } from "@/hooks/usePayables";
+import {
+  usePurchaseRequisitions,
+  usePurchaseRequisitionApproval,
+} from "@/hooks/usePurchaseRequisitions";
 import {
   usePurchaseOrderApproval,
   usePaymentRunApproval,
@@ -49,6 +54,8 @@ import { GoodsReceiptForm } from "@/components/forms/GoodsReceiptForm";
 import { BillForm } from "@/components/forms/BillForm";
 import { PaymentRunForm } from "@/components/forms/PaymentRunForm";
 import { VendorForm } from "@/components/forms/VendorForm";
+import { PurchaseRequisitionForm } from "@/components/forms/PurchaseRequisitionForm";
+import { ConvertRequisitionForm } from "@/components/forms/ConvertRequisitionForm";
 
 const billStatusConfig = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
@@ -65,6 +72,22 @@ const poStatusConfig = {
   partially_received: { label: "Partial", className: "bg-accent/10 text-accent-foreground" },
   received: { label: "Received", className: "bg-success/10 text-success" },
   cancelled: { label: "Cancelled", className: "bg-muted text-muted-foreground" },
+};
+
+const requisitionStatusConfig = {
+  draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
+  pending_approval: { label: "Pending Approval", className: "bg-warning/10 text-warning" },
+  approved: { label: "Approved", className: "bg-primary/10 text-primary" },
+  rejected: { label: "Rejected", className: "bg-destructive/10 text-destructive" },
+  converted: { label: "Converted to PO", className: "bg-success/10 text-success" },
+  cancelled: { label: "Cancelled", className: "bg-muted text-muted-foreground" },
+};
+
+const priorityConfig = {
+  low: { label: "Low", className: "bg-muted text-muted-foreground" },
+  normal: { label: "Normal", className: "bg-primary/10 text-primary" },
+  high: { label: "High", className: "bg-warning/10 text-warning" },
+  urgent: { label: "Urgent", className: "bg-destructive/10 text-destructive" },
 };
 
 const paymentRunStatusConfig = {
@@ -88,12 +111,14 @@ const Payables = () => {
   const { data: purchaseOrders = [], isLoading: posLoading } = usePurchaseOrders();
   const { data: goodsReceipts = [], isLoading: grLoading } = useGoodsReceipts();
   const { data: paymentRuns = [], isLoading: runsLoading } = usePaymentRuns();
+  const { data: requisitions = [], isLoading: requisitionsLoading } = usePurchaseRequisitions();
   const summary = usePayablesSummary();
 
   // Approval mutations
   const poApproval = usePurchaseOrderApproval();
   const paymentRunApproval = usePaymentRunApproval();
   const processPaymentRun = useProcessPaymentRun();
+  const requisitionApproval = usePurchaseRequisitionApproval();
 
   const formatDate = (dateStr: string) => {
     try {
@@ -115,6 +140,11 @@ const Payables = () => {
       {/* P2P Flow Indicator */}
       <div className="mb-6 flex items-center justify-center gap-2 rounded-lg border border-border bg-card/50 p-3">
         <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <FileInput className="h-4 w-4" />
+            <span>Requisition</span>
+          </div>
+          <ArrowRight className="h-3 w-3 text-muted-foreground" />
           <div className="flex items-center gap-1.5 text-primary">
             <FileText className="h-4 w-4" />
             <span className="font-medium">PO</span>
@@ -184,8 +214,12 @@ const Payables = () => {
       </div>
 
       {/* Tabs for P2P Workflow */}
-      <Tabs defaultValue="purchase-orders" className="mt-6">
+      <Tabs defaultValue="requisitions" className="mt-6">
         <TabsList className="inline-flex h-10 w-auto">
+          <TabsTrigger value="requisitions" className="gap-2">
+            <FileInput className="h-4 w-4 hidden sm:inline" />
+            Requisitions
+          </TabsTrigger>
           <TabsTrigger value="purchase-orders" className="gap-2">
             <FileText className="h-4 w-4 hidden sm:inline" />
             POs
@@ -207,6 +241,112 @@ const Payables = () => {
             Payments
           </TabsTrigger>
         </TabsList>
+
+        {/* Requisitions Tab */}
+        <TabsContent value="requisitions" className="mt-4">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Purchase Requisitions</h3>
+                <p className="text-sm text-muted-foreground">Internal purchase requests before PO creation</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search requisitions..." className="w-full sm:w-64 pl-9" />
+                </div>
+                <PurchaseRequisitionForm />
+              </div>
+            </div>
+
+            {requisitionsLoading ? (
+              <TableSkeleton rows={5} cols={6} />
+            ) : requisitions.length === 0 ? (
+              <EmptyState
+                icon={FileInput}
+                title="No requisitions"
+                description="Create purchase requisitions to request materials or services"
+                actionButton={<PurchaseRequisitionForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />New Requisition</Button>} />}
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">Requisition #</TableHead>
+                    <TableHead className="text-muted-foreground">Department</TableHead>
+                    <TableHead className="text-muted-foreground">Required Date</TableHead>
+                    <TableHead className="text-muted-foreground">Priority</TableHead>
+                    <TableHead className="text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-muted-foreground w-24"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {requisitions.map((req) => {
+                    const status = requisitionStatusConfig[req.status];
+                    const priority = priorityConfig[req.priority];
+                    return (
+                      <TableRow key={req.id} className="border-border">
+                        <TableCell className="font-medium text-foreground">{req.requisition_number}</TableCell>
+                        <TableCell className="text-foreground">{req.department || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {req.required_date ? formatDate(req.required_date) : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={cn("font-medium", priority.className)}>{priority.label}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={cn("font-medium", status.className)}>{status.label}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {req.status === "draft" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => requisitionApproval.mutate({ id: req.id, action: "submit" })}
+                                disabled={requisitionApproval.isPending}
+                              >
+                                Submit
+                              </Button>
+                            )}
+                            {req.status === "pending_approval" && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => requisitionApproval.mutate({ id: req.id, action: "approve" })}
+                                  disabled={requisitionApproval.isPending}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => requisitionApproval.mutate({ id: req.id, action: "reject", rejection_reason: "Rejected" })}
+                                  disabled={requisitionApproval.isPending}
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                            {req.status === "approved" && (
+                              <ConvertRequisitionForm requisition={req} />
+                            )}
+                            {(req.status === "converted" || req.status === "rejected" || req.status === "cancelled") && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
 
         {/* Purchase Orders Tab */}
         <TabsContent value="purchase-orders" className="mt-4">
