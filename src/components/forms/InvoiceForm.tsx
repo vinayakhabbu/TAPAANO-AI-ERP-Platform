@@ -94,7 +94,7 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
 
   // Auto-fill customer and total when SO is selected
   useEffect(() => {
-    if (salesOrderId) {
+    if (salesOrderId && salesOrderId !== "manual") {
       const selectedOrder = shippedOrders.find((o) => o.id === salesOrderId);
       if (selectedOrder) {
         setCustomerId(selectedOrder.customer_id);
@@ -124,6 +124,8 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
 
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
 
+      const actualSalesOrderId = salesOrderId === "manual" ? null : salesOrderId;
+      
       const { error } = await supabase.from("invoices").insert({
         org_id: profile.org_id,
         entity_id: entityId,
@@ -135,14 +137,14 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
         total,
         notes: notes || null,
         status: "draft",
-        sales_order_id: salesOrderId || null,
-        shipment_id: shipmentId || null,
+        sales_order_id: actualSalesOrderId || null,
+        shipment_id: actualSalesOrderId ? (shipmentId || null) : null,
       });
 
       if (error) throw error;
 
       // Update sales order status to invoiced if linked
-      if (salesOrderId) {
+      if (actualSalesOrderId) {
         await supabase
           .from("sales_orders")
           .update({ status: "invoiced" })
@@ -198,6 +200,7 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
           className="space-y-4"
         >
           {/* Link to Sales Order (optional) */}
+          {/* Link to Sales Order (optional) */}
           <div className="space-y-2">
             <Label>From Sales Order (optional)</Label>
             <Select value={salesOrderId} onValueChange={setSalesOrderId}>
@@ -205,7 +208,7 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
                 <SelectValue placeholder="Select shipped order to invoice..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Manual Invoice —</SelectItem>
+                <SelectItem value="manual">— Manual Invoice —</SelectItem>
                 {shippedOrders.map((so) => (
                   <SelectItem key={so.id} value={so.id}>
                     {so.so_number} - {so.customers?.name} (${so.total.toLocaleString()})
@@ -216,7 +219,7 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
           </div>
 
           {/* Shipment selection when SO is selected */}
-          {salesOrderId && orderShipments.length > 0 && (
+          {salesOrderId && salesOrderId !== "manual" && orderShipments.length > 0 && (
             <div className="space-y-2">
               <Label>Shipment</Label>
               <Select value={shipmentId} onValueChange={setShipmentId}>
@@ -239,7 +242,7 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
             <Select 
               value={customerId} 
               onValueChange={setCustomerId} 
-              disabled={!!salesOrderId}
+              disabled={salesOrderId !== "manual" && !!salesOrderId}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select customer" />
@@ -271,7 +274,7 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
                 placeholder="0.00"
                 value={subtotal}
                 onChange={(e) => setSubtotal(e.target.value)}
-                disabled={!!salesOrderId}
+                disabled={salesOrderId !== "manual" && !!salesOrderId}
                 required
               />
             </div>
