@@ -14,6 +14,7 @@ import {
   ChevronRight,
   BarChart3,
   Package,
+  Factory,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -41,6 +42,7 @@ const navCategories = [
     label: "Operations",
     items: [
       { icon: Package, label: "Inventory", href: "/inventory" },
+      { icon: Factory, label: "Production", href: "/production" },
     ],
   },
   {
