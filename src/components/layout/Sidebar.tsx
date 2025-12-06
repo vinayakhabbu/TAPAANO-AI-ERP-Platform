@@ -35,7 +35,7 @@ const navCategories = [
   {
     label: "Purchasing",
     items: [
-      { icon: FileText, label: "Payables", href: "/ap" },
+      { icon: FileText, label: "Procure to Pay", href: "/ap" },
     ],
   },
   {
