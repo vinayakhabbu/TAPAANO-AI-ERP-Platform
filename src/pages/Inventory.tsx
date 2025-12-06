@@ -26,6 +26,9 @@ import {
   Tag,
   ArrowRight,
   MoreHorizontal,
+  Handshake,
+  FileInput,
+  CheckCircle,
 } from "lucide-react";
 import {
   useWarehouses,
@@ -37,10 +40,14 @@ import {
   useBatchLots,
   useInventorySummary,
 } from "@/hooks/useInventory";
+import { useConsignmentTransactions, useConsignmentSummary } from "@/hooks/useConsignment";
+import { useInventoryReceipts, usePostInventoryReceipt } from "@/hooks/useInventoryReceipts";
 import { WarehouseForm } from "@/components/forms/WarehouseForm";
 import { ProductForm } from "@/components/forms/ProductForm";
 import { StockTransferForm } from "@/components/forms/StockTransferForm";
 import { CycleCountForm } from "@/components/forms/CycleCountForm";
+import { ConsignmentForm } from "@/components/forms/ConsignmentForm";
+import { InventoryReceiptForm } from "@/components/forms/InventoryReceiptForm";
 import { format } from "date-fns";
 
 const transferStatusConfig: Record<string, { label: string; className: string }> = {
@@ -58,6 +65,28 @@ const cycleCountStatusConfig: Record<string, { label: string; className: string 
   cancelled: { label: "Cancelled", className: "bg-muted text-muted-foreground" },
 };
 
+const consignmentTypeConfig: Record<string, { label: string; className: string }> = {
+  received: { label: "Received", className: "bg-success/10 text-success" },
+  consumed: { label: "Consumed", className: "bg-primary/10 text-primary" },
+  returned: { label: "Returned", className: "bg-warning/10 text-warning" },
+  transferred: { label: "Transferred", className: "bg-muted text-muted-foreground" },
+};
+
+const receiptStatusConfig: Record<string, { label: string; className: string }> = {
+  draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
+  posted: { label: "Posted", className: "bg-success/10 text-success" },
+  cancelled: { label: "Cancelled", className: "bg-destructive/10 text-destructive" },
+};
+
+const receiptTypeLabels: Record<string, string> = {
+  adjustment_in: "Adjustment In",
+  adjustment_out: "Adjustment Out",
+  initial_stock: "Initial Stock",
+  count_adjustment: "Count Adjustment",
+  damage: "Damage/Scrap",
+  return: "Customer Return",
+};
+
 const Inventory = () => {
   const { data: warehouses = [], isLoading: warehousesLoading } = useWarehouses();
   const { data: products = [], isLoading: productsLoading } = useProducts();
@@ -66,7 +95,11 @@ const Inventory = () => {
   const { data: cycleCounts = [], isLoading: countsLoading } = useCycleCounts();
   const { data: serialNumbers = [], isLoading: serialsLoading } = useSerialNumbers();
   const { data: batchLots = [], isLoading: batchLoading } = useBatchLots();
+  const { data: consignmentTxns = [], isLoading: consignmentLoading } = useConsignmentTransactions();
+  const { data: receipts = [], isLoading: receiptsLoading } = useInventoryReceipts();
   const summary = useInventorySummary();
+  const consignmentSummary = useConsignmentSummary();
+  const postReceipt = usePostInventoryReceipt();
 
   const formatDate = (dateStr: string) => {
     try {
@@ -164,7 +197,7 @@ const Inventory = () => {
 
       {/* Tabs for Inventory Workflow */}
       <Tabs defaultValue="stock" className="mt-6">
-        <TabsList className="inline-flex h-10 w-auto">
+        <TabsList className="inline-flex h-10 w-auto flex-wrap">
           <TabsTrigger value="stock" className="gap-2">
             <Package className="h-4 w-4 hidden sm:inline" />
             Stock
@@ -180,6 +213,14 @@ const Inventory = () => {
           <TabsTrigger value="transfers" className="gap-2">
             <ArrowLeftRight className="h-4 w-4 hidden sm:inline" />
             Transfers
+          </TabsTrigger>
+          <TabsTrigger value="receipts" className="gap-2">
+            <FileInput className="h-4 w-4 hidden sm:inline" />
+            Receipts
+          </TabsTrigger>
+          <TabsTrigger value="consignment" className="gap-2">
+            <Handshake className="h-4 w-4 hidden sm:inline" />
+            Consignment
           </TabsTrigger>
           <TabsTrigger value="counting" className="gap-2">
             <ClipboardList className="h-4 w-4 hidden sm:inline" />
@@ -471,7 +512,177 @@ const Inventory = () => {
           </div>
         </TabsContent>
 
-        {/* Counting Tab */}
+        {/* Receipts Tab */}
+        <TabsContent value="receipts" className="mt-4">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Inventory Receipts</h3>
+                <p className="text-sm text-muted-foreground">Manual inventory adjustments</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search receipts..." className="w-full sm:w-64 pl-9" />
+                </div>
+                <InventoryReceiptForm />
+              </div>
+            </div>
+
+            {receiptsLoading ? (
+              <TableSkeleton rows={5} cols={6} />
+            ) : receipts.length === 0 ? (
+              <EmptyState
+                icon={FileInput}
+                title="No inventory receipts"
+                description="Create receipts to adjust inventory directly"
+                actionButton={<InventoryReceiptForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />New Receipt</Button>} />}
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">Receipt #</TableHead>
+                    <TableHead className="text-muted-foreground">Warehouse</TableHead>
+                    <TableHead className="text-muted-foreground">Type</TableHead>
+                    <TableHead className="text-muted-foreground">Date</TableHead>
+                    <TableHead className="text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-muted-foreground w-24">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {receipts.map((receipt: any) => {
+                    const status = receiptStatusConfig[receipt.status] || receiptStatusConfig.draft;
+                    return (
+                      <TableRow key={receipt.id} className="border-border">
+                        <TableCell className="font-medium text-foreground">{receipt.receipt_number}</TableCell>
+                        <TableCell className="text-foreground">{receipt.warehouses?.name || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{receiptTypeLabels[receipt.receipt_type] || receipt.receipt_type}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(receipt.receipt_date)}</TableCell>
+                        <TableCell>
+                          <Badge className={cn("font-medium", status.className)}>{status.label}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {receipt.status === "draft" && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => postReceipt.mutate(receipt.id)}
+                              disabled={postReceipt.isPending}
+                              className="gap-1"
+                            >
+                              <CheckCircle className="h-3 w-3" />
+                              Post
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Consignment Tab */}
+        <TabsContent value="consignment" className="mt-4">
+          {/* Consignment Summary Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+            <SummaryCard
+              icon={Package}
+              label="On Hand"
+              value={consignmentSummary.isLoading ? null : consignmentSummary.onHand.toLocaleString()}
+              iconBg="bg-primary/10"
+              iconColor="text-primary"
+            />
+            <SummaryCard
+              icon={BarChart3}
+              label="Received"
+              value={consignmentSummary.isLoading ? null : consignmentSummary.received.toLocaleString()}
+              iconBg="bg-success/10"
+              iconColor="text-success"
+            />
+            <SummaryCard
+              icon={Tag}
+              label="Consumed"
+              value={consignmentSummary.isLoading ? null : consignmentSummary.consumed.toLocaleString()}
+              iconBg="bg-warning/10"
+              iconColor="text-warning"
+            />
+            <SummaryCard
+              icon={ArrowLeftRight}
+              label="Returned"
+              value={consignmentSummary.isLoading ? null : consignmentSummary.returned.toLocaleString()}
+              iconBg="bg-muted"
+              iconColor="text-muted-foreground"
+            />
+          </div>
+
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Consignment Transactions</h3>
+                <p className="text-sm text-muted-foreground">Track vendor-owned inventory</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search consignment..." className="w-full sm:w-64 pl-9" />
+                </div>
+                <ConsignmentForm />
+              </div>
+            </div>
+
+            {consignmentLoading ? (
+              <TableSkeleton rows={5} cols={7} />
+            ) : consignmentTxns.length === 0 ? (
+              <EmptyState
+                icon={Handshake}
+                title="No consignment transactions"
+                description="Record consignment receipts and consumption"
+                actionButton={<ConsignmentForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />Record Transaction</Button>} />}
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">Date</TableHead>
+                    <TableHead className="text-muted-foreground">Product</TableHead>
+                    <TableHead className="text-muted-foreground">Vendor</TableHead>
+                    <TableHead className="text-muted-foreground">Warehouse</TableHead>
+                    <TableHead className="text-muted-foreground">Type</TableHead>
+                    <TableHead className="text-muted-foreground text-right">Qty</TableHead>
+                    <TableHead className="text-muted-foreground text-right">Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {consignmentTxns.map((txn: any) => {
+                    const typeConfig = consignmentTypeConfig[txn.transaction_type] || consignmentTypeConfig.received;
+                    return (
+                      <TableRow key={txn.id} className="border-border">
+                        <TableCell className="text-muted-foreground">{formatDate(txn.transaction_date)}</TableCell>
+                        <TableCell className="font-medium text-foreground">{txn.products?.name || "—"}</TableCell>
+                        <TableCell className="text-foreground">{txn.vendors?.name || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{txn.warehouses?.name || "—"}</TableCell>
+                        <TableCell>
+                          <Badge className={cn("font-medium", typeConfig.className)}>{typeConfig.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-foreground">
+                          {Number(txn.quantity).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right text-foreground">
+                          {formatCurrency(Number(txn.total_value || 0))}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="counting" className="mt-4">
           <div className="rounded-xl border border-border bg-card">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-4">

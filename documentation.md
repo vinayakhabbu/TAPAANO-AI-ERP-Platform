@@ -539,8 +539,8 @@ supabase/
 #### Inventory Management (Planned)
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Consignment Inventory | 🔲 | Manage consigned stock |
-| Inventory Receipts | 🔲 | Direct inventory adjustments |
+| Consignment Inventory | ✅ | Manage consigned stock with vendor tracking |
+| Inventory Receipts | ✅ | Direct inventory adjustments without PO/shipment |
 
 ---
 

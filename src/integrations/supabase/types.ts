@@ -577,6 +577,89 @@ export type Database = {
           },
         ]
       }
+      consignment_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          org_id: string
+          product_id: string
+          quantity: number
+          reference_id: string | null
+          reference_type: string | null
+          total_value: number | null
+          transaction_date: string
+          transaction_type: string
+          unit_cost: number
+          vendor_id: string
+          warehouse_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          org_id: string
+          product_id: string
+          quantity: number
+          reference_id?: string | null
+          reference_type?: string | null
+          total_value?: number | null
+          transaction_date?: string
+          transaction_type: string
+          unit_cost?: number
+          vendor_id: string
+          warehouse_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string
+          product_id?: string
+          quantity?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          total_value?: number | null
+          transaction_date?: string
+          transaction_type?: string
+          unit_cost?: number
+          vendor_id?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consignment_transactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consignment_transactions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consignment_transactions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consignment_transactions_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -858,6 +941,147 @@ export type Database = {
             columns: ["purchase_order_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_receipt_lines: {
+        Row: {
+          batch_lot_id: string | null
+          bin_location_id: string | null
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          reason: string | null
+          receipt_id: string
+          serial_number_id: string | null
+          total_value: number | null
+          unit_cost: number
+        }
+        Insert: {
+          batch_lot_id?: string | null
+          bin_location_id?: string | null
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity: number
+          reason?: string | null
+          receipt_id: string
+          serial_number_id?: string | null
+          total_value?: number | null
+          unit_cost?: number
+        }
+        Update: {
+          batch_lot_id?: string | null
+          bin_location_id?: string | null
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          reason?: string | null
+          receipt_id?: string
+          serial_number_id?: string | null
+          total_value?: number | null
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_receipt_lines_batch_lot_id_fkey"
+            columns: ["batch_lot_id"]
+            isOneToOne: false
+            referencedRelation: "batch_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_receipt_lines_bin_location_id_fkey"
+            columns: ["bin_location_id"]
+            isOneToOne: false
+            referencedRelation: "bin_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_receipt_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_receipt_lines_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_receipt_lines_serial_number_id_fkey"
+            columns: ["serial_number_id"]
+            isOneToOne: false
+            referencedRelation: "serial_numbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_receipts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          org_id: string
+          posted_at: string | null
+          posted_by: string | null
+          receipt_date: string
+          receipt_number: string
+          receipt_type: string
+          status: string
+          updated_at: string
+          warehouse_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          org_id: string
+          posted_at?: string | null
+          posted_by?: string | null
+          receipt_date?: string
+          receipt_number: string
+          receipt_type: string
+          status?: string
+          updated_at?: string
+          warehouse_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string
+          posted_at?: string | null
+          posted_by?: string | null
+          receipt_date?: string
+          receipt_number?: string
+          receipt_type?: string
+          status?: string
+          updated_at?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_receipts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_receipts_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
