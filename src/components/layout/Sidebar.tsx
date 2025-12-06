@@ -18,15 +18,40 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-  { icon: BookOpen, label: "General Ledger", href: "/gl" },
-  { icon: BarChart3, label: "Financial Reports", href: "/reports" },
-  { icon: Receipt, label: "Receivables", href: "/ar" },
-  { icon: ClipboardList, label: "Quotations", href: "/quotations" },
-  { icon: FileText, label: "Payables", href: "/ap" },
-  { icon: Building2, label: "Banking", href: "/banking" },
-  { icon: CalendarCheck, label: "Period Close", href: "/close" },
+const navCategories = [
+  {
+    label: "Overview",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", href: "/" },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      { icon: ClipboardList, label: "Quotations", href: "/quotations" },
+      { icon: Receipt, label: "Receivables", href: "/ar" },
+    ],
+  },
+  {
+    label: "Purchasing",
+    items: [
+      { icon: FileText, label: "Payables", href: "/ap" },
+    ],
+  },
+  {
+    label: "Accounting",
+    items: [
+      { icon: BookOpen, label: "General Ledger", href: "/gl" },
+      { icon: Building2, label: "Banking", href: "/banking" },
+    ],
+  },
+  {
+    label: "Reports & Close",
+    items: [
+      { icon: BarChart3, label: "Financial Reports", href: "/reports" },
+      { icon: CalendarCheck, label: "Period Close", href: "/close" },
+    ],
+  },
 ];
 
 const bottomNavItems = [
@@ -75,34 +100,40 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </Button>
 
       {/* Main Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
-        {!collapsed && (
-          <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Modules
-          </p>
-        )}
-        {navItems.map((item) => (
-          <Tooltip key={item.href} delayDuration={0}>
-            <TooltipTrigger asChild>
-              <NavLink
-                to={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200",
-                  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  collapsed && "justify-center px-2"
-                )}
-                activeClassName="bg-sidebar-accent text-primary"
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
-              </NavLink>
-            </TooltipTrigger>
-            {collapsed && (
-              <TooltipContent side="right" className="font-medium">
-                {item.label}
-              </TooltipContent>
+      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-4">
+        {navCategories.map((category) => (
+          <div key={category.label}>
+            {!collapsed && (
+              <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {category.label}
+              </p>
             )}
-          </Tooltip>
+            <div className="space-y-1">
+              {category.items.map((item) => (
+                <Tooltip key={item.href} delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <NavLink
+                      to={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200",
+                        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        collapsed && "justify-center px-2"
+                      )}
+                      activeClassName="bg-sidebar-accent text-primary"
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && <span>{item.label}</span>}
+                    </NavLink>
+                  </TooltipTrigger>
+                  {collapsed && (
+                    <TooltipContent side="right" className="font-medium">
+                      {item.label}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 
