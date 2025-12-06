@@ -147,7 +147,7 @@ export const useBinLocations = (warehouseId?: string) => {
   });
 };
 
-// Inventory Transactions with full linked fields
+// Inventory Transactions
 export const useInventoryTransactions = () => {
   return useQuery({
     queryKey: ["inventory_transactions"],
@@ -157,125 +157,13 @@ export const useInventoryTransactions = () => {
         .select(`
           *,
           products(id, sku, name),
-          warehouses(id, name, code),
-          serial_numbers(id, serial_number),
-          batch_lots(id, batch_number)
+          warehouses(id, name, code)
         `)
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
       return data;
     },
-  });
-};
-
-// Goods Receipts with linked PO and vendor info
-export const useGoodsReceipts = () => {
-  return useQuery({
-    queryKey: ["goods_receipts"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("goods_receipts")
-        .select(`
-          *,
-          purchase_orders(
-            id, 
-            po_number, 
-            vendor_id,
-            vendors(id, name)
-          ),
-          entities(id, name)
-        `)
-        .order("receipt_date", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-};
-
-// Goods Receipt Lines with product info
-export const useGoodsReceiptLines = (receiptId?: string) => {
-  return useQuery({
-    queryKey: ["goods_receipt_lines", receiptId],
-    queryFn: async () => {
-      let query = supabase
-        .from("goods_receipt_lines")
-        .select(`
-          *,
-          purchase_order_lines(
-            id,
-            description,
-            quantity,
-            unit_price,
-            amount
-          )
-        `)
-        .order("created_at", { ascending: false });
-
-      if (receiptId) {
-        query = query.eq("goods_receipt_id", receiptId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!receiptId || receiptId === undefined,
-  });
-};
-
-// Shipments with linked SO and customer info
-export const useShipments = () => {
-  return useQuery({
-    queryKey: ["shipments"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("shipments")
-        .select(`
-          *,
-          sales_orders(
-            id, 
-            so_number, 
-            customer_id,
-            customers(id, name)
-          ),
-          entities(id, name)
-        `)
-        .order("ship_date", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-};
-
-// Shipment Lines with product info
-export const useShipmentLines = (shipmentId?: string) => {
-  return useQuery({
-    queryKey: ["shipment_lines", shipmentId],
-    queryFn: async () => {
-      let query = supabase
-        .from("shipment_lines")
-        .select(`
-          *,
-          sales_order_lines(
-            id,
-            description,
-            quantity,
-            unit_price,
-            amount
-          )
-        `)
-        .order("created_at", { ascending: false });
-
-      if (shipmentId) {
-        query = query.eq("shipment_id", shipmentId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!shipmentId || shipmentId === undefined,
   });
 };
 
