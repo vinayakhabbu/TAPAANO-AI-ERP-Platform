@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,8 @@ import {
   Award,
   Mail,
   Phone,
+  LayoutGrid,
+  BarChart3,
 } from "lucide-react";
 import { useOpportunities, useUpdateOpportunityStage, useOpportunityStats, OPPORTUNITY_STAGES } from "@/hooks/useOpportunities";
 import { useQuery } from "@tanstack/react-query";
@@ -42,8 +45,11 @@ import { format } from "date-fns";
 import { OpportunityForm } from "@/components/forms/OpportunityForm";
 import { CustomerForm } from "@/components/forms/CustomerForm";
 import { useToast } from "@/hooks/use-toast";
+import { PipelineKanban } from "@/components/pipeline/PipelineKanban";
+import { PipelineFunnel } from "@/components/pipeline/PipelineFunnel";
 
 const CRM = () => {
+  const [pipelineView, setPipelineView] = useState<"kanban" | "funnel">("kanban");
   const { data: opportunities, isLoading: opportunitiesLoading } = useOpportunities();
   const opportunityStats = useOpportunityStats();
   const updateOpportunityStage = useUpdateOpportunityStage();
@@ -148,8 +154,12 @@ const CRM = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="opportunities" className="mt-6">
+      <Tabs defaultValue="pipeline" className="mt-6">
         <TabsList className="bg-muted/50">
+          <TabsTrigger value="pipeline" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Pipeline
+          </TabsTrigger>
           <TabsTrigger value="opportunities" className="gap-2">
             <Target className="h-4 w-4" />
             Opportunities
@@ -159,6 +169,58 @@ const CRM = () => {
             Customers
           </TabsTrigger>
         </TabsList>
+
+        {/* Pipeline Tab */}
+        <TabsContent value="pipeline">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Sales Pipeline</h3>
+                <p className="text-sm text-muted-foreground">
+                  Visualize your opportunities through the sales stages
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex rounded-lg border border-border p-1">
+                  <Button
+                    variant={pipelineView === "kanban" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setPipelineView("kanban")}
+                    className="gap-2"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    Kanban
+                  </Button>
+                  <Button
+                    variant={pipelineView === "funnel" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setPipelineView("funnel")}
+                    className="gap-2"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Funnel
+                  </Button>
+                </div>
+                <OpportunityForm />
+              </div>
+            </div>
+
+            <div className="p-4">
+              {pipelineView === "kanban" ? (
+                <PipelineKanban
+                  opportunities={opportunities}
+                  isLoading={opportunitiesLoading}
+                  onStageChange={handleOpportunityStageUpdate}
+                />
+              ) : (
+                <PipelineFunnel
+                  opportunities={opportunities}
+                  isLoading={opportunitiesLoading}
+                />
+              )}
+            </div>
+          </div>
+        </TabsContent>
 
         {/* Opportunities Tab */}
         <TabsContent value="opportunities">
