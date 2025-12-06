@@ -1817,6 +1817,87 @@ export type Database = {
           },
         ]
       }
+      opportunities: {
+        Row: {
+          assigned_to: string | null
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          expected_close_date: string | null
+          expected_value: number
+          id: string
+          lost_reason: string | null
+          notes: string | null
+          opportunity_name: string
+          opportunity_number: string
+          org_id: string
+          probability: number | null
+          source: string | null
+          stage: string
+          updated_at: string
+          won_reason: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          expected_close_date?: string | null
+          expected_value?: number
+          id?: string
+          lost_reason?: string | null
+          notes?: string | null
+          opportunity_name: string
+          opportunity_number: string
+          org_id: string
+          probability?: number | null
+          source?: string | null
+          stage?: string
+          updated_at?: string
+          won_reason?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          expected_close_date?: string | null
+          expected_value?: number
+          id?: string
+          lost_reason?: string | null
+          notes?: string | null
+          opportunity_name?: string
+          opportunity_number?: string
+          org_id?: string
+          probability?: number | null
+          source?: string | null
+          stage?: string
+          updated_at?: string
+          won_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string

@@ -475,7 +475,7 @@ supabase/
 #### Sales Management (Planned)
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Opportunity Management | 🔲 | Track sales opportunities |
+| **Opportunity Management** | ✅ | Track sales opportunities with pipeline stages (Lead → Qualified → Proposal → Negotiation → Won/Lost) |
 | Sales Pipeline | 🔲 | Visual pipeline tracking |
 | Sales Forecasting | 🔲 | Predict future sales |
 | **Quotation Management** | ✅ | Create, track quotes, and convert to sales orders |
