@@ -1328,6 +1328,9 @@ export type Database = {
           quantity_available: number | null
           quantity_on_hand: number
           quantity_reserved: number
+          sales_order_id: string | null
+          sales_order_item_id: string | null
+          stock_type: Database["public"]["Enums"]["goods_receipt_stock_type"]
           total_value: number | null
           unit_cost: number
           updated_at: string
@@ -1343,6 +1346,9 @@ export type Database = {
           quantity_available?: number | null
           quantity_on_hand?: number
           quantity_reserved?: number
+          sales_order_id?: string | null
+          sales_order_item_id?: string | null
+          stock_type?: Database["public"]["Enums"]["goods_receipt_stock_type"]
           total_value?: number | null
           unit_cost?: number
           updated_at?: string
@@ -1358,6 +1364,9 @@ export type Database = {
           quantity_available?: number | null
           quantity_on_hand?: number
           quantity_reserved?: number
+          sales_order_id?: string | null
+          sales_order_item_id?: string | null
+          stock_type?: Database["public"]["Enums"]["goods_receipt_stock_type"]
           total_value?: number | null
           unit_cost?: number
           updated_at?: string
@@ -1376,6 +1385,20 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_stock_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_stock_sales_order_item_id_fkey"
+            columns: ["sales_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_lines"
             referencedColumns: ["id"]
           },
           {
@@ -1916,6 +1939,100 @@ export type Database = {
           },
         ]
       }
+      production_goods_receipts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          org_id: string
+          posting_date: string
+          product_id: string
+          production_order_id: string
+          quantity: number
+          receipt_number: string
+          sales_order_id: string | null
+          sales_order_item_id: string | null
+          stock_type: Database["public"]["Enums"]["goods_receipt_stock_type"]
+          uom: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id: string
+          posting_date?: string
+          product_id: string
+          production_order_id: string
+          quantity: number
+          receipt_number: string
+          sales_order_id?: string | null
+          sales_order_item_id?: string | null
+          stock_type: Database["public"]["Enums"]["goods_receipt_stock_type"]
+          uom?: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id?: string
+          posting_date?: string
+          product_id?: string
+          production_order_id?: string
+          quantity?: number
+          receipt_number?: string
+          sales_order_id?: string | null
+          sales_order_item_id?: string | null
+          stock_type?: Database["public"]["Enums"]["goods_receipt_stock_type"]
+          uom?: string
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_goods_receipts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_goods_receipts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_goods_receipts_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_goods_receipts_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_goods_receipts_sales_order_item_id_fkey"
+            columns: ["sales_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_goods_receipts_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_order_components: {
         Row: {
           backflushed_at: string | null
@@ -2054,6 +2171,7 @@ export type Database = {
           approved_by: string | null
           bom_id: string
           completed_quantity: number
+          confirmed_quantity: number
           created_at: string
           created_by: string | null
           entity_id: string
@@ -2067,6 +2185,8 @@ export type Database = {
           priority: number
           product_id: string
           released_at: string | null
+          sales_order_id: string | null
+          sales_order_item_id: string | null
           scrapped_quantity: number
           status: Database["public"]["Enums"]["production_order_status"]
           updated_at: string
@@ -2079,6 +2199,7 @@ export type Database = {
           approved_by?: string | null
           bom_id: string
           completed_quantity?: number
+          confirmed_quantity?: number
           created_at?: string
           created_by?: string | null
           entity_id: string
@@ -2092,6 +2213,8 @@ export type Database = {
           priority?: number
           product_id: string
           released_at?: string | null
+          sales_order_id?: string | null
+          sales_order_item_id?: string | null
           scrapped_quantity?: number
           status?: Database["public"]["Enums"]["production_order_status"]
           updated_at?: string
@@ -2104,6 +2227,7 @@ export type Database = {
           approved_by?: string | null
           bom_id?: string
           completed_quantity?: number
+          confirmed_quantity?: number
           created_at?: string
           created_by?: string | null
           entity_id?: string
@@ -2117,6 +2241,8 @@ export type Database = {
           priority?: number
           product_id?: string
           released_at?: string | null
+          sales_order_id?: string | null
+          sales_order_item_id?: string | null
           scrapped_quantity?: number
           status?: Database["public"]["Enums"]["production_order_status"]
           updated_at?: string
@@ -2152,6 +2278,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "production_orders_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_sales_order_item_id_fkey"
+            columns: ["sales_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_lines"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "production_orders_warehouse_id_fkey"
             columns: ["warehouse_id"]
             isOneToOne: false
@@ -2172,6 +2312,7 @@ export type Database = {
           is_serialized: boolean
           name: string
           org_id: string
+          planning_strategy: Database["public"]["Enums"]["planning_strategy"]
           reorder_point: number | null
           reorder_quantity: number | null
           sku: string
@@ -2191,6 +2332,7 @@ export type Database = {
           is_serialized?: boolean
           name: string
           org_id: string
+          planning_strategy?: Database["public"]["Enums"]["planning_strategy"]
           reorder_point?: number | null
           reorder_quantity?: number | null
           sku: string
@@ -2210,6 +2352,7 @@ export type Database = {
           is_serialized?: boolean
           name?: string
           org_id?: string
+          planning_strategy?: Database["public"]["Enums"]["planning_strategy"]
           reorder_point?: number | null
           reorder_quantity?: number | null
           sku?: string
@@ -3116,6 +3259,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      post_production_goods_receipt: {
+        Args: {
+          p_created_by?: string
+          p_org_id: string
+          p_production_order_id: string
+          p_quantity: number
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       account_type: "asset" | "liability" | "equity" | "revenue" | "expense"
@@ -3127,6 +3280,7 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
+      goods_receipt_stock_type: "unrestricted" | "sales_order_stock"
       inventory_valuation_method: "fifo" | "lifo" | "average"
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
       journal_status: "draft" | "posted" | "reversed"
@@ -3138,6 +3292,7 @@ export type Database = {
         | "processing"
         | "completed"
         | "failed"
+      planning_strategy: "mts" | "mto"
       po_status:
         | "draft"
         | "pending_approval"
@@ -3150,6 +3305,7 @@ export type Database = {
         | "planned"
         | "released"
         | "in_progress"
+        | "partially_delivered"
         | "completed"
         | "cancelled"
       quotation_status:
@@ -3303,6 +3459,7 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
+      goods_receipt_stock_type: ["unrestricted", "sales_order_stock"],
       inventory_valuation_method: ["fifo", "lifo", "average"],
       invoice_status: ["draft", "sent", "paid", "overdue", "cancelled"],
       journal_status: ["draft", "posted", "reversed"],
@@ -3315,6 +3472,7 @@ export const Constants = {
         "completed",
         "failed",
       ],
+      planning_strategy: ["mts", "mto"],
       po_status: [
         "draft",
         "pending_approval",
@@ -3328,6 +3486,7 @@ export const Constants = {
         "planned",
         "released",
         "in_progress",
+        "partially_delivered",
         "completed",
         "cancelled",
       ],

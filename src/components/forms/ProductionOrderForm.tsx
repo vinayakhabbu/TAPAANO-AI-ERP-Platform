@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useCreateProductionOrder, useBOMs } from "@/hooks/useProduction";
 import { useWarehouses } from "@/hooks/useInventory";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +21,8 @@ export function ProductionOrderForm({ onSuccess }: ProductionOrderFormProps) {
   const createOrder = useCreateProductionOrder();
 
   const [entities, setEntities] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedProduct, setSelectedProduct] = useState<{ planning_strategy: string } | null>(null);
+  
   const [formData, setFormData] = useState({
     entity_id: "",
     bom_id: "",
@@ -41,6 +44,24 @@ export function ProductionOrderForm({ onSuccess }: ProductionOrderFormProps) {
   }, []);
 
   const selectedBOM = boms?.find(b => b.id === formData.bom_id);
+  
+  useEffect(() => {
+    if (selectedBOM?.product_id) {
+      const fetchProductStrategy = async () => {
+        const { data } = await supabase
+          .from("products")
+          .select("planning_strategy")
+          .eq("id", selectedBOM.product_id)
+          .single();
+        setSelectedProduct(data);
+      };
+      fetchProductStrategy();
+    } else {
+      setSelectedProduct(null);
+    }
+  }, [selectedBOM]);
+
+  const isMTO = selectedProduct?.planning_strategy === 'mto';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,8 +164,13 @@ export function ProductionOrderForm({ onSuccess }: ProductionOrderFormProps) {
       </div>
 
       {selectedBOM && (
-        <div className="p-3 bg-muted rounded-lg text-sm">
-          <p><strong>Product:</strong> {selectedBOM.product?.name} ({selectedBOM.product?.sku})</p>
+        <div className="p-3 bg-muted rounded-lg text-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <span><strong>Product:</strong> {selectedBOM.product?.name} ({selectedBOM.product?.sku})</span>
+            <Badge variant={isMTO ? "default" : "secondary"}>
+              {isMTO ? "Make-to-Order" : "Make-to-Stock"}
+            </Badge>
+          </div>
           <p><strong>Components:</strong> {selectedBOM.bom_lines?.length || 0} items</p>
           <p><strong>Operations:</strong> {selectedBOM.bom_operations?.length || 0} steps</p>
         </div>
