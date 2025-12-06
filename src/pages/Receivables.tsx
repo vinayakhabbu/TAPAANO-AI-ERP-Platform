@@ -45,7 +45,7 @@ import { format } from "date-fns";
 import { SalesOrderForm } from "@/components/forms/SalesOrderForm";
 import { ShipmentForm } from "@/components/forms/ShipmentForm";
 import { InvoiceForm } from "@/components/forms/InvoiceForm";
-import { CustomerForm } from "@/components/forms/CustomerForm";
+
 import { QuotationForm } from "@/components/forms/QuotationForm";
 import { useToast } from "@/hooks/use-toast";
 
@@ -272,7 +272,6 @@ const Receivables = () => {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input placeholder="Search quotes..." className="w-64 pl-9" />
                 </div>
-                <CustomerForm />
                 <Button onClick={() => setQuotationFormOpen(true)} className="gap-2">
                   <Plus className="h-4 w-4" />
                   New Quote
@@ -397,7 +396,6 @@ const Receivables = () => {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input placeholder="Search orders..." className="w-64 pl-9" />
                 </div>
-                <CustomerForm />
                 <SalesOrderForm />
               </div>
             </div>
