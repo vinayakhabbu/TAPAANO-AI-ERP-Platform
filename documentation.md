@@ -478,7 +478,7 @@ supabase/
 | Opportunity Management | 🔲 | Track sales opportunities |
 | Sales Pipeline | 🔲 | Visual pipeline tracking |
 | Sales Forecasting | 🔲 | Predict future sales |
-| Quotation Management | 🔲 | Create and track quotes |
+| **Quotation Management** | ✅ | Create, track quotes, and convert to sales orders |
 | Sales Analytics | 🔲 | Sales performance reports |
 | Mobile Sales App | 🔲 | On-the-go sales management |
 
