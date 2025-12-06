@@ -544,17 +544,55 @@ supabase/
 
 ---
 
-### Production Planning (Planned)
+### Production Planning (`/production`)
 
+**Purpose**: Manufacturing operations and production planning
+
+#### Current Features
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Bill of Materials (BOM) | 🔲 | Multi-level BOM management |
-| Production Orders | 🔲 | Manufacturing order management |
-| Material Requirements Planning | 🔲 | MRP calculations |
-| Capacity Planning | 🔲 | Resource scheduling |
-| Shop Floor Control | 🔲 | Track production progress |
-| Work Center Management | 🔲 | Define production resources |
-| Backflush Processing | 🔲 | Automatic material consumption |
+| Bill of Materials (BOM) | ✅ | Multi-level BOM with components and routing operations |
+| Production Orders | ✅ | Manufacturing order management with status workflow |
+| Material Requirements Planning | ✅ | MRP calculations to identify material shortages |
+| Capacity Planning | ✅ | Work center scheduling and utilization tracking |
+| Shop Floor Control | ✅ | Track production progress and operation status |
+| Work Center Management | ✅ | Define production resources with capacity/efficiency |
+| Backflush Processing | ✅ | Automatic material consumption on order completion |
+| AI Copilot Integration | ✅ | Query production data via natural language |
+
+#### Sub-modules
+
+**Work Centers**
+- Define production resources (machines, lines, stations)
+- Set hourly rates, capacity per day, efficiency rates
+- Track utilization and availability
+
+**Bill of Materials**
+- Multi-level BOM structure with components
+- Routing operations with work center assignments
+- Setup time and run time per unit
+- Scrap rate calculations
+
+**Production Orders**
+- Create orders from BOMs
+- Status workflow: `draft` → `planned` → `released` → `in_progress` → `completed`
+- Auto-generate components and operations from BOM
+- Track planned vs actual quantities
+
+**MRP (Material Requirements Planning)**
+- Run MRP to calculate material needs
+- Identify shortages and planned order quantities
+- Configurable planning horizon
+
+**Capacity Planning**
+- Generate capacity schedules for work centers
+- Track planned hours vs available hours
+- Identify overloaded work centers
+
+**Shop Floor Control**
+- View active production orders
+- Track operation progress (pending → in_progress → completed)
+- Record actual times vs planned
 
 ---
 

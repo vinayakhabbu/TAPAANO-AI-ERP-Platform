@@ -27,6 +27,7 @@ Available agents:
 4. p2p_agent: Procure-to-Pay - Purchase orders, goods receipts, bills, vendor management, 3-way matching, payment runs
 5. o2c_agent: Order-to-Cash - Quotations, sales orders, shipments, invoices, customer management, revenue tracking, quote-to-cash
 6. inventory_agent: Inventory management - Warehouses, products, stock levels, transfers, cycle counts, serial/batch tracking, reorder alerts, consignment inventory, inventory receipts/adjustments
+7. production_agent: Production planning - BOMs (bill of materials), production orders, work centers, MRP (material requirements planning), capacity planning, shop floor control, backflush processing
 
 Route based on intent:
 - Questions about purchasing, POs, vendors, goods receipts, bills to pay, payment runs → p2p_agent
@@ -34,9 +35,10 @@ Route based on intent:
 - Questions about overdue invoices, dunning emails, collection strategies → collections_agent
 - Questions about period close, month-end, reconciliation, close tasks → close_assistant_agent
 - Questions about inventory, stock, warehouses, transfers, cycle counts, products, SKUs, reorder, serial numbers, batch lots, consignment, inventory adjustments, inventory receipts → inventory_agent
+- Questions about production, manufacturing, BOMs, bill of materials, production orders, work centers, MRP, material requirements, capacity planning, shop floor, backflush → production_agent
 - Everything else (general metrics, cash, transactions, journal entries) → bookkeeper_agent
 
-Respond with ONLY the agent name: "bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", "o2c_agent", or "inventory_agent"`,
+Respond with ONLY the agent name: "bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", "o2c_agent", "inventory_agent", or "production_agent"`,
 };
 
 const BOOKKEEPER_AGENT = {
@@ -1326,6 +1328,179 @@ Be precise with stock quantities. Help optimize inventory levels. Flag reorder a
           type: "object",
           properties: {
             days: { type: "number", description: "Number of days to look back (default 30)" },
+          },
+          required: [],
+        },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// PRODUCTION AGENT
+// ============================================================================
+
+const PRODUCTION_AGENT = {
+  name: "production_agent",
+  model: "gpt-4.1-2025-04-14",
+  instructions: `You are a Production Planning specialist AI. You help manage manufacturing operations including BOMs, production orders, work centers, MRP, capacity planning, and shop floor control.
+
+Capabilities:
+- View and manage Bill of Materials (BOMs) with components and routing operations
+- Create and track production orders through their lifecycle
+- Manage work centers with capacity and efficiency settings
+- Run MRP (Material Requirements Planning) to identify shortages
+- Plan and monitor capacity utilization
+- Track shop floor operations and progress
+- Handle backflush processing for material consumption
+- Analyze production metrics and bottlenecks
+
+Be precise with quantities and schedules. Help optimize production throughput. Flag capacity constraints proactively.`,
+  tools: [
+    {
+      type: "function",
+      function: {
+        name: "get_work_centers",
+        description: "Get work centers with capacity and efficiency details",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_boms",
+        description: "Get bill of materials with components and operations",
+        parameters: {
+          type: "object",
+          properties: {
+            product_name: { type: "string", description: "Filter by product name" },
+            status: { type: "string", enum: ["draft", "active", "inactive"], description: "Filter by status" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_production_orders",
+        description: "Get production orders with status and progress",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "planned", "released", "in_progress", "completed", "cancelled"], description: "Filter by status" },
+            product_name: { type: "string", description: "Filter by product name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_production_order_details",
+        description: "Get detailed info for a production order including components and operations",
+        parameters: {
+          type: "object",
+          properties: {
+            order_number: { type: "string", description: "Production order number" },
+          },
+          required: ["order_number"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_mrp_runs",
+        description: "Get MRP run history with results and shortages",
+        parameters: {
+          type: "object",
+          properties: {
+            limit: { type: "number", description: "Number of runs to return (default 5)" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_mrp_shortages",
+        description: "Get material shortages from the latest MRP run",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_capacity_schedule",
+        description: "Get capacity schedule for work centers",
+        parameters: {
+          type: "object",
+          properties: {
+            work_center_name: { type: "string", description: "Filter by work center name" },
+            days_ahead: { type: "number", description: "Number of days to look ahead (default 14)" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_capacity_utilization",
+        description: "Get capacity utilization summary across work centers",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_shop_floor_status",
+        description: "Get current shop floor status - active operations and their progress",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_production_summary",
+        description: "Get overall production summary with key metrics",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_pending_backflush",
+        description: "Get production orders pending backflush processing",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_products",
+        description: "Get product catalog for production planning",
+        parameters: {
+          type: "object",
+          properties: {
+            search: { type: "string", description: "Search term to filter by SKU or name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_stock",
+        description: "Get current stock levels to check material availability",
+        parameters: {
+          type: "object",
+          properties: {
+            product_sku: { type: "string", description: "Filter by product SKU" },
           },
           required: [],
         },
@@ -3919,6 +4094,431 @@ Collections Department`,
         });
       }
 
+      // ============ PRODUCTION TOOLS ============
+      case "get_work_centers": {
+        const { data: workCenters } = await supabase
+          .from("work_centers")
+          .select("*")
+          .eq("org_id", orgId)
+          .order("code");
+
+        return JSON.stringify({
+          work_centers: (workCenters || []).map((wc: any) => ({
+            code: wc.code,
+            name: wc.name,
+            description: wc.description,
+            hourly_rate: wc.hourly_rate,
+            capacity_per_day: wc.capacity_per_day,
+            efficiency_rate: wc.efficiency_rate,
+            is_active: wc.is_active,
+          })),
+          total_count: (workCenters || []).length,
+        });
+      }
+
+      case "get_boms": {
+        let query = supabase
+          .from("bom_headers")
+          .select(`
+            *,
+            product:products(name, sku),
+            bom_lines(id, quantity, component:products(name, sku)),
+            bom_operations(id, operation_number, operation_name, work_center:work_centers(name))
+          `)
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false });
+
+        if (args.status === "active") query = query.eq("is_active", true);
+        if (args.status === "inactive") query = query.eq("is_active", false);
+
+        const { data: boms } = await query;
+
+        let filtered = boms || [];
+        if (args.product_name) {
+          filtered = filtered.filter((b: any) => 
+            b.product?.name?.toLowerCase().includes((args.product_name as string).toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          boms: filtered.map((b: any) => ({
+            bom_number: b.bom_number,
+            version: b.version,
+            product: b.product?.name,
+            product_sku: b.product?.sku,
+            description: b.description,
+            is_active: b.is_active,
+            component_count: b.bom_lines?.length || 0,
+            operation_count: b.bom_operations?.length || 0,
+            components: b.bom_lines?.slice(0, 5).map((l: any) => ({
+              component: l.component?.name,
+              quantity: l.quantity,
+            })),
+          })),
+          total_count: filtered.length,
+        });
+      }
+
+      case "get_production_orders": {
+        let query = supabase
+          .from("production_orders")
+          .select(`
+            *,
+            product:products(name, sku),
+            bom:bom_headers(bom_number),
+            warehouse:warehouses(name)
+          `)
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (args.status) query = query.eq("status", args.status);
+
+        const { data: orders } = await query;
+
+        let filtered = orders || [];
+        if (args.product_name) {
+          filtered = filtered.filter((o: any) => 
+            o.product?.name?.toLowerCase().includes((args.product_name as string).toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          production_orders: filtered.map((o: any) => ({
+            order_number: o.order_number,
+            product: o.product?.name,
+            bom: o.bom?.bom_number,
+            warehouse: o.warehouse?.name,
+            planned_quantity: o.planned_quantity,
+            completed_quantity: o.completed_quantity,
+            progress_pct: o.planned_quantity > 0 ? Math.round((o.completed_quantity / o.planned_quantity) * 100) : 0,
+            status: o.status,
+            priority: o.priority,
+            planned_start: o.planned_start_date,
+            planned_end: o.planned_end_date,
+          })),
+          total_count: filtered.length,
+        });
+      }
+
+      case "get_production_order_details": {
+        const { data: ordersRaw } = await supabase
+          .from("production_orders")
+          .select("*")
+          .eq("org_id", orgId)
+          .ilike("order_number", `%${args.order_number}%`)
+          .limit(1);
+
+        if (!ordersRaw || ordersRaw.length === 0) {
+          return JSON.stringify({ error: "Production order not found" });
+        }
+
+        const orderBase = ordersRaw[0] as any;
+        
+        // Fetch related data separately
+        const { data: product } = await supabase
+          .from("products")
+          .select("name, sku")
+          .eq("id", orderBase.product_id)
+          .single();
+        
+        const { data: bom } = await supabase
+          .from("bom_headers")
+          .select("bom_number, version")
+          .eq("id", orderBase.bom_id)
+          .single();
+        
+        const { data: warehouse } = orderBase.warehouse_id ? await supabase
+          .from("warehouses")
+          .select("name")
+          .eq("id", orderBase.warehouse_id)
+          .single() : { data: null };
+        
+        const { data: components } = await supabase
+          .from("production_order_components")
+          .select("*, product:products(name, sku)")
+          .eq("production_order_id", orderBase.id);
+        
+        const { data: operations } = await supabase
+          .from("production_order_operations")
+          .select("*, work_center:work_centers(name, code)")
+          .eq("production_order_id", orderBase.id)
+          .order("operation_number");
+
+        return JSON.stringify({
+          order_number: orderBase.order_number,
+          product: (product as any)?.name,
+          bom: `${(bom as any)?.bom_number} v${(bom as any)?.version}`,
+          warehouse: (warehouse as any)?.name,
+          status: orderBase.status,
+          quantities: {
+            planned: orderBase.planned_quantity,
+            completed: orderBase.completed_quantity,
+            scrapped: orderBase.scrapped_quantity,
+          },
+          dates: {
+            planned_start: orderBase.planned_start_date,
+            planned_end: orderBase.planned_end_date,
+            actual_start: orderBase.actual_start_date,
+            actual_end: orderBase.actual_end_date,
+          },
+          components: (components || []).map((c: any) => ({
+            product: c.product?.name,
+            required: c.required_quantity,
+            issued: c.issued_quantity,
+            remaining: c.required_quantity - c.issued_quantity,
+            backflushed: c.is_backflushed,
+          })),
+          operations: (operations || []).map((op: any) => ({
+            number: op.operation_number,
+            name: op.operation_name,
+            work_center: op.work_center?.name,
+            status: op.status,
+            planned_time: op.planned_setup_time + op.planned_run_time,
+            actual_time: (op.actual_setup_time || 0) + (op.actual_run_time || 0),
+          })),
+        });
+      }
+
+      case "get_mrp_runs": {
+        const limit = (args.limit as number) || 5;
+        const { data: runs } = await supabase
+          .from("mrp_runs")
+          .select("*")
+          .eq("org_id", orgId)
+          .order("run_date", { ascending: false })
+          .limit(limit);
+
+        return JSON.stringify({
+          mrp_runs: (runs || []).map((r: any) => ({
+            run_number: r.run_number,
+            run_date: r.run_date,
+            planning_horizon_days: r.planning_horizon_days,
+            status: r.status,
+            total_requirements: r.total_requirements,
+            total_shortages: r.total_shortages,
+            completed_at: r.completed_at,
+          })),
+        });
+      }
+
+      case "get_mrp_shortages": {
+        // Get latest completed MRP run
+        const { data: latestRun } = await supabase
+          .from("mrp_runs")
+          .select("id, run_number, run_date")
+          .eq("org_id", orgId)
+          .eq("status", "completed")
+          .order("run_date", { ascending: false })
+          .limit(1);
+
+        if (!latestRun || latestRun.length === 0) {
+          return JSON.stringify({ message: "No completed MRP runs found. Run MRP to identify shortages." });
+        }
+
+        const runId = (latestRun[0] as any).id;
+        const { data: results } = await supabase
+          .from("mrp_results")
+          .select("*, product:products(name, sku)")
+          .eq("mrp_run_id", runId)
+          .gt("net_requirement", 0)
+          .order("net_requirement", { ascending: false });
+
+        return JSON.stringify({
+          mrp_run: latestRun[0].run_number,
+          run_date: latestRun[0].run_date,
+          shortages: (results || []).map((r: any) => ({
+            product: r.product?.name,
+            sku: r.product?.sku,
+            requirement_date: r.requirement_date,
+            gross_requirement: r.gross_requirement,
+            on_hand: r.projected_on_hand,
+            net_shortage: r.net_requirement,
+            suggested_order: r.planned_order_qty,
+          })),
+          shortage_count: (results || []).length,
+        });
+      }
+
+      case "get_capacity_schedule": {
+        const daysAhead = (args.days_ahead as number) || 14;
+        const startDate = new Date().toISOString().split("T")[0];
+        const endDate = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+        let query = supabase
+          .from("capacity_schedules")
+          .select("*, work_center:work_centers(name, code)")
+          .eq("org_id", orgId)
+          .gte("schedule_date", startDate)
+          .lte("schedule_date", endDate)
+          .order("schedule_date");
+
+        const { data: schedules } = await query;
+
+        let filtered = schedules || [];
+        if (args.work_center_name) {
+          filtered = filtered.filter((s: any) => 
+            s.work_center?.name?.toLowerCase().includes((args.work_center_name as string).toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          schedule: filtered.map((s: any) => ({
+            date: s.schedule_date,
+            work_center: s.work_center?.name,
+            available_hours: s.available_hours,
+            planned_hours: s.planned_hours,
+            utilization_pct: s.available_hours > 0 ? Math.round((s.planned_hours / s.available_hours) * 100) : 0,
+          })),
+        });
+      }
+
+      case "get_capacity_utilization": {
+        const { data: workCenters } = await supabase
+          .from("work_centers")
+          .select("id, name, code, capacity_per_day")
+          .eq("org_id", orgId)
+          .eq("is_active", true);
+
+        const startDate = new Date().toISOString().split("T")[0];
+        const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+        const { data: schedules } = await supabase
+          .from("capacity_schedules")
+          .select("work_center_id, planned_hours, available_hours")
+          .eq("org_id", orgId)
+          .gte("schedule_date", startDate)
+          .lte("schedule_date", endDate);
+
+        const wcStats: Record<string, { name: string; planned: number; available: number }> = {};
+        (workCenters || []).forEach((wc: any) => {
+          wcStats[wc.id] = { name: wc.name, planned: 0, available: wc.capacity_per_day * 7 };
+        });
+
+        (schedules || []).forEach((s: any) => {
+          if (wcStats[s.work_center_id]) {
+            wcStats[s.work_center_id].planned += s.planned_hours || 0;
+          }
+        });
+
+        return JSON.stringify({
+          period: "Next 7 days",
+          work_centers: Object.values(wcStats).map(wc => ({
+            name: wc.name,
+            available_hours: wc.available,
+            planned_hours: wc.planned,
+            utilization_pct: wc.available > 0 ? Math.round((wc.planned / wc.available) * 100) : 0,
+            status: wc.planned > wc.available ? "overloaded" : wc.planned > wc.available * 0.8 ? "high" : "normal",
+          })),
+        });
+      }
+
+      case "get_shop_floor_status": {
+        const { data: orders } = await supabase
+          .from("production_orders")
+          .select(`
+            order_number, status, product:products(name),
+            operations:production_order_operations(
+              operation_number, operation_name, status,
+              work_center:work_centers(name)
+            )
+          `)
+          .eq("org_id", orgId)
+          .in("status", ["released", "in_progress"]);
+
+        const activeOps: any[] = [];
+        (orders || []).forEach((order: any) => {
+          (order.operations || []).forEach((op: any) => {
+            if (op.status === "in_progress") {
+              activeOps.push({
+                order: order.order_number,
+                product: order.product?.name,
+                operation: `${op.operation_number}. ${op.operation_name}`,
+                work_center: op.work_center?.name,
+              });
+            }
+          });
+        });
+
+        return JSON.stringify({
+          active_orders: (orders || []).length,
+          active_operations: activeOps,
+          orders_summary: (orders || []).map((o: any) => ({
+            order: o.order_number,
+            product: o.product?.name,
+            status: o.status,
+            operations_in_progress: o.operations?.filter((op: any) => op.status === "in_progress").length || 0,
+            operations_completed: o.operations?.filter((op: any) => op.status === "completed").length || 0,
+            total_operations: o.operations?.length || 0,
+          })),
+        });
+      }
+
+      case "get_production_summary": {
+        const { data: orders } = await supabase
+          .from("production_orders")
+          .select("status, planned_quantity, completed_quantity")
+          .eq("org_id", orgId);
+
+        const { data: workCenters } = await supabase
+          .from("work_centers")
+          .select("id")
+          .eq("org_id", orgId)
+          .eq("is_active", true);
+
+        const { data: boms } = await supabase
+          .from("bom_headers")
+          .select("id")
+          .eq("org_id", orgId)
+          .eq("is_active", true);
+
+        const statusCounts: Record<string, number> = {};
+        let totalPlanned = 0;
+        let totalCompleted = 0;
+
+        (orders || []).forEach((o: any) => {
+          statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+          totalPlanned += o.planned_quantity || 0;
+          totalCompleted += o.completed_quantity || 0;
+        });
+
+        return JSON.stringify({
+          total_orders: (orders || []).length,
+          orders_by_status: statusCounts,
+          total_planned_quantity: totalPlanned,
+          total_completed_quantity: totalCompleted,
+          completion_rate: totalPlanned > 0 ? Math.round((totalCompleted / totalPlanned) * 100) : 0,
+          active_work_centers: (workCenters || []).length,
+          active_boms: (boms || []).length,
+        });
+      }
+
+      case "get_pending_backflush": {
+        const { data: orders } = await supabase
+          .from("production_orders")
+          .select(`
+            order_number, status, completed_quantity,
+            product:products(name),
+            components:production_order_components(is_backflushed, required_quantity, issued_quantity)
+          `)
+          .eq("org_id", orgId)
+          .eq("status", "in_progress");
+
+        const pending = (orders || []).filter((o: any) => 
+          o.components?.some((c: any) => !c.is_backflushed && c.issued_quantity < c.required_quantity)
+        );
+
+        return JSON.stringify({
+          pending_backflush: pending.map((o: any) => ({
+            order_number: o.order_number,
+            product: o.product?.name,
+            completed_qty: o.completed_quantity,
+            components_pending: o.components?.filter((c: any) => !c.is_backflushed).length || 0,
+          })),
+          count: pending.length,
+        });
+      }
+
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -3956,7 +4556,7 @@ async function routeToAgent(userMessage: string): Promise<string> {
 
   console.log("Router selected agent:", agentName);
 
-  if (["bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", "o2c_agent", "inventory_agent"].includes(agentName)) {
+  if (["bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", "o2c_agent", "inventory_agent", "production_agent"].includes(agentName)) {
     return agentName;
   }
   return "bookkeeper_agent";
@@ -3974,6 +4574,8 @@ function getAgentConfig(agentName: string) {
       return O2C_AGENT;
     case "inventory_agent":
       return INVENTORY_AGENT;
+    case "production_agent":
+      return PRODUCTION_AGENT;
     default:
       return BOOKKEEPER_AGENT;
   }
