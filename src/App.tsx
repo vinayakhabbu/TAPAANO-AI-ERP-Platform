@@ -16,6 +16,7 @@ import Banking from "./pages/Banking";
 import PeriodClose from "./pages/PeriodClose";
 import Settings from "./pages/Settings";
 import Production from "./pages/Production";
+import CRM from "./pages/CRM";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/ar" element={<Receivables />} />
+              <Route path="/crm" element={<CRM />} />
               <Route path="/ap" element={<Payables />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/gl" element={<GeneralLedger />} />
