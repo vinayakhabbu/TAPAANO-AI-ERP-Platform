@@ -32,10 +32,15 @@ import {
   Users,
   DollarSign,
   Award,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { useOpportunities, useUpdateOpportunityStage, useOpportunityStats, OPPORTUNITY_STAGES } from "@/hooks/useOpportunities";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { OpportunityForm } from "@/components/forms/OpportunityForm";
+import { CustomerForm } from "@/components/forms/CustomerForm";
 import { useToast } from "@/hooks/use-toast";
 
 const CRM = () => {
@@ -43,6 +48,22 @@ const CRM = () => {
   const opportunityStats = useOpportunityStats();
   const updateOpportunityStage = useUpdateOpportunityStage();
   const { toast } = useToast();
+
+  const { data: customers, isLoading: customersLoading } = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const customerStats = {
+    total: customers?.length || 0,
+  };
 
   const handleOpportunityStageUpdate = async (id: string, stage: string) => {
     try {
@@ -281,14 +302,98 @@ const CRM = () => {
           </div>
         </TabsContent>
 
-        {/* Customers Tab - placeholder for future */}
+        {/* Customers Tab */}
         <TabsContent value="customers">
-          <div className="rounded-xl border border-border bg-card p-8 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Customer Management</h3>
-            <p className="text-muted-foreground">
-              Customer management is available in Order to Cash module
-            </p>
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Customers</h3>
+                <p className="text-sm text-muted-foreground">
+                  Manage your customer database ({customerStats.total} total)
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search customers..." className="w-64 pl-9" />
+                </div>
+                <CustomerForm />
+              </div>
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground">Name</TableHead>
+                  <TableHead className="text-muted-foreground">Email</TableHead>
+                  <TableHead className="text-muted-foreground">Phone</TableHead>
+                  <TableHead className="text-muted-foreground text-right">Credit Limit</TableHead>
+                  <TableHead className="text-muted-foreground">Payment Terms</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customersLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i} className="border-border">
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : !customers || customers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-32 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Users className="h-8 w-8" />
+                        <p>No customers found</p>
+                        <CustomerForm
+                          trigger={
+                            <Button variant="outline" size="sm" className="mt-2 gap-2">
+                              <Plus className="h-4 w-4" />
+                              Add your first customer
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  customers.map((customer) => (
+                    <TableRow key={customer.id} className="border-border">
+                      <TableCell className="font-medium text-foreground">{customer.name}</TableCell>
+                      <TableCell>
+                        {customer.email ? (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Mail className="h-3.5 w-3.5" />
+                            {customer.email}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {customer.phone ? (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Phone className="h-3.5 w-3.5" />
+                            {customer.phone}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-foreground">
+                        {customer.credit_limit ? `$${customer.credit_limit.toLocaleString()}` : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {customer.payment_terms ? `Net ${customer.payment_terms}` : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </TabsContent>
       </Tabs>
