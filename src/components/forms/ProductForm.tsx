@@ -143,7 +143,7 @@ export const ProductForm = ({ trigger }: ProductFormProps) => {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="valuation">Valuation Method</Label>
-              <Select value={valuationMethod} onValueChange={setValuationMethod}>
+              <Select value={valuationMethod} onValueChange={(v) => setValuationMethod(v as "fifo" | "lifo" | "average")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

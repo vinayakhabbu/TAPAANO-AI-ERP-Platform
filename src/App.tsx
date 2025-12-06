@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Receivables from "./pages/Receivables";
 import Payables from "./pages/Payables";
+import Inventory from "./pages/Inventory";
 import GeneralLedger from "./pages/GeneralLedger";
 import FinancialReports from "./pages/FinancialReports";
 import Banking from "./pages/Banking";
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/ar" element={<Receivables />} />
               <Route path="/ap" element={<Payables />} />
+              <Route path="/inventory" element={<Inventory />} />
               <Route path="/gl" element={<GeneralLedger />} />
               <Route path="/reports" element={<FinancialReports />} />
               <Route path="/banking" element={<Banking />} />
