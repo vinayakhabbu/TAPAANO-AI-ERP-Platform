@@ -15,6 +15,7 @@ import FinancialReports from "./pages/FinancialReports";
 import Banking from "./pages/Banking";
 import PeriodClose from "./pages/PeriodClose";
 import Settings from "./pages/Settings";
+import Production from "./pages/Production";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/reports" element={<FinancialReports />} />
               <Route path="/banking" element={<Banking />} />
               <Route path="/close" element={<PeriodClose />} />
+              <Route path="/production" element={<Production />} />
               <Route path="/settings" element={<Settings />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
