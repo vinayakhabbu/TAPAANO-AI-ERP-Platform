@@ -12,6 +12,7 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
   { icon: BookOpen, label: "General Ledger", href: "/gl" },
+  { icon: BarChart3, label: "Financial Reports", href: "/reports" },
   { icon: Receipt, label: "Receivables", href: "/ar" },
   { icon: FileText, label: "Payables", href: "/ap" },
   { icon: Building2, label: "Banking", href: "/banking" },
