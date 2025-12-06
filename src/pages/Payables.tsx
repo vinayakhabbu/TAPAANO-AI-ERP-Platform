@@ -37,6 +37,12 @@ import {
   usePaymentRuns,
   usePayablesSummary,
 } from "@/hooks/usePayables";
+import {
+  usePurchaseOrderApproval,
+  usePaymentRunApproval,
+  useProcessPaymentRun,
+} from "@/hooks/useApprovals";
+import { ApprovalActions } from "@/components/ApprovalActions";
 import { format } from "date-fns";
 import { PurchaseOrderForm } from "@/components/forms/PurchaseOrderForm";
 import { GoodsReceiptForm } from "@/components/forms/GoodsReceiptForm";
@@ -83,6 +89,11 @@ const Payables = () => {
   const { data: goodsReceipts = [], isLoading: grLoading } = useGoodsReceipts();
   const { data: paymentRuns = [], isLoading: runsLoading } = usePaymentRuns();
   const summary = usePayablesSummary();
+
+  // Approval mutations
+  const poApproval = usePurchaseOrderApproval();
+  const paymentRunApproval = usePaymentRunApproval();
+  const processPaymentRun = useProcessPaymentRun();
 
   const formatDate = (dateStr: string) => {
     try {
@@ -253,9 +264,15 @@ const Payables = () => {
                           <Badge className={cn("font-medium", status.className)}>{status.label}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
+                          <ApprovalActions
+                            documentType="purchase_order"
+                            documentId={po.id}
+                            currentStatus={po.status}
+                            onSubmitForApproval={() => poApproval.mutate({ id: po.id, action: "submit_for_approval" })}
+                            onApprove={() => poApproval.mutate({ id: po.id, action: "approve" })}
+                            onReject={() => poApproval.mutate({ id: po.id, action: "reject" })}
+                            isLoading={poApproval.isPending}
+                          />
                         </TableCell>
                       </TableRow>
                     );
@@ -503,9 +520,16 @@ const Payables = () => {
                           <Badge className={cn("font-medium", status.className)}>{status.label}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
+                          <ApprovalActions
+                            documentType="payment_run"
+                            documentId={run.id}
+                            currentStatus={run.status}
+                            onSubmitForApproval={() => paymentRunApproval.mutate({ id: run.id, action: "submit_for_approval" })}
+                            onApprove={() => paymentRunApproval.mutate({ id: run.id, action: "approve" })}
+                            onReject={() => paymentRunApproval.mutate({ id: run.id, action: "reject" })}
+                            onProcess={() => processPaymentRun.mutate(run.id)}
+                            isLoading={paymentRunApproval.isPending || processPaymentRun.isPending}
+                          />
                         </TableCell>
                       </TableRow>
                     );
