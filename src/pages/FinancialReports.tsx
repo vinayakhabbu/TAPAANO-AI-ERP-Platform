@@ -15,6 +15,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Download,
   FileText,
   TrendingUp,
@@ -24,6 +32,7 @@ import {
   Calendar,
   CheckCircle2,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
 import { useFinancialReports } from "@/hooks/useFinancialReports";
@@ -225,34 +234,43 @@ const FinancialReports = () => {
               Cash Flow
             </TabsTrigger>
           </TabsList>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => {
-              if (incomeStatement) {
-                exportIncomeStatement(incomeStatement, periodStart, periodEnd);
-                toast({ title: "PDF Exported", description: "Income Statement downloaded successfully" });
-              }
-            }}
-            disabled={isLoading || !incomeStatement}
-          >
-            <Download className="h-4 w-4" />
-            Export Income Statement
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => {
-              if (balanceSheet) {
-                exportBalanceSheet(balanceSheet, periodEnd);
-                toast({ title: "PDF Exported", description: "Balance Sheet downloaded successfully" });
-              }
-            }}
-            disabled={isLoading || !balanceSheet}
-          >
-            <Download className="h-4 w-4" />
-            Export Balance Sheet
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2" disabled={isLoading}>
+                <Download className="h-4 w-4" />
+                Export
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Export Reports</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  if (incomeStatement) {
+                    exportIncomeStatement(incomeStatement, periodStart, periodEnd);
+                    toast({ title: "PDF Exported", description: "Income Statement downloaded" });
+                  }
+                }}
+                disabled={!incomeStatement}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Income Statement (PDF)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (balanceSheet) {
+                    exportBalanceSheet(balanceSheet, periodEnd);
+                    toast({ title: "PDF Exported", description: "Balance Sheet downloaded" });
+                  }
+                }}
+                disabled={!balanceSheet}
+              >
+                <Scale className="h-4 w-4 mr-2" />
+                Balance Sheet (PDF)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Income Statement */}
