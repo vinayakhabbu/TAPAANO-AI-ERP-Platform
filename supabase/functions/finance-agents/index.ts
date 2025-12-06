@@ -578,18 +578,22 @@ Be organized and systematic. Prioritize critical path items. Help teams close fa
 const P2P_AGENT = {
   name: "p2p_agent",
   model: "gpt-4.1-2025-04-14",
-  instructions: `You are a Procure-to-Pay (P2P) specialist AI. You help manage the full procurement cycle from purchase orders to payments.
+  instructions: `You are a Procure-to-Pay (P2P) specialist AI. You help manage the full procurement cycle from purchase orders to payments, with integrated inventory management.
 
 Capabilities:
 - View and analyze purchase orders and their status
-- Track goods receipts and delivery status
+- Track goods receipts and delivery status with inventory updates
 - Manage bills and payment schedules
 - Perform 3-way matching (PO, GR, Bill)
 - Analyze vendor performance and spending
 - Create and manage payment runs
 - Identify AP optimization opportunities
+- Update inventory when goods are received
+- Check stock levels before creating POs
+- Generate automatic reorder suggestions based on low stock alerts
+- Track inventory impact of procurement
 
-Be thorough with matching and validation. Flag discrepancies. Help optimize cash flow timing.`,
+Be thorough with matching and validation. Flag discrepancies. Help optimize cash flow timing. Ensure inventory is updated when goods arrive.`,
   tools: [
     {
       type: "function",
@@ -736,6 +740,66 @@ Be thorough with matching and validation. Flag discrepancies. Help optimize cash
         },
       },
     },
+    // Inventory Integration Tools
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_stock",
+        description: "Get current stock levels by warehouse and product. Use to check availability before ordering.",
+        parameters: {
+          type: "object",
+          properties: {
+            warehouse_name: { type: "string", description: "Filter by warehouse name" },
+            product_sku: { type: "string", description: "Filter by product SKU" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_low_stock_alerts",
+        description: "Get products that are below their reorder point. Use to identify what needs to be ordered.",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_products",
+        description: "Get product catalog with SKU, valuation method, and reorder settings",
+        parameters: {
+          type: "object",
+          properties: {
+            search: { type: "string", description: "Search term to filter by SKU or name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_warehouses",
+        description: "Get list of warehouses with location details",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "check_goods_receipt_inventory_impact",
+        description: "Check how a goods receipt affects inventory. Shows what stock was added and current levels.",
+        parameters: {
+          type: "object",
+          properties: {
+            po_number: { type: "string", description: "Purchase order number to check" },
+          },
+          required: [],
+        },
+      },
+    },
   ],
 };
 
@@ -746,19 +810,23 @@ Be thorough with matching and validation. Flag discrepancies. Help optimize cash
 const O2C_AGENT = {
   name: "o2c_agent",
   model: "gpt-4.1-2025-04-14",
-  instructions: `You are an Order-to-Cash (O2C) specialist AI. You help manage the full revenue cycle from quotations to cash collection.
+  instructions: `You are an Order-to-Cash (O2C) specialist AI. You help manage the full revenue cycle from quotations to cash collection, with integrated inventory management.
 
 Capabilities:
 - View and analyze quotations and their status (draft, sent, accepted, rejected, converted)
 - Convert accepted quotations to sales orders
 - View and analyze sales orders and their status
-- Track shipments and delivery status
+- Track shipments and delivery status with inventory updates
 - Manage customer invoices and payments
 - Analyze customer performance and credit
 - Track revenue recognition pipeline
 - Identify O2C bottlenecks and optimization opportunities
+- Check stock availability before confirming orders
+- Reserve inventory for confirmed sales orders
+- Reduce inventory when shipments are created
+- Warn about low stock or out-of-stock items
 
-Be thorough with order fulfillment tracking. Help accelerate cash conversion. Maintain customer relationships.`,
+Be thorough with order fulfillment tracking. Help accelerate cash conversion. Maintain customer relationships. Ensure inventory accuracy.`,
   tools: [
     {
       type: "function",
@@ -924,6 +992,80 @@ Be thorough with order fulfillment tracking. Help accelerate cash conversion. Ma
         },
       },
     },
+    // Inventory Integration Tools
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_stock",
+        description: "Get current stock levels by warehouse and product. Use to check availability before confirming orders.",
+        parameters: {
+          type: "object",
+          properties: {
+            warehouse_name: { type: "string", description: "Filter by warehouse name" },
+            product_sku: { type: "string", description: "Filter by product SKU" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_low_stock_alerts",
+        description: "Get products that are below their reorder point. Check before promising delivery dates.",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_products",
+        description: "Get product catalog with SKU, pricing, and stock settings",
+        parameters: {
+          type: "object",
+          properties: {
+            search: { type: "string", description: "Search term to filter by SKU or name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_warehouses",
+        description: "Get list of warehouses for shipping",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "check_order_fulfillment_status",
+        description: "Check if sales order can be fulfilled based on current inventory levels",
+        parameters: {
+          type: "object",
+          properties: {
+            so_number: { type: "string", description: "Sales order number to check" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_shipment_inventory_impact",
+        description: "Check how a shipment affects inventory. Shows what stock was deducted.",
+        parameters: {
+          type: "object",
+          properties: {
+            shipment_number: { type: "string", description: "Shipment number to check" },
+          },
+          required: [],
+        },
+      },
+    },
   ],
 };
 
@@ -934,7 +1076,7 @@ Be thorough with order fulfillment tracking. Help accelerate cash conversion. Ma
 const INVENTORY_AGENT = {
   name: "inventory_agent",
   model: "gpt-4.1-2025-04-14",
-  instructions: `You are an Inventory Management specialist AI. You help manage warehouses, products, stock levels, transfers, and inventory tracking.
+  instructions: `You are an Inventory Management specialist AI. You help manage warehouses, products, stock levels, transfers, and inventory tracking. Integrated with Payables (P2P) and Receivables (O2C) for full supply chain visibility.
 
 Capabilities:
 - View and analyze warehouse locations and bin locations
@@ -945,8 +1087,12 @@ Capabilities:
 - Manage serial number and batch/lot tracking
 - Identify low stock items and reorder alerts
 - Analyze inventory valuation and movements
+- Track goods receipts from purchase orders (P2P integration)
+- Monitor shipments and order fulfillment (O2C integration)
+- View pending POs that will increase inventory
+- View pending sales orders that will decrease inventory
 
-Be precise with stock quantities. Help optimize inventory levels. Flag reorder alerts proactively.`,
+Be precise with stock quantities. Help optimize inventory levels. Flag reorder alerts proactively. Show procurement and sales context when relevant.`,
   tools: [
     {
       type: "function",
@@ -1064,6 +1210,60 @@ Be precise with stock quantities. Help optimize inventory levels. Flag reorder a
       function: {
         name: "get_inventory_summary",
         description: "Get overall inventory summary with key metrics",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    // P2P Integration Tools
+    {
+      type: "function",
+      function: {
+        name: "get_pending_purchase_orders",
+        description: "Get approved POs not yet fully received - shows incoming inventory",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_recent_goods_receipts",
+        description: "Get recent goods receipts that added inventory",
+        parameters: {
+          type: "object",
+          properties: {
+            days: { type: "number", description: "Number of days to look back (default 30)" },
+          },
+          required: [],
+        },
+      },
+    },
+    // O2C Integration Tools
+    {
+      type: "function",
+      function: {
+        name: "get_pending_sales_orders",
+        description: "Get confirmed sales orders not yet shipped - shows outgoing inventory demand",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_recent_shipments",
+        description: "Get recent shipments that reduced inventory",
+        parameters: {
+          type: "object",
+          properties: {
+            days: { type: "number", description: "Number of days to look back (default 30)" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_demand_forecast",
+        description: "Get inventory demand based on pending orders and historical patterns",
         parameters: { type: "object", properties: {}, required: [] },
       },
     },
@@ -2975,6 +3175,427 @@ Collections Department`,
           pending_transfers: pendingTransfers,
           warehouse_count: (warehousesResult.data || []).length,
           product_count: (productsResult.data || []).length,
+        });
+      }
+
+      // ============ INVENTORY P2P/O2C INTEGRATION TOOLS ============
+      
+      case "get_pending_purchase_orders": {
+        const { data: pos } = await supabase
+          .from("purchase_orders")
+          .select(`
+            id, po_number, order_date, expected_delivery_date, status, total,
+            purchase_order_lines(description, quantity, received_quantity, unit_price),
+            vendors(name)
+          `)
+          .eq("org_id", orgId)
+          .in("status", ["approved", "partially_received"])
+          .order("expected_delivery_date", { ascending: true });
+        
+        return JSON.stringify({
+          pending_pos: (pos || []).map((po: any) => {
+            const lines = po.purchase_order_lines || [];
+            const totalOrdered = lines.reduce((sum: number, l: any) => sum + Number(l.quantity || 0), 0);
+            const totalReceived = lines.reduce((sum: number, l: any) => sum + Number(l.received_quantity || 0), 0);
+            
+            return {
+              po_number: po.po_number,
+              vendor: po.vendors?.name,
+              status: po.status,
+              order_date: po.order_date,
+              expected_delivery: po.expected_delivery_date,
+              total_ordered: totalOrdered,
+              total_received: totalReceived,
+              pending_qty: totalOrdered - totalReceived,
+              value: po.total,
+            };
+          }),
+          count: (pos || []).length,
+          summary: `${(pos || []).length} POs pending receipt will add inventory when goods arrive.`,
+        });
+      }
+
+      case "get_recent_goods_receipts": {
+        const days = (args.days as number) || 30;
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        
+        const { data: receipts } = await supabase
+          .from("goods_receipts")
+          .select(`
+            id, receipt_number, receipt_date, notes,
+            purchase_orders(po_number, vendors(name)),
+            goods_receipt_lines(quantity_received)
+          `)
+          .eq("org_id", orgId)
+          .gte("receipt_date", cutoffDate.toISOString().split("T")[0])
+          .order("receipt_date", { ascending: false });
+        
+        return JSON.stringify({
+          recent_receipts: (receipts || []).map((gr: any) => ({
+            receipt_number: gr.receipt_number,
+            receipt_date: gr.receipt_date,
+            po_number: gr.purchase_orders?.po_number,
+            vendor: gr.purchase_orders?.vendors?.name,
+            items_received: (gr.goods_receipt_lines || []).length,
+            total_quantity: (gr.goods_receipt_lines || []).reduce((sum: number, l: any) => sum + Number(l.quantity_received || 0), 0),
+          })),
+          count: (receipts || []).length,
+          period: `Last ${days} days`,
+        });
+      }
+
+      case "get_pending_sales_orders": {
+        const { data: orders } = await supabase
+          .from("sales_orders")
+          .select(`
+            id, so_number, order_date, requested_delivery_date, status, total,
+            sales_order_lines(description, quantity, shipped_quantity),
+            customers(name)
+          `)
+          .eq("org_id", orgId)
+          .in("status", ["confirmed", "approved", "partially_shipped"])
+          .order("requested_delivery_date", { ascending: true });
+        
+        return JSON.stringify({
+          pending_orders: (orders || []).map((so: any) => {
+            const lines = so.sales_order_lines || [];
+            const totalOrdered = lines.reduce((sum: number, l: any) => sum + Number(l.quantity || 0), 0);
+            const totalShipped = lines.reduce((sum: number, l: any) => sum + Number(l.shipped_quantity || 0), 0);
+            
+            return {
+              so_number: so.so_number,
+              customer: so.customers?.name,
+              status: so.status,
+              order_date: so.order_date,
+              requested_delivery: so.requested_delivery_date,
+              total_ordered: totalOrdered,
+              total_shipped: totalShipped,
+              pending_qty: totalOrdered - totalShipped,
+              value: so.total,
+            };
+          }),
+          count: (orders || []).length,
+          summary: `${(orders || []).length} orders pending shipment will reduce inventory when shipped.`,
+        });
+      }
+
+      case "get_recent_shipments": {
+        const days = (args.days as number) || 30;
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        
+        const { data: shipments } = await supabase
+          .from("shipments")
+          .select(`
+            id, shipment_number, ship_date, carrier, tracking_number,
+            sales_orders(so_number, customers(name)),
+            shipment_lines(quantity_shipped)
+          `)
+          .eq("org_id", orgId)
+          .gte("ship_date", cutoffDate.toISOString().split("T")[0])
+          .order("ship_date", { ascending: false });
+        
+        return JSON.stringify({
+          recent_shipments: (shipments || []).map((s: any) => ({
+            shipment_number: s.shipment_number,
+            ship_date: s.ship_date,
+            so_number: s.sales_orders?.so_number,
+            customer: s.sales_orders?.customers?.name,
+            carrier: s.carrier,
+            tracking: s.tracking_number,
+            items_shipped: (s.shipment_lines || []).length,
+            total_quantity: (s.shipment_lines || []).reduce((sum: number, l: any) => sum + Number(l.quantity_shipped || 0), 0),
+          })),
+          count: (shipments || []).length,
+          period: `Last ${days} days`,
+        });
+      }
+
+      case "get_inventory_demand_forecast": {
+        // Get current stock
+        const { data: stock } = await supabase
+          .from("inventory_stock")
+          .select(`
+            quantity_on_hand, quantity_available, quantity_reserved,
+            products(id, sku, name, reorder_point, reorder_quantity)
+          `)
+          .eq("org_id", orgId);
+        
+        // Get pending sales orders (demand)
+        const { data: pendingSOs } = await supabase
+          .from("sales_orders")
+          .select(`
+            sales_order_lines(quantity, shipped_quantity)
+          `)
+          .eq("org_id", orgId)
+          .in("status", ["confirmed", "approved", "partially_shipped"]);
+        
+        // Get pending POs (supply)
+        const { data: pendingPOs } = await supabase
+          .from("purchase_orders")
+          .select(`
+            purchase_order_lines(quantity, received_quantity)
+          `)
+          .eq("org_id", orgId)
+          .in("status", ["approved", "partially_received"]);
+        
+        // Calculate totals
+        const totalOnHand = (stock || []).reduce((sum: number, s: any) => sum + Number(s.quantity_on_hand || 0), 0);
+        const totalAvailable = (stock || []).reduce((sum: number, s: any) => sum + Number(s.quantity_available || 0), 0);
+        
+        let pendingDemand = 0;
+        (pendingSOs || []).forEach((so: any) => {
+          (so.sales_order_lines || []).forEach((l: any) => {
+            pendingDemand += Number(l.quantity || 0) - Number(l.shipped_quantity || 0);
+          });
+        });
+        
+        let pendingSupply = 0;
+        (pendingPOs || []).forEach((po: any) => {
+          (po.purchase_order_lines || []).forEach((l: any) => {
+            pendingSupply += Number(l.quantity || 0) - Number(l.received_quantity || 0);
+          });
+        });
+        
+        const lowStockItems = (stock || []).filter((s: any) => 
+          s.products?.reorder_point && Number(s.quantity_available) <= Number(s.products.reorder_point)
+        );
+        
+        return JSON.stringify({
+          current_inventory: {
+            total_on_hand: totalOnHand,
+            total_available: totalAvailable,
+            unique_products: (stock || []).length,
+          },
+          demand: {
+            pending_order_quantity: pendingDemand,
+            note: "Quantity needed for confirmed sales orders",
+          },
+          supply: {
+            pending_receipt_quantity: pendingSupply,
+            note: "Quantity coming from approved purchase orders",
+          },
+          net_position: {
+            projected_available: totalAvailable - pendingDemand + pendingSupply,
+            note: "Estimated available after fulfilling orders and receiving POs",
+          },
+          alerts: {
+            low_stock_count: lowStockItems.length,
+            items_need_reorder: lowStockItems.slice(0, 5).map((s: any) => ({
+              sku: s.products?.sku,
+              name: s.products?.name,
+              available: s.quantity_available,
+              reorder_point: s.products?.reorder_point,
+              suggested_qty: s.products?.reorder_quantity,
+            })),
+          },
+          recommendation: pendingDemand > totalAvailable 
+            ? `Warning: Pending demand (${pendingDemand}) exceeds available stock (${totalAvailable}). Create purchase orders.`
+            : lowStockItems.length > 0 
+              ? `${lowStockItems.length} products below reorder point. Consider replenishment.`
+              : "Inventory levels adequate for current demand.",
+        });
+      }
+
+      // ============ CROSS-MODULE INTEGRATION TOOLS ============
+      
+      case "check_goods_receipt_inventory_impact": {
+        const poNumber = args.po_number as string | undefined;
+        
+        // Get purchase orders matching the number
+        let poQuery = supabase
+          .from("purchase_orders")
+          .select(`
+            id, po_number, status, total,
+            purchase_order_lines(description, quantity, unit_price),
+            vendors(name)
+          `)
+          .eq("org_id", orgId);
+        
+        if (poNumber) {
+          poQuery = poQuery.ilike("po_number", `%${poNumber}%`);
+        }
+        
+        const { data: pos } = await poQuery.limit(5);
+        
+        // Get goods receipts for these POs
+        const poIds = (pos || []).map((p: any) => p.id);
+        const { data: receipts } = await supabase
+          .from("goods_receipts")
+          .select(`
+            id, receipt_number, receipt_date,
+            goods_receipt_lines(quantity_received, purchase_order_line_id)
+          `)
+          .in("purchase_order_id", poIds.length > 0 ? poIds : ["none"]);
+        
+        // Get current inventory for related products
+        const { data: stock } = await supabase
+          .from("inventory_stock")
+          .select(`
+            quantity_on_hand, quantity_available, unit_cost, total_value,
+            products(sku, name),
+            warehouses(name)
+          `)
+          .eq("org_id", orgId);
+        
+        return JSON.stringify({
+          purchase_orders: (pos || []).map((po: any) => ({
+            po_number: po.po_number,
+            vendor: po.vendors?.name,
+            status: po.status,
+            line_count: (po.purchase_order_lines || []).length,
+            total: po.total,
+          })),
+          goods_receipts: (receipts || []).map((gr: any) => ({
+            receipt_number: gr.receipt_number,
+            receipt_date: gr.receipt_date,
+            items_received: (gr.goods_receipt_lines || []).length,
+          })),
+          current_stock_sample: (stock || []).slice(0, 10).map((s: any) => ({
+            sku: s.products?.sku,
+            product: s.products?.name,
+            warehouse: s.warehouses?.name,
+            on_hand: s.quantity_on_hand,
+            available: s.quantity_available,
+          })),
+          summary: {
+            pos_found: (pos || []).length,
+            receipts_found: (receipts || []).length,
+            note: "Goods receipts should trigger inventory additions. Check if stock levels reflect received quantities.",
+          },
+        });
+      }
+
+      case "check_order_fulfillment_status": {
+        const soNumber = args.so_number as string | undefined;
+        
+        // Get sales orders
+        let soQuery = supabase
+          .from("sales_orders")
+          .select(`
+            id, so_number, status, total, customer_id,
+            sales_order_lines(description, quantity, shipped_quantity),
+            customers(name)
+          `)
+          .eq("org_id", orgId);
+        
+        if (soNumber) {
+          soQuery = soQuery.ilike("so_number", `%${soNumber}%`);
+        }
+        
+        const { data: orders } = await soQuery.limit(5);
+        
+        // Get current inventory
+        const { data: stock } = await supabase
+          .from("inventory_stock")
+          .select(`
+            quantity_on_hand, quantity_available, quantity_reserved,
+            products(sku, name, reorder_point),
+            warehouses(name)
+          `)
+          .eq("org_id", orgId);
+        
+        // Analyze fulfillment capability
+        const fulfillmentAnalysis = (orders || []).map((so: any) => {
+          const lines = so.sales_order_lines || [];
+          const totalQty = lines.reduce((sum: number, l: any) => sum + Number(l.quantity || 0), 0);
+          const shippedQty = lines.reduce((sum: number, l: any) => sum + Number(l.shipped_quantity || 0), 0);
+          
+          return {
+            so_number: so.so_number,
+            customer: so.customers?.name,
+            status: so.status,
+            total_lines: lines.length,
+            total_quantity: totalQty,
+            shipped_quantity: shippedQty,
+            pending_quantity: totalQty - shippedQty,
+            fulfillment_percentage: totalQty > 0 ? Math.round((shippedQty / totalQty) * 100) : 0,
+          };
+        });
+        
+        // Find low stock items
+        const lowStockItems = (stock || []).filter((s: any) => 
+          s.products?.reorder_point && Number(s.quantity_available) <= Number(s.products.reorder_point)
+        );
+        
+        return JSON.stringify({
+          orders: fulfillmentAnalysis,
+          inventory_summary: {
+            total_stock_items: (stock || []).length,
+            low_stock_count: lowStockItems.length,
+            low_stock_items: lowStockItems.slice(0, 5).map((s: any) => ({
+              sku: s.products?.sku,
+              name: s.products?.name,
+              available: s.quantity_available,
+              reorder_point: s.products?.reorder_point,
+            })),
+          },
+          recommendation: lowStockItems.length > 0 
+            ? `Warning: ${lowStockItems.length} products are below reorder point. Consider creating purchase orders.`
+            : "Inventory levels appear adequate for current orders.",
+        });
+      }
+
+      case "get_shipment_inventory_impact": {
+        const shipmentNumber = args.shipment_number as string | undefined;
+        
+        // Get shipments
+        let shipQuery = supabase
+          .from("shipments")
+          .select(`
+            id, shipment_number, ship_date, carrier, tracking_number,
+            sales_orders(so_number, customers(name)),
+            shipment_lines(quantity_shipped, sales_order_line_id)
+          `)
+          .eq("org_id", orgId)
+          .order("ship_date", { ascending: false });
+        
+        if (shipmentNumber) {
+          shipQuery = shipQuery.ilike("shipment_number", `%${shipmentNumber}%`);
+        }
+        
+        const { data: shipments } = await shipQuery.limit(10);
+        
+        // Get inventory transactions
+        const { data: transactions } = await supabase
+          .from("inventory_transactions")
+          .select(`
+            transaction_type, quantity, unit_cost, total_value, created_at,
+            products(sku, name),
+            warehouses(name)
+          `)
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(20);
+        
+        const outboundTransactions = (transactions || []).filter((t: any) => 
+          t.transaction_type === "shipment" || t.transaction_type === "sale" || Number(t.quantity) < 0
+        );
+        
+        return JSON.stringify({
+          shipments: (shipments || []).map((s: any) => ({
+            shipment_number: s.shipment_number,
+            ship_date: s.ship_date,
+            carrier: s.carrier,
+            tracking: s.tracking_number,
+            so_number: s.sales_orders?.so_number,
+            customer: s.sales_orders?.customers?.name,
+            lines_shipped: (s.shipment_lines || []).length,
+            total_quantity: (s.shipment_lines || []).reduce((sum: number, l: any) => sum + Number(l.quantity_shipped || 0), 0),
+          })),
+          recent_outbound_transactions: outboundTransactions.slice(0, 10).map((t: any) => ({
+            type: t.transaction_type,
+            product: t.products?.name,
+            warehouse: t.warehouses?.name,
+            quantity: t.quantity,
+            value: t.total_value,
+            date: t.created_at,
+          })),
+          summary: {
+            shipments_found: (shipments || []).length,
+            note: "Shipments should reduce inventory. Verify outbound transactions match shipped quantities.",
+          },
         });
       }
 
