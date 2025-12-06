@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,11 +25,15 @@ import { addDays, format } from "date-fns";
 
 interface InvoiceFormProps {
   trigger?: React.ReactNode;
+  defaultSalesOrderId?: string;
+  defaultShipmentId?: string;
 }
 
-export function InvoiceForm({ trigger }: InvoiceFormProps) {
+export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }: InvoiceFormProps) {
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState("");
+  const [salesOrderId, setSalesOrderId] = useState(defaultSalesOrderId || "");
+  const [shipmentId, setShipmentId] = useState(defaultShipmentId || "");
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 30), "yyyy-MM-dd"));
   const [subtotal, setSubtotal] = useState("");
   const [taxRate, setTaxRate] = useState("10");
@@ -53,6 +57,58 @@ export function InvoiceForm({ trigger }: InvoiceFormProps) {
       return data || [];
     },
   });
+
+  // Fetch shipped sales orders that don't have an invoice yet
+  const { data: shippedOrders = [] } = useQuery({
+    queryKey: ["shipped-sales-orders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales_orders")
+        .select(`
+          id, 
+          so_number, 
+          customer_id,
+          total,
+          customers (name)
+        `)
+        .eq("status", "shipped");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch shipments for the selected sales order
+  const { data: orderShipments = [] } = useQuery({
+    queryKey: ["shipments-for-order", salesOrderId],
+    queryFn: async () => {
+      if (!salesOrderId) return [];
+      const { data, error } = await supabase
+        .from("shipments")
+        .select("id, shipment_number, ship_date")
+        .eq("sales_order_id", salesOrderId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!salesOrderId,
+  });
+
+  // Auto-fill customer and total when SO is selected
+  useEffect(() => {
+    if (salesOrderId) {
+      const selectedOrder = shippedOrders.find((o) => o.id === salesOrderId);
+      if (selectedOrder) {
+        setCustomerId(selectedOrder.customer_id);
+        setSubtotal(selectedOrder.total.toString());
+      }
+    }
+  }, [salesOrderId, shippedOrders]);
+
+  // Auto-select first shipment when order changes
+  useEffect(() => {
+    if (orderShipments.length > 0 && !shipmentId) {
+      setShipmentId(orderShipments[0].id);
+    }
+  }, [orderShipments, shipmentId]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -79,12 +135,24 @@ export function InvoiceForm({ trigger }: InvoiceFormProps) {
         total,
         notes: notes || null,
         status: "draft",
+        sales_order_id: salesOrderId || null,
+        shipment_id: shipmentId || null,
       });
 
       if (error) throw error;
+
+      // Update sales order status to invoiced if linked
+      if (salesOrderId) {
+        await supabase
+          .from("sales_orders")
+          .update({ status: "invoiced" })
+          .eq("id", salesOrderId);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices-with-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["shipped-sales-orders"] });
       toast.success("Invoice created successfully");
       setOpen(false);
       resetForm();
@@ -96,6 +164,8 @@ export function InvoiceForm({ trigger }: InvoiceFormProps) {
 
   const resetForm = () => {
     setCustomerId("");
+    setSalesOrderId(defaultSalesOrderId || "");
+    setShipmentId(defaultShipmentId || "");
     setDueDate(format(addDays(new Date(), 30), "yyyy-MM-dd"));
     setSubtotal("");
     setTaxRate("10");
@@ -127,9 +197,50 @@ export function InvoiceForm({ trigger }: InvoiceFormProps) {
           }}
           className="space-y-4"
         >
+          {/* Link to Sales Order (optional) */}
+          <div className="space-y-2">
+            <Label>From Sales Order (optional)</Label>
+            <Select value={salesOrderId} onValueChange={setSalesOrderId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select shipped order to invoice..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">— Manual Invoice —</SelectItem>
+                {shippedOrders.map((so) => (
+                  <SelectItem key={so.id} value={so.id}>
+                    {so.so_number} - {so.customers?.name} (${so.total.toLocaleString()})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Shipment selection when SO is selected */}
+          {salesOrderId && orderShipments.length > 0 && (
+            <div className="space-y-2">
+              <Label>Shipment</Label>
+              <Select value={shipmentId} onValueChange={setShipmentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select shipment..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {orderShipments.map((sh) => (
+                    <SelectItem key={sh.id} value={sh.id}>
+                      {sh.shipment_number} - {format(new Date(sh.ship_date), "MMM d, yyyy")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Customer *</Label>
-            <Select value={customerId} onValueChange={setCustomerId} required>
+            <Select 
+              value={customerId} 
+              onValueChange={setCustomerId} 
+              disabled={!!salesOrderId}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select customer" />
               </SelectTrigger>
@@ -160,6 +271,7 @@ export function InvoiceForm({ trigger }: InvoiceFormProps) {
                 placeholder="0.00"
                 value={subtotal}
                 onChange={(e) => setSubtotal(e.target.value)}
+                disabled={!!salesOrderId}
                 required
               />
             </div>
