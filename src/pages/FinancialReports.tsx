@@ -29,6 +29,8 @@ import { useState } from "react";
 import { useFinancialReports } from "@/hooks/useFinancialReports";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { exportIncomeStatement, exportBalanceSheet } from "@/lib/pdfExport";
+import { toast } from "@/hooks/use-toast";
 
 const FinancialReports = () => {
   const [periodStart, setPeriodStart] = useState(
@@ -223,9 +225,33 @@ const FinancialReports = () => {
               Cash Flow
             </TabsTrigger>
           </TabsList>
-          <Button variant="outline" className="gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              if (incomeStatement) {
+                exportIncomeStatement(incomeStatement, periodStart, periodEnd);
+                toast({ title: "PDF Exported", description: "Income Statement downloaded successfully" });
+              }
+            }}
+            disabled={isLoading || !incomeStatement}
+          >
             <Download className="h-4 w-4" />
-            Export PDF
+            Export Income Statement
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              if (balanceSheet) {
+                exportBalanceSheet(balanceSheet, periodEnd);
+                toast({ title: "PDF Exported", description: "Balance Sheet downloaded successfully" });
+              }
+            }}
+            disabled={isLoading || !balanceSheet}
+          >
+            <Download className="h-4 w-4" />
+            Export Balance Sheet
           </Button>
         </div>
 
