@@ -511,11 +511,11 @@ supabase/
 | Three-Way Matching | ✅ | PO ↔ GR ↔ Bill matching |
 | Payment Runs | ✅ | Batch payment processing |
 | Document Linking | ✅ | Link related documents |
+| **Purchase Requisitions** | ✅ | Internal purchase requests with approval workflow |
 
 #### Procurement (Planned)
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Purchase Requisitions | 🔲 | Internal purchase requests |
 | Vendor Evaluation | 🔲 | Rate and score vendors |
 | Blanket Purchase Orders | 🔲 | Long-term purchase agreements |
 | Multi-currency Purchasing | 🔲 | Buy in foreign currencies |
