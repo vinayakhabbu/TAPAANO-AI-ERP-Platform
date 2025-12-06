@@ -148,9 +148,11 @@ export const useProductionOrders = () => {
         .from("production_orders")
         .select(`
           *,
-          product:products(id, name, sku),
+          product:products(id, name, sku, planning_strategy),
           bom:bom_headers(id, bom_number, version),
           warehouse:warehouses(id, name, code),
+          sales_order:sales_orders(id, order_number),
+          sales_order_item:sales_order_lines(id, product_id, quantity),
           components:production_order_components(
             id, required_quantity, issued_quantity, is_backflushed,
             product:products(id, name, sku)
@@ -184,7 +186,26 @@ export const useCreateProductionOrder = () => {
       planned_start_date?: string;
       planned_end_date?: string;
       notes?: string;
+      sales_order_id?: string;
+      sales_order_item_id?: string;
     }) => {
+      // Get product to check planning strategy
+      const { data: product, error: prodError } = await supabase
+        .from("products")
+        .select("planning_strategy")
+        .eq("id", order.product_id)
+        .single();
+      if (prodError) throw prodError;
+
+      // Validate MTO requires sales order ref
+      if (product.planning_strategy === 'mto' && !order.sales_order_id) {
+        throw new Error("MTO products require a sales order reference");
+      }
+      // Validate MTS should not have sales order ref
+      if (product.planning_strategy === 'mts' && order.sales_order_id) {
+        throw new Error("MTS products should not be linked to a sales order");
+      }
+
       // Create production order
       const { data: prodOrder, error: orderError } = await supabase
         .from("production_orders")
@@ -245,6 +266,65 @@ export const useCreateProductionOrder = () => {
     },
     onError: (error) => {
       toast({ title: "Error creating production order", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Post Goods Receipt from Production (MTS/MTO aware)
+export const usePostProductionGoodsReceipt = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ 
+      org_id, 
+      production_order_id, 
+      quantity, 
+      warehouse_id 
+    }: { 
+      org_id: string;
+      production_order_id: string;
+      quantity: number;
+      warehouse_id?: string;
+    }) => {
+      const { data, error } = await supabase.rpc('post_production_goods_receipt', {
+        p_org_id: org_id,
+        p_production_order_id: production_order_id,
+        p_quantity: quantity,
+        p_warehouse_id: warehouse_id || null,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["production-goods-receipts"] });
+      toast({ title: "Goods receipt posted successfully" });
+    },
+    onError: (error) => {
+      toast({ title: "Error posting goods receipt", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
+// Production Goods Receipts
+export const useProductionGoodsReceipts = () => {
+  return useQuery({
+    queryKey: ["production-goods-receipts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("production_goods_receipts")
+        .select(`
+          *,
+          production_order:production_orders(id, order_number),
+          product:products(id, name, sku),
+          warehouse:warehouses(id, name),
+          sales_order:sales_orders(id, order_number)
+        `)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
     },
   });
 };
