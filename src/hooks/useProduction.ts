@@ -151,8 +151,7 @@ export const useProductionOrders = () => {
           product:products(id, name, sku, planning_strategy),
           bom:bom_headers(id, bom_number, version),
           warehouse:warehouses(id, name, code),
-          sales_order:sales_orders(id, order_number),
-          sales_order_item:sales_order_lines(id, product_id, quantity),
+          sales_order:sales_orders(id, so_number),
           components:production_order_components(
             id, required_quantity, issued_quantity, is_backflushed,
             product:products(id, name, sku)

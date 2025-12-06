@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Play, CheckCircle, Factory, Package, Cog, BarChart3, Calculator, Calendar } from "lucide-react";
+import { Plus, Play, CheckCircle, Factory, Package, Cog, BarChart3, Calculator, Calendar, PackageCheck } from "lucide-react";
 import { WorkCenterForm } from "@/components/forms/WorkCenterForm";
 import { BOMForm } from "@/components/forms/BOMForm";
 import { ProductionOrderForm } from "@/components/forms/ProductionOrderForm";
+import { GoodsReceiptPostingForm } from "@/components/forms/GoodsReceiptPostingForm";
 import {
   useWorkCenters,
   useBOMs,
@@ -20,6 +21,7 @@ import {
   useGenerateCapacitySchedule,
   useUpdateProductionOrderStatus,
   useUpdateOperationStatus,
+  useProductionGoodsReceipts,
 } from "@/hooks/useProduction";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
@@ -29,6 +31,7 @@ const statusColors: Record<string, string> = {
   planned: "outline",
   released: "default",
   in_progress: "default",
+  partially_delivered: "default",
   completed: "default",
   cancelled: "destructive",
   pending: "secondary",
@@ -42,6 +45,7 @@ export default function Production() {
   const { data: orders, isLoading: ordersLoading } = useProductionOrders();
   const { data: mrpRuns, isLoading: mrpLoading } = useMRPRuns();
   const { data: capacitySchedules } = useCapacitySchedules();
+  const { data: goodsReceipts, isLoading: grLoading } = useProductionGoodsReceipts();
   
   const runMRP = useRunMRP();
   const generateCapacity = useGenerateCapacitySchedule();
@@ -51,6 +55,8 @@ export default function Production() {
   const [wcDialogOpen, setWcDialogOpen] = useState(false);
   const [bomDialogOpen, setBomDialogOpen] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [grDialogOpen, setGrDialogOpen] = useState(false);
+  const [selectedOrderForGR, setSelectedOrderForGR] = useState<typeof orders extends (infer T)[] | undefined ? T : never | null>(null);
 
   const handleRunMRP = async () => {
     if (!profile?.org_id) return;
@@ -91,9 +97,12 @@ export default function Production() {
         </div>
 
         <Tabs defaultValue="orders" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="orders" className="flex items-center gap-2">
               <Factory className="h-4 w-4" /> Orders
+            </TabsTrigger>
+            <TabsTrigger value="receipts" className="flex items-center gap-2">
+              <PackageCheck className="h-4 w-4" /> Receipts
             </TabsTrigger>
             <TabsTrigger value="bom" className="flex items-center gap-2">
               <Package className="h-4 w-4" /> BOM
@@ -173,15 +182,74 @@ export default function Production() {
                                   <Play className="h-3 w-3 mr-1" /> Start
                                 </Button>
                               )}
-                              {order.status === 'in_progress' && (
-                                <Button size="sm" variant="outline" onClick={() => handleOrderAction(order.id, 'complete')}>
-                                  <CheckCircle className="h-3 w-3 mr-1" /> Complete
+                              {(order.status === 'in_progress' || order.status === 'released' || order.status === 'partially_delivered') && 
+                               order.confirmed_quantity < order.planned_quantity && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedOrderForGR(order);
+                                    setGrDialogOpen(true);
+                                  }}
+                                >
+                                  <PackageCheck className="h-3 w-3 mr-1" /> Post GR
                                 </Button>
                               )}
                             </div>
                           </TableCell>
                         </TableRow>
                       ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Goods Receipts */}
+          <TabsContent value="receipts">
+            <Card>
+              <CardHeader>
+                <CardTitle>Production Goods Receipts</CardTitle>
+                <CardDescription>Goods received from production orders</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {grLoading ? (
+                  <p className="text-muted-foreground">Loading...</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Receipt #</TableHead>
+                        <TableHead>Production Order</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Stock Type</TableHead>
+                        <TableHead>Posted</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {goodsReceipts?.map((gr) => (
+                        <TableRow key={gr.id}>
+                          <TableCell className="font-medium">{gr.receipt_number}</TableCell>
+                          <TableCell>{gr.production_order?.order_number}</TableCell>
+                          <TableCell>{gr.product?.name}</TableCell>
+                          <TableCell>{gr.quantity} {gr.uom}</TableCell>
+                          <TableCell>
+                            <Badge variant={gr.stock_type === 'sales_order_stock' ? "default" : "secondary"}>
+                              {gr.stock_type === 'sales_order_stock' ? 'SO Stock' : 'Unrestricted'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{format(new Date(gr.posting_date), "MMM d, yyyy HH:mm")}</TableCell>
+                        </TableRow>
+                      ))}
+                      {(!goodsReceipts || goodsReceipts.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground">
+                            No goods receipts yet
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 )}
@@ -479,6 +547,24 @@ export default function Production() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Goods Receipt Posting Dialog */}
+        <Dialog open={grDialogOpen} onOpenChange={setGrDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Post Goods Receipt</DialogTitle>
+            </DialogHeader>
+            {selectedOrderForGR && (
+              <GoodsReceiptPostingForm 
+                productionOrder={selectedOrderForGR}
+                onSuccess={() => {
+                  setGrDialogOpen(false);
+                  setSelectedOrderForGR(null);
+                }} 
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
