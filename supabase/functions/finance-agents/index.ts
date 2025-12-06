@@ -25,11 +25,11 @@ Available agents:
 2. collections_agent: Overdue invoices, dunning emails, collection strategies, customer payment follow-ups, payment reminders
 3. close_assistant_agent: Period close tasks, close checklists, reconciliation status, month-end procedures, close progress
 4. p2p_agent: Procure-to-Pay - Purchase orders, goods receipts, bills, vendor management, 3-way matching, payment runs
-5. o2c_agent: Order-to-Cash - Sales orders, shipments, invoices, customer management, revenue tracking
+5. o2c_agent: Order-to-Cash - Quotations, sales orders, shipments, invoices, customer management, revenue tracking, quote-to-cash
 
 Route based on intent:
 - Questions about purchasing, POs, vendors, goods receipts, bills to pay, payment runs → p2p_agent
-- Questions about sales orders, shipments, customer invoices, revenue, O2C cycle → o2c_agent
+- Questions about quotations, quotes, sales orders, shipments, customer invoices, revenue, O2C cycle → o2c_agent
 - Questions about overdue invoices, dunning emails, collection strategies → collections_agent
 - Questions about period close, month-end, reconciliation, close tasks → close_assistant_agent
 - Everything else (general metrics, cash, transactions, journal entries) → bookkeeper_agent
@@ -744,9 +744,11 @@ Be thorough with matching and validation. Flag discrepancies. Help optimize cash
 const O2C_AGENT = {
   name: "o2c_agent",
   model: "gpt-4.1-2025-04-14",
-  instructions: `You are an Order-to-Cash (O2C) specialist AI. You help manage the full revenue cycle from sales orders to cash collection.
+  instructions: `You are an Order-to-Cash (O2C) specialist AI. You help manage the full revenue cycle from quotations to cash collection.
 
 Capabilities:
+- View and analyze quotations and their status (draft, sent, accepted, rejected, converted)
+- Convert accepted quotations to sales orders
 - View and analyze sales orders and their status
 - Track shipments and delivery status
 - Manage customer invoices and payments
@@ -756,6 +758,43 @@ Capabilities:
 
 Be thorough with order fulfillment tracking. Help accelerate cash conversion. Maintain customer relationships.`,
   tools: [
+    {
+      type: "function",
+      function: {
+        name: "get_quotations",
+        description: "Get quotations/quotes with status and customer details",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "sent", "accepted", "rejected", "expired", "converted"], description: "Filter by quotation status" },
+            customer_name: { type: "string", description: "Filter by customer name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_quotation_summary",
+        description: "Get quotation pipeline summary with stats by status",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_quotations_expiring_soon",
+        description: "Get quotations that are expiring within the specified days",
+        parameters: {
+          type: "object",
+          properties: {
+            days: { type: "number", description: "Number of days to look ahead for expiring quotations (default 7)" },
+          },
+          required: [],
+        },
+      },
+    },
     {
       type: "function",
       function: {
@@ -2067,7 +2106,125 @@ Collections Department`,
         });
       }
 
-      // ============ O2C TOOLS ============
+      // ============ O2C TOOLS - QUOTATIONS ============
+      case "get_quotations": {
+        const { status, customer_name } = args as { status?: string; customer_name?: string };
+
+        let query = supabase
+          .from("quotations")
+          .select("*, customers(name)")
+          .eq("org_id", orgId)
+          .order("quote_date", { ascending: false })
+          .limit(50);
+
+        if (status) {
+          query = query.eq("status", status);
+        }
+
+        const { data: quotations } = await query;
+
+        let filtered = quotations || [];
+        if (customer_name) {
+          const searchLower = customer_name.toLowerCase();
+          filtered = filtered.filter((q: any) =>
+            q.customers?.name?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        return JSON.stringify({
+          quotations: filtered.map((q: any) => ({
+            quote_number: q.quote_number,
+            customer: q.customers?.name,
+            quote_date: q.quote_date,
+            valid_until: q.valid_until,
+            subtotal: q.subtotal,
+            tax: q.tax,
+            total: q.total,
+            status: q.status,
+            converted_to_so: q.converted_so_id ? true : false,
+          })),
+          count: filtered.length,
+          note: filtered.length === 0 ? "No quotations found." : undefined,
+        });
+      }
+
+      case "get_quotation_summary": {
+        const { data: quotations } = await supabase
+          .from("quotations")
+          .select("status, total")
+          .eq("org_id", orgId);
+
+        const stats = {
+          total: 0,
+          draft: { count: 0, value: 0 },
+          sent: { count: 0, value: 0 },
+          accepted: { count: 0, value: 0 },
+          rejected: { count: 0, value: 0 },
+          expired: { count: 0, value: 0 },
+          converted: { count: 0, value: 0 },
+        };
+
+        (quotations || []).forEach((q: any) => {
+          stats.total++;
+          const status = q.status as keyof typeof stats;
+          if (stats[status] && typeof stats[status] === 'object') {
+            (stats[status] as { count: number; value: number }).count++;
+            (stats[status] as { count: number; value: number }).value += Number(q.total) || 0;
+          }
+        });
+
+        const conversionRate = stats.sent.count > 0 
+          ? ((stats.accepted.count + stats.converted.count) / (stats.sent.count + stats.accepted.count + stats.rejected.count + stats.converted.count) * 100).toFixed(1)
+          : 0;
+
+        return JSON.stringify({
+          total_quotations: stats.total,
+          by_status: {
+            draft: stats.draft,
+            sent: stats.sent,
+            accepted: stats.accepted,
+            rejected: stats.rejected,
+            expired: stats.expired,
+            converted: stats.converted,
+          },
+          pipeline_value: stats.draft.value + stats.sent.value + stats.accepted.value,
+          conversion_rate: `${conversionRate}%`,
+        });
+      }
+
+      case "get_quotations_expiring_soon": {
+        const days = (args as { days?: number }).days || 7;
+        const today = new Date();
+        const futureDate = new Date();
+        futureDate.setDate(today.getDate() + days);
+
+        const { data: quotations } = await supabase
+          .from("quotations")
+          .select("*, customers(name)")
+          .eq("org_id", orgId)
+          .in("status", ["draft", "sent"])
+          .gte("valid_until", today.toISOString().split('T')[0])
+          .lte("valid_until", futureDate.toISOString().split('T')[0])
+          .order("valid_until", { ascending: true });
+
+        return JSON.stringify({
+          expiring_within_days: days,
+          quotations: (quotations || []).map((q: any) => ({
+            quote_number: q.quote_number,
+            customer: q.customers?.name,
+            total: q.total,
+            valid_until: q.valid_until,
+            status: q.status,
+            days_until_expiry: Math.ceil((new Date(q.valid_until).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+          })),
+          count: (quotations || []).length,
+          recommendation: (quotations || []).length > 0 
+            ? "Follow up with customers before these quotations expire" 
+            : "No quotations expiring soon",
+        });
+      }
+
+      // ============ O2C TOOLS - SALES ORDERS ============
       case "get_sales_orders": {
         const { status, customer_name } = args as { status?: string; customer_name?: string };
 
