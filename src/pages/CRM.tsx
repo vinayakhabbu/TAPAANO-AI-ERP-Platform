@@ -47,6 +47,7 @@ import { CustomerForm } from "@/components/forms/CustomerForm";
 import { useToast } from "@/hooks/use-toast";
 import { PipelineKanban } from "@/components/pipeline/PipelineKanban";
 import { PipelineFunnel } from "@/components/pipeline/PipelineFunnel";
+import { SalesForecasting } from "@/components/forecasting/SalesForecasting";
 
 const CRM = () => {
   const [pipelineView, setPipelineView] = useState<"kanban" | "funnel">("kanban");
@@ -167,6 +168,10 @@ const CRM = () => {
           <TabsTrigger value="customers" className="gap-2">
             <Users className="h-4 w-4" />
             Customers
+          </TabsTrigger>
+          <TabsTrigger value="forecasting" className="gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Forecasting
           </TabsTrigger>
         </TabsList>
 
@@ -456,6 +461,21 @@ const CRM = () => {
                 )}
               </TableBody>
             </Table>
+          </div>
+        </TabsContent>
+
+        {/* Forecasting Tab */}
+        <TabsContent value="forecasting">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="border-b border-border p-4">
+              <h3 className="text-lg font-semibold text-foreground">Sales Forecasting</h3>
+              <p className="text-sm text-muted-foreground">
+                Pipeline projections, trends, and target tracking
+              </p>
+            </div>
+            <div className="p-4">
+              <SalesForecasting />
+            </div>
           </div>
         </TabsContent>
       </Tabs>
