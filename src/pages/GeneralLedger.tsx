@@ -17,7 +17,6 @@ import {
   Plus,
   Filter,
   Download,
-  MoreHorizontal,
   ChevronRight,
   ChevronDown,
   Folder,
@@ -25,6 +24,8 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAccounts, useJournalEntries, useAccountBalances } from "@/hooks/useGeneralLedger";
+import { useJournalEntryApproval } from "@/hooks/useApprovals";
+import { ApprovalActions } from "@/components/ApprovalActions";
 import { format } from "date-fns";
 
 const statusConfig = {
@@ -46,6 +47,9 @@ const GeneralLedger = () => {
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
   const { data: journalEntries, isLoading: entriesLoading } = useJournalEntries();
   const { data: balances } = useAccountBalances();
+  
+  // Journal entry approval
+  const journalApproval = useJournalEntryApproval();
 
   const toggleAccount = (id: string) => {
     setExpandedAccounts((prev) =>
@@ -353,9 +357,14 @@ const GeneralLedger = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      <ApprovalActions
+                        documentType="journal_entry"
+                        documentId={entry.id}
+                        currentStatus={entry.status}
+                        onPost={() => journalApproval.mutate({ id: entry.id, action: "post" })}
+                        onReverse={() => journalApproval.mutate({ id: entry.id, action: "reverse" })}
+                        isLoading={journalApproval.isPending}
+                      />
                     </TableCell>
                   </TableRow>
                 );

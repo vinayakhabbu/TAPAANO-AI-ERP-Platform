@@ -574,7 +574,7 @@ supabase/
 #### Workflow & Automation
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Approval Workflows | 🔲 | Configurable approval chains |
+| Approval Workflows | ✅ | Submit, approve, reject for POs, Payment Runs, Journal Entries |
 | Email Notifications | 🔲 | Automated alerts |
 | Scheduled Reports | 🔲 | Auto-generated reports |
 | Recurring Transactions | 🔲 | Automated recurring entries |
