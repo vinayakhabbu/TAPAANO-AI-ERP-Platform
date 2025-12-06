@@ -546,7 +546,7 @@ supabase/
 
 ### Production Planning (`/production`)
 
-**Purpose**: Manufacturing operations and production planning
+**Purpose**: Manufacturing operations and production planning with MTS/MTO support
 
 #### Current Features
 | Feature | Status | Description |
@@ -559,6 +559,24 @@ supabase/
 | Work Center Management | ✅ | Define production resources with capacity/efficiency |
 | Backflush Processing | ✅ | Automatic material consumption on order completion |
 | AI Copilot Integration | ✅ | Query production data via natural language |
+| **MTS/MTO Planning Strategy** | ✅ | Make-to-Stock vs Make-to-Order production |
+| **Production Goods Receipts** | ✅ | Post finished goods from production orders |
+| **Sales Order Linkage** | ✅ | Link MTO production orders to sales orders |
+| **Stock Type Segmentation** | ✅ | Unrestricted vs Sales Order Stock inventory |
+
+#### Planning Strategies
+
+**Make-to-Stock (MTS)**
+- Production for general inventory replenishment
+- Goods receipts create `unrestricted` stock
+- No sales order linkage required
+- Available for any future customer orders
+
+**Make-to-Order (MTO)**
+- Production tied to specific customer orders
+- Goods receipts create `sales_order_stock`
+- Mandatory linkage to sales order and line item
+- Reserved inventory for specific customer
 
 #### Sub-modules
 
@@ -575,9 +593,18 @@ supabase/
 
 **Production Orders**
 - Create orders from BOMs
-- Status workflow: `draft` → `planned` → `released` → `in_progress` → `completed`
+- Status workflow: `draft` → `planned` → `released` → `in_progress` → `partially_delivered` → `completed`
 - Auto-generate components and operations from BOM
-- Track planned vs actual quantities
+- Track planned vs confirmed quantities
+- Optional sales order linkage for MTO
+- Planning strategy badge display
+
+**Production Goods Receipts**
+- Post finished goods against production orders
+- Automatic stock type determination based on planning strategy
+- Updates production order confirmed quantity and status
+- Updates inventory stock with correct stock type
+- For MTO: Updates sales order delivered quantities
 
 **MRP (Material Requirements Planning)**
 - Run MRP to calculate material needs
@@ -593,6 +620,34 @@ supabase/
 - View active production orders
 - Track operation progress (pending → in_progress → completed)
 - Record actual times vs planned
+
+#### Business Rules
+| Rule ID | Description |
+|---------|-------------|
+| BR-PLANNING-001 | Product planning strategy (MTS/MTO) drives production behavior |
+| BR-PROD-001 | MTO orders require sales order linkage; MTS orders must not have linkage |
+| BR-GR-001 | Every goods receipt must be linked to a production order |
+| BR-GR-002 | MTS → unrestricted stock; MTO → sales order stock |
+| BR-GR-003 | Confirmed quantity tracks total goods received |
+| BR-PROD-STATUS-001 | Status transitions: CREATED → RELEASED → IN_PROCESS → PARTIALLY_DELIVERED → DELIVERED → CLOSED |
+
+#### Database Enhancements
+| Table/Field | Description |
+|-------------|-------------|
+| `products.planning_strategy` | MTS or MTO planning strategy |
+| `production_orders.sales_order_id` | Linked sales order for MTO |
+| `production_orders.sales_order_item_id` | Linked sales order line for MTO |
+| `production_orders.confirmed_quantity` | Total goods received |
+| `production_goods_receipts` | Goods receipts from production |
+| `inventory_stock.stock_type` | Unrestricted or Sales Order Stock |
+| `inventory_stock.sales_order_id` | For reserved MTO stock |
+
+#### AI Copilot Tools
+| Tool | Description |
+|------|-------------|
+| `get_production_goods_receipts` | Query production goods receipts with filtering |
+| `get_inventory_by_stock_type` | Get inventory segmented by stock type |
+| `get_mto_production_status` | View MTO orders with sales order details |
 
 ---
 
