@@ -30,7 +30,7 @@ Available agents:
 7. production_agent: Production planning - BOMs (bill of materials), production orders, work centers, MRP (material requirements planning), capacity planning, shop floor control, backflush processing
 
 Route based on intent:
-- Questions about purchasing, POs, vendors, goods receipts, bills to pay, payment runs → p2p_agent
+- Questions about purchasing, POs, vendors, goods receipts, bills to pay, payment runs, purchase requisitions, PR → p2p_agent
 - Questions about quotations, quotes, sales orders, shipments, customer invoices, revenue, O2C cycle → o2c_agent
 - Questions about overdue invoices, dunning emails, collection strategies → collections_agent
 - Questions about period close, month-end, reconciliation, close tasks → close_assistant_agent
@@ -580,9 +580,12 @@ Be organized and systematic. Prioritize critical path items. Help teams close fa
 const P2P_AGENT = {
   name: "p2p_agent",
   model: "gpt-4.1-2025-04-14",
-  instructions: `You are a Procure-to-Pay (P2P) specialist AI. You help manage the full procurement cycle from purchase orders to payments, with integrated inventory management.
+  instructions: `You are a Procure-to-Pay (P2P) specialist AI. You help manage the full procurement cycle from purchase requisitions to payments, with integrated inventory management.
 
 Capabilities:
+- View and manage purchase requisitions (internal purchase requests)
+- Analyze requisition status and approval workflow
+- Convert approved requisitions to purchase orders
 - View and analyze purchase orders and their status
 - Track goods receipts and delivery status with inventory updates
 - Manage bills and payment schedules
@@ -595,8 +598,57 @@ Capabilities:
 - Generate automatic reorder suggestions based on low stock alerts
 - Track inventory impact of procurement
 
+The P2P flow: Requisition → PO → Goods Receipt → Bill → Match → Payment
+
 Be thorough with matching and validation. Flag discrepancies. Help optimize cash flow timing. Ensure inventory is updated when goods arrive.`,
   tools: [
+    // Purchase Requisition Tools
+    {
+      type: "function",
+      function: {
+        name: "get_purchase_requisitions",
+        description: "Get purchase requisitions with status, department, and priority. Requisitions are internal purchase requests before PO creation.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "pending_approval", "approved", "rejected", "converted", "cancelled"], description: "Filter by requisition status" },
+            priority: { type: "string", enum: ["low", "normal", "high", "urgent"], description: "Filter by priority" },
+            department: { type: "string", description: "Filter by department name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_requisition_details",
+        description: "Get detailed information about a specific purchase requisition including its line items",
+        parameters: {
+          type: "object",
+          properties: {
+            requisition_number: { type: "string", description: "Requisition number to look up" },
+          },
+          required: ["requisition_number"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_requisitions_pending_approval",
+        description: "Get all requisitions that are waiting for approval",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_requisition_summary",
+        description: "Get summary statistics of purchase requisitions by status and priority",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
     {
       type: "function",
       function: {
@@ -2418,6 +2470,166 @@ Collections Department`,
           success: true,
           task: { name: data.name, status: data.status },
           message: `Task "${data.name}" updated to ${status}`,
+        });
+      }
+
+      // ============ P2P TOOLS - PURCHASE REQUISITIONS ============
+      case "get_purchase_requisitions": {
+        const { status, priority, department } = args as { status?: string; priority?: string; department?: string };
+
+        let query = supabase
+          .from("purchase_requisitions")
+          .select("*")
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        if (status) query = query.eq("status", status);
+        if (priority) query = query.eq("priority", priority);
+
+        const { data: requisitions } = await query;
+
+        let filteredReqs = requisitions || [];
+        if (department) {
+          filteredReqs = filteredReqs.filter((req: any) =>
+            req.department?.toLowerCase().includes(department.toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          purchase_requisitions: filteredReqs.map((req: any) => ({
+            requisition_number: req.requisition_number,
+            department: req.department,
+            priority: req.priority,
+            status: req.status,
+            required_date: req.required_date,
+            created_at: req.created_at,
+            notes: req.notes,
+          })),
+          count: filteredReqs.length,
+        });
+      }
+
+      case "get_requisition_details": {
+        const { requisition_number } = args as { requisition_number: string };
+
+        const { data: requisitions } = await supabase
+          .from("purchase_requisitions")
+          .select("*")
+          .eq("org_id", orgId)
+          .ilike("requisition_number", `%${requisition_number}%`)
+          .limit(1);
+
+        if (!requisitions?.length) {
+          return JSON.stringify({ error: "Requisition not found", requisition_number });
+        }
+
+        const req = requisitions[0] as { id: string; requisition_number: string; department: string; priority: string; status: string; required_date: string; notes: string; created_at: string; approved_at: string; rejected_at: string; rejection_reason: string; converted_at: string };
+
+        const { data: lines } = await supabase
+          .from("purchase_requisition_lines")
+          .select("*, products(name, sku), vendors(name)")
+          .eq("requisition_id", req.id);
+
+        return JSON.stringify({
+          requisition: {
+            requisition_number: req.requisition_number,
+            department: req.department,
+            priority: req.priority,
+            status: req.status,
+            required_date: req.required_date,
+            notes: req.notes,
+            created_at: req.created_at,
+            approved_at: req.approved_at,
+            rejected_at: req.rejected_at,
+            rejection_reason: req.rejection_reason,
+            converted_at: req.converted_at,
+          },
+          lines: (lines || []).map((line: any) => ({
+            description: line.description,
+            quantity: line.quantity,
+            unit_of_measure: line.unit_of_measure,
+            estimated_unit_cost: line.estimated_unit_cost,
+            estimated_total: line.estimated_total,
+            product: line.products?.name,
+            product_sku: line.products?.sku,
+            suggested_vendor: line.vendors?.name,
+          })),
+          total_estimated_value: (lines || []).reduce((sum: number, l: any) => sum + Number(l.estimated_total || 0), 0),
+          line_count: (lines || []).length,
+        });
+      }
+
+      case "get_requisitions_pending_approval": {
+        const { data: requisitions } = await supabase
+          .from("purchase_requisitions")
+          .select("*")
+          .eq("org_id", orgId)
+          .eq("status", "pending_approval")
+          .order("created_at", { ascending: true });
+
+        return JSON.stringify({
+          pending_requisitions: (requisitions || []).map((req: any) => ({
+            requisition_number: req.requisition_number,
+            department: req.department,
+            priority: req.priority,
+            required_date: req.required_date,
+            created_at: req.created_at,
+            waiting_since_days: Math.floor((Date.now() - new Date(req.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+          })),
+          count: (requisitions || []).length,
+          recommendation: (requisitions || []).length > 0 
+            ? "Review and approve/reject these requisitions to proceed with procurement"
+            : "No requisitions pending approval",
+        });
+      }
+
+      case "get_requisition_summary": {
+        const { data: requisitions } = await supabase
+          .from("purchase_requisitions")
+          .select("status, priority")
+          .eq("org_id", orgId);
+
+        const stats = {
+          total: 0,
+          by_status: {
+            draft: 0,
+            pending_approval: 0,
+            approved: 0,
+            rejected: 0,
+            converted: 0,
+            cancelled: 0,
+          },
+          by_priority: {
+            low: 0,
+            normal: 0,
+            high: 0,
+            urgent: 0,
+          },
+        };
+
+        (requisitions || []).forEach((req: any) => {
+          stats.total++;
+          if (stats.by_status[req.status as keyof typeof stats.by_status] !== undefined) {
+            stats.by_status[req.status as keyof typeof stats.by_status]++;
+          }
+          if (stats.by_priority[req.priority as keyof typeof stats.by_priority] !== undefined) {
+            stats.by_priority[req.priority as keyof typeof stats.by_priority]++;
+          }
+        });
+
+        return JSON.stringify({
+          summary: stats,
+          actionable: {
+            needs_approval: stats.by_status.pending_approval,
+            ready_for_conversion: stats.by_status.approved,
+            urgent_requests: stats.by_priority.urgent,
+          },
+          recommendation: stats.by_status.pending_approval > 0
+            ? `${stats.by_status.pending_approval} requisition(s) awaiting approval`
+            : stats.by_status.approved > 0
+            ? `${stats.by_status.approved} approved requisition(s) ready to convert to PO`
+            : "All requisitions processed",
         });
       }
 
