@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Receivables from "./pages/Receivables";
 import Payables from "./pages/Payables";
 import GeneralLedger from "./pages/GeneralLedger";
+import FinancialReports from "./pages/FinancialReports";
 import Banking from "./pages/Banking";
 import PeriodClose from "./pages/PeriodClose";
 import Settings from "./pages/Settings";
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/ar" element={<Receivables />} />
               <Route path="/ap" element={<Payables />} />
               <Route path="/gl" element={<GeneralLedger />} />
+              <Route path="/reports" element={<FinancialReports />} />
               <Route path="/banking" element={<Banking />} />
               <Route path="/close" element={<PeriodClose />} />
               <Route path="/settings" element={<Settings />} />

@@ -167,7 +167,35 @@ Organization
 
 ---
 
-### 5. Banking (`/banking`)
+### 5. Financial Reports (`/reports`)
+**Purpose**: Financial statement generation and analysis
+
+**Features**:
+
+#### Income Statement (P&L)
+- Period-based revenue and expense reporting
+- Account-level detail with totals
+- Net income calculation
+- Quick period selection (This Month, Last 3 Months, YTD)
+
+#### Balance Sheet
+- Assets, Liabilities, and Equity sections
+- Side-by-side comparison layout
+- Balance validation indicator
+- Current period net income inclusion
+
+#### Cash Flow Statement
+- Operating, Investing, Financing activities
+- Net cash flow calculation
+- Beginning and ending cash positions
+
+#### Report Features
+- Customizable date range selection
+- PDF export capability
+- Real-time data from posted journal entries
+
+---
+### 6. Banking (`/banking`)
 **Purpose**: Bank account and transaction management
 
 **Features**:
@@ -186,7 +214,7 @@ Organization
 
 ---
 
-### 6. Period Close (`/close`)
+### 7. Period Close (`/close`)
 **Purpose**: Month-end and period-end close management
 
 **Features**:
@@ -204,7 +232,7 @@ Organization
 
 ---
 
-### 7. AI Copilot
+### 8. AI Copilot
 **Purpose**: Natural language interface for financial queries and actions
 
 **Capabilities**:
@@ -375,6 +403,7 @@ supabase/
 | Order-to-Cash (O2C) | ✅ | Full sales cycle management |
 | Procure-to-Pay (P2P) | ✅ | Full procurement cycle management |
 | General Ledger | ✅ | Chart of accounts, journal entries |
+| Financial Reports | ✅ | P&L, Balance Sheet, Cash Flow |
 | Banking & Reconciliation | ✅ | Bank accounts, transactions, matching |
 | Period Close Management | ✅ | Close tasks, checklists, tracking |
 | AI Copilot | ✅ | Natural language queries |
@@ -397,20 +426,26 @@ supabase/
 | Chart of Accounts | ✅ | Hierarchical account structure |
 | Trial Balance | ✅ | Real-time balance calculation |
 
+#### Financial Reporting (Current)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Income Statement (P&L) | ✅ | Revenue, expenses, net income |
+| Balance Sheet | ✅ | Assets, liabilities, equity |
+| Cash Flow Statement | ✅ | Operating, investing, financing |
+| Period Selection | ✅ | Custom date range filtering |
+| PDF Export | ✅ | Export reports to PDF |
+
 #### Controlling (Planned)
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Cash Flow Management | 🔲 | Track and forecast cash flows |
+| Cash Flow Forecasting | 🔲 | Predict future cash flows |
 | Fixed Asset Management | 🔲 | Asset register, depreciation tracking |
 | Budget Control | 🔲 | Budget creation and variance analysis |
 | Project Cost Monitoring | 🔲 | Track costs by project/cost center |
 | Cost Center Accounting | 🔲 | Allocate expenses to cost centers |
 
-#### Financial Reporting & Analysis (Planned)
+#### Advanced Reporting (Planned)
 | Feature | Status | Description |
-|---------|--------|-------------|
-| Profit & Loss Statement | 🔲 | Income statement generation |
-| Balance Sheet | 🔲 | Financial position report |
 | Cash Flow Statement | 🔲 | Statement of cash flows |
 | Custom Report Builder | 🔲 | User-defined report templates |
 | Real-time Dashboards | ✅ | Key metrics visualization |
