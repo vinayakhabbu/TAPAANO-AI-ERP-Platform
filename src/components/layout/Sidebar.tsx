@@ -83,7 +83,7 @@ export function Sidebar({
         </div>
         {!collapsed && <div className="overflow-hidden">
             <h1 className="text-lg font-semibold text-foreground">TAPANNO </h1>
-            <p className="text-xs text-muted-foreground">ERP Platform</p>
+            <p className="text-xs text-muted-foreground">AI ERP Platform</p>
           </div>}
       </div>
 
