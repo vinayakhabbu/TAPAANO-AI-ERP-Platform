@@ -51,6 +51,12 @@ Organization
 ├── Customers
 ├── Vendors
 ├── Accounts (Chart of Accounts)
+├── Warehouses
+│   ├── Bin Locations
+│   └── Inventory Stock
+├── Products
+│   ├── Serial Numbers
+│   └── Batch/Lots
 └── Users/Profiles
 ```
 
@@ -102,6 +108,7 @@ Organization
 - Track shipped quantities per line item
 - Carrier and tracking number management
 - Auto-update sales order shipped quantities
+- **Auto-update inventory stock** (decrement on shipment)
 
 #### Invoices
 - Create invoices linked to sales orders/shipments
@@ -130,6 +137,7 @@ Organization
 - Receive goods against approved POs
 - Track received quantities per line item
 - Auto-update PO received quantities
+- **Auto-update inventory stock** (increment on receipt)
 
 #### Bills
 - Create bills linked to POs/Goods Receipts
@@ -512,17 +520,27 @@ supabase/
 | Blanket Purchase Orders | 🔲 | Long-term purchase agreements |
 | Multi-currency Purchasing | 🔲 | Buy in foreign currencies |
 
+#### Inventory Management (Current)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Warehouse Management | ✅ | Multiple warehouse support |
+| Bin Location Management | ✅ | Sub-zone stock management |
+| Inventory Valuation | ✅ | FIFO, LIFO, Average costing |
+| Stock Transfers | ✅ | Inter-warehouse transfers |
+| Cycle Counting | ✅ | Scheduled inventory counts |
+| Reorder Point Planning | ✅ | Automatic replenishment alerts |
+| Serial/Batch Tracking | ✅ | Track items by serial/batch |
+| Product Master Data | ✅ | SKU, costs, tracking options |
+| Inventory Stock Tracking | ✅ | Real-time stock levels by warehouse |
+| Inventory Transactions | ✅ | Full transaction history |
+| **P2P Integration** | ✅ | Auto-update inventory on goods receipt |
+| **O2C Integration** | ✅ | Auto-update inventory on shipment |
+
 #### Inventory Management (Planned)
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Warehouse Management | 🔲 | Multiple warehouse support |
-| Bin Location Management | 🔲 | Sub-zone stock management |
-| Inventory Valuation | 🔲 | FIFO, LIFO, Average costing |
-| Stock Transfers | 🔲 | Inter-warehouse transfers |
-| Cycle Counting | 🔲 | Scheduled inventory counts |
-| Reorder Point Planning | 🔲 | Automatic replenishment alerts |
-| Serial/Batch Tracking | 🔲 | Track items by serial/batch |
 | Consignment Inventory | 🔲 | Manage consigned stock |
+| Inventory Receipts | 🔲 | Direct inventory adjustments |
 
 ---
 
