@@ -26,14 +26,14 @@ Available agents:
 3. close_assistant_agent: Period close tasks, close checklists, reconciliation status, month-end procedures, close progress
 4. p2p_agent: Procure-to-Pay - Purchase orders, goods receipts, bills, vendor management, 3-way matching, payment runs
 5. o2c_agent: Order-to-Cash - Quotations, sales orders, shipments, invoices, customer management, revenue tracking, quote-to-cash
-6. inventory_agent: Inventory management - Warehouses, products, stock levels, transfers, cycle counts, serial/batch tracking, reorder alerts
+6. inventory_agent: Inventory management - Warehouses, products, stock levels, transfers, cycle counts, serial/batch tracking, reorder alerts, consignment inventory, inventory receipts/adjustments
 
 Route based on intent:
 - Questions about purchasing, POs, vendors, goods receipts, bills to pay, payment runs → p2p_agent
 - Questions about quotations, quotes, sales orders, shipments, customer invoices, revenue, O2C cycle → o2c_agent
 - Questions about overdue invoices, dunning emails, collection strategies → collections_agent
 - Questions about period close, month-end, reconciliation, close tasks → close_assistant_agent
-- Questions about inventory, stock, warehouses, transfers, cycle counts, products, SKUs, reorder, serial numbers, batch lots → inventory_agent
+- Questions about inventory, stock, warehouses, transfers, cycle counts, products, SKUs, reorder, serial numbers, batch lots, consignment, inventory adjustments, inventory receipts → inventory_agent
 - Everything else (general metrics, cash, transactions, journal entries) → bookkeeper_agent
 
 Respond with ONLY the agent name: "bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", "o2c_agent", or "inventory_agent"`,
@@ -1076,7 +1076,7 @@ Be thorough with order fulfillment tracking. Help accelerate cash conversion. Ma
 const INVENTORY_AGENT = {
   name: "inventory_agent",
   model: "gpt-4.1-2025-04-14",
-  instructions: `You are an Inventory Management specialist AI. You help manage warehouses, products, stock levels, transfers, and inventory tracking. Integrated with Payables (P2P) and Receivables (O2C) for full supply chain visibility.
+  instructions: `You are an Inventory Management specialist AI. You help manage warehouses, products, stock levels, transfers, inventory tracking, consignment inventory, and inventory receipts/adjustments. Integrated with Payables (P2P) and Receivables (O2C) for full supply chain visibility.
 
 Capabilities:
 - View and analyze warehouse locations and bin locations
@@ -1091,8 +1091,10 @@ Capabilities:
 - Monitor shipments and order fulfillment (O2C integration)
 - View pending POs that will increase inventory
 - View pending sales orders that will decrease inventory
+- **Consignment Inventory**: Track vendor-owned stock stored at your location, consumption, returns
+- **Inventory Receipts**: Manual inventory adjustments (initial stock, count adjustments, damage, returns)
 
-Be precise with stock quantities. Help optimize inventory levels. Flag reorder alerts proactively. Show procurement and sales context when relevant.`,
+Be precise with stock quantities. Help optimize inventory levels. Flag reorder alerts proactively. Show procurement and sales context when relevant. Track consignment separately from owned inventory.`,
   tools: [
     {
       type: "function",
@@ -1265,6 +1267,68 @@ Be precise with stock quantities. Help optimize inventory levels. Flag reorder a
         name: "get_inventory_demand_forecast",
         description: "Get inventory demand based on pending orders and historical patterns",
         parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    // Consignment Inventory Tools
+    {
+      type: "function",
+      function: {
+        name: "get_consignment_transactions",
+        description: "Get consignment inventory transactions (received, consumed, returned from vendors)",
+        parameters: {
+          type: "object",
+          properties: {
+            transaction_type: { type: "string", enum: ["received", "consumed", "returned", "transferred"], description: "Filter by transaction type" },
+            vendor_name: { type: "string", description: "Filter by vendor name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_consignment_summary",
+        description: "Get consignment inventory summary - on-hand, received, consumed, returned totals",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_consignment_products",
+        description: "Get products marked as consignment inventory with their vendor",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    // Inventory Receipts Tools
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_receipts",
+        description: "Get inventory receipts (manual adjustments, initial stock, damage, returns)",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "posted", "cancelled"], description: "Filter by status" },
+            receipt_type: { type: "string", enum: ["adjustment_in", "adjustment_out", "initial_stock", "count_adjustment", "damage", "return"], description: "Filter by receipt type" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_adjustments_summary",
+        description: "Get summary of inventory adjustments by type and period",
+        parameters: {
+          type: "object",
+          properties: {
+            days: { type: "number", description: "Number of days to look back (default 30)" },
+          },
+          required: [],
+        },
       },
     },
   ],
@@ -3596,6 +3660,262 @@ Collections Department`,
             shipments_found: (shipments || []).length,
             note: "Shipments should reduce inventory. Verify outbound transactions match shipped quantities.",
           },
+        });
+      }
+
+      // ============ CONSIGNMENT INVENTORY TOOLS ============
+      
+      case "get_consignment_transactions": {
+        const { transaction_type, vendor_name } = args as { transaction_type?: string; vendor_name?: string };
+        
+        let query = supabase
+          .from("consignment_transactions")
+          .select(`
+            id, transaction_type, quantity, unit_cost, total_value, transaction_date, notes,
+            products(sku, name),
+            vendors(name),
+            warehouses(name)
+          `)
+          .eq("org_id", orgId)
+          .order("transaction_date", { ascending: false })
+          .limit(50);
+        
+        if (transaction_type) {
+          query = query.eq("transaction_type", transaction_type);
+        }
+        
+        const { data: transactions } = await query;
+        
+        let filtered = transactions || [];
+        if (vendor_name) {
+          filtered = filtered.filter((t: any) => 
+            t.vendors?.name?.toLowerCase().includes(vendor_name.toLowerCase())
+          );
+        }
+        
+        return JSON.stringify({
+          consignment_transactions: filtered.map((t: any) => ({
+            date: t.transaction_date,
+            type: t.transaction_type,
+            product_sku: t.products?.sku,
+            product_name: t.products?.name,
+            vendor: t.vendors?.name,
+            warehouse: t.warehouses?.name,
+            quantity: t.quantity,
+            unit_cost: t.unit_cost,
+            total_value: t.total_value,
+            notes: t.notes,
+          })),
+          count: filtered.length,
+        });
+      }
+
+      case "get_consignment_summary": {
+        const { data: transactions } = await supabase
+          .from("consignment_transactions")
+          .select("transaction_type, quantity, total_value, vendors(name)")
+          .eq("org_id", orgId);
+        
+        const txns = transactions || [];
+        
+        const received = txns
+          .filter((t: any) => t.transaction_type === "received")
+          .reduce((sum: number, t: any) => sum + Number(t.quantity), 0);
+        
+        const consumed = txns
+          .filter((t: any) => t.transaction_type === "consumed")
+          .reduce((sum: number, t: any) => sum + Number(t.quantity), 0);
+        
+        const returned = txns
+          .filter((t: any) => t.transaction_type === "returned")
+          .reduce((sum: number, t: any) => sum + Number(t.quantity), 0);
+        
+        const transferred = txns
+          .filter((t: any) => t.transaction_type === "transferred")
+          .reduce((sum: number, t: any) => sum + Number(t.quantity), 0);
+        
+        const onHand = received - consumed - returned;
+        
+        const totalValue = txns
+          .filter((t: any) => t.transaction_type === "received")
+          .reduce((sum: number, t: any) => sum + Number(t.total_value || 0), 0);
+        
+        // Group by vendor
+        const vendorTotals: Record<string, number> = {};
+        txns.filter((t: any) => t.transaction_type === "received").forEach((t: any) => {
+          const vendor = t.vendors?.name || "Unknown";
+          vendorTotals[vendor] = (vendorTotals[vendor] || 0) + Number(t.quantity);
+        });
+        
+        return JSON.stringify({
+          summary: {
+            total_received: received,
+            total_consumed: consumed,
+            total_returned: returned,
+            total_transferred: transferred,
+            on_hand: onHand,
+            total_value: totalValue,
+          },
+          by_vendor: Object.entries(vendorTotals).map(([vendor, qty]) => ({
+            vendor,
+            quantity_received: qty,
+          })),
+          transaction_count: txns.length,
+          note: "Consignment inventory is vendor-owned stock stored at your location. You pay when consumed.",
+        });
+      }
+
+      case "get_consignment_products": {
+        const { data: products } = await supabase
+          .from("products")
+          .select(`
+            id, sku, name, standard_cost, valuation_method, is_active,
+            vendors:consignment_vendor_id(name, email, payment_terms)
+          `)
+          .eq("org_id", orgId)
+          .eq("is_consignment", true)
+          .order("name");
+        
+        return JSON.stringify({
+          consignment_products: (products || []).map((p: any) => ({
+            sku: p.sku,
+            name: p.name,
+            vendor: p.vendors?.name,
+            vendor_email: p.vendors?.email,
+            payment_terms: p.vendors?.payment_terms,
+            standard_cost: p.standard_cost,
+            valuation_method: p.valuation_method,
+            is_active: p.is_active,
+          })),
+          count: (products || []).length,
+          note: "These products are marked as consignment - owned by vendors until consumed.",
+        });
+      }
+
+      // ============ INVENTORY RECEIPTS TOOLS ============
+      
+      case "get_inventory_receipts": {
+        const { status, receipt_type } = args as { status?: string; receipt_type?: string };
+        
+        let query = supabase
+          .from("inventory_receipts")
+          .select(`
+            id, receipt_number, receipt_type, receipt_date, status, notes, posted_at,
+            warehouses(name)
+          `)
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        
+        if (status) query = query.eq("status", status);
+        if (receipt_type) query = query.eq("receipt_type", receipt_type);
+        
+        const { data: receipts } = await query;
+        
+        // Get line counts
+        const receiptIds = (receipts || []).map((r: any) => r.id);
+        const { data: lines } = await supabase
+          .from("inventory_receipt_lines")
+          .select("receipt_id, quantity, unit_cost")
+          .in("receipt_id", receiptIds.length > 0 ? receiptIds : ["none"]);
+        
+        const lineCounts: Record<string, { count: number; total_qty: number; total_value: number }> = {};
+        (lines || []).forEach((l: any) => {
+          if (!lineCounts[l.receipt_id]) {
+            lineCounts[l.receipt_id] = { count: 0, total_qty: 0, total_value: 0 };
+          }
+          lineCounts[l.receipt_id].count += 1;
+          lineCounts[l.receipt_id].total_qty += Number(l.quantity);
+          lineCounts[l.receipt_id].total_value += Number(l.quantity) * Number(l.unit_cost);
+        });
+        
+        const receiptTypeLabels: Record<string, string> = {
+          adjustment_in: "Adjustment In",
+          adjustment_out: "Adjustment Out",
+          initial_stock: "Initial Stock",
+          count_adjustment: "Count Adjustment",
+          damage: "Damage/Scrap",
+          return: "Customer Return",
+        };
+        
+        return JSON.stringify({
+          inventory_receipts: (receipts || []).map((r: any) => ({
+            receipt_number: r.receipt_number,
+            type: receiptTypeLabels[r.receipt_type] || r.receipt_type,
+            type_code: r.receipt_type,
+            warehouse: r.warehouses?.name,
+            date: r.receipt_date,
+            status: r.status,
+            posted_at: r.posted_at,
+            line_count: lineCounts[r.id]?.count || 0,
+            total_quantity: lineCounts[r.id]?.total_qty || 0,
+            total_value: lineCounts[r.id]?.total_value || 0,
+            notes: r.notes,
+          })),
+          count: (receipts || []).length,
+        });
+      }
+
+      case "get_inventory_adjustments_summary": {
+        const days = (args.days as number) || 30;
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        
+        const { data: receipts } = await supabase
+          .from("inventory_receipts")
+          .select(`
+            id, receipt_type, status,
+            inventory_receipt_lines(quantity, unit_cost)
+          `)
+          .eq("org_id", orgId)
+          .eq("status", "posted")
+          .gte("receipt_date", cutoffDate.toISOString().split("T")[0]);
+        
+        const summary: Record<string, { count: number; total_qty: number; total_value: number }> = {};
+        
+        (receipts || []).forEach((r: any) => {
+          if (!summary[r.receipt_type]) {
+            summary[r.receipt_type] = { count: 0, total_qty: 0, total_value: 0 };
+          }
+          summary[r.receipt_type].count += 1;
+          
+          (r.inventory_receipt_lines || []).forEach((l: any) => {
+            summary[r.receipt_type].total_qty += Number(l.quantity);
+            summary[r.receipt_type].total_value += Number(l.quantity) * Number(l.unit_cost);
+          });
+        });
+        
+        const receiptTypeLabels: Record<string, string> = {
+          adjustment_in: "Adjustment In",
+          adjustment_out: "Adjustment Out",
+          initial_stock: "Initial Stock",
+          count_adjustment: "Count Adjustment",
+          damage: "Damage/Scrap",
+          return: "Customer Return",
+        };
+        
+        const totalAdjustmentsIn = (summary.adjustment_in?.total_qty || 0) + 
+                                   (summary.initial_stock?.total_qty || 0) +
+                                   (summary.return?.total_qty || 0);
+        
+        const totalAdjustmentsOut = Math.abs(summary.adjustment_out?.total_qty || 0) + 
+                                     Math.abs(summary.damage?.total_qty || 0);
+        
+        return JSON.stringify({
+          period: `Last ${days} days`,
+          by_type: Object.entries(summary).map(([type, data]) => ({
+            type: receiptTypeLabels[type] || type,
+            type_code: type,
+            receipt_count: data.count,
+            total_quantity: data.total_qty,
+            total_value: data.total_value,
+          })),
+          totals: {
+            adjustments_in: totalAdjustmentsIn,
+            adjustments_out: totalAdjustmentsOut,
+            net_adjustment: totalAdjustmentsIn - totalAdjustmentsOut,
+          },
+          posted_receipts_count: (receipts || []).length,
         });
       }
 
