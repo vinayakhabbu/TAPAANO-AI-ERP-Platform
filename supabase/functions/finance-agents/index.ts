@@ -26,15 +26,17 @@ Available agents:
 3. close_assistant_agent: Period close tasks, close checklists, reconciliation status, month-end procedures, close progress
 4. p2p_agent: Procure-to-Pay - Purchase orders, goods receipts, bills, vendor management, 3-way matching, payment runs
 5. o2c_agent: Order-to-Cash - Quotations, sales orders, shipments, invoices, customer management, revenue tracking, quote-to-cash
+6. inventory_agent: Inventory management - Warehouses, products, stock levels, transfers, cycle counts, serial/batch tracking, reorder alerts
 
 Route based on intent:
 - Questions about purchasing, POs, vendors, goods receipts, bills to pay, payment runs → p2p_agent
 - Questions about quotations, quotes, sales orders, shipments, customer invoices, revenue, O2C cycle → o2c_agent
 - Questions about overdue invoices, dunning emails, collection strategies → collections_agent
 - Questions about period close, month-end, reconciliation, close tasks → close_assistant_agent
+- Questions about inventory, stock, warehouses, transfers, cycle counts, products, SKUs, reorder, serial numbers, batch lots → inventory_agent
 - Everything else (general metrics, cash, transactions, journal entries) → bookkeeper_agent
 
-Respond with ONLY the agent name: "bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", or "o2c_agent"`,
+Respond with ONLY the agent name: "bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", "o2c_agent", or "inventory_agent"`,
 };
 
 const BOOKKEEPER_AGENT = {
@@ -920,6 +922,149 @@ Be thorough with order fulfillment tracking. Help accelerate cash conversion. Ma
           },
           required: [],
         },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// INVENTORY AGENT
+// ============================================================================
+
+const INVENTORY_AGENT = {
+  name: "inventory_agent",
+  model: "gpt-4.1-2025-04-14",
+  instructions: `You are an Inventory Management specialist AI. You help manage warehouses, products, stock levels, transfers, and inventory tracking.
+
+Capabilities:
+- View and analyze warehouse locations and bin locations
+- Manage products catalog with valuation methods (FIFO, LIFO, Average)
+- Track stock levels across warehouses
+- Create and monitor stock transfers between warehouses
+- Schedule and track cycle counts
+- Manage serial number and batch/lot tracking
+- Identify low stock items and reorder alerts
+- Analyze inventory valuation and movements
+
+Be precise with stock quantities. Help optimize inventory levels. Flag reorder alerts proactively.`,
+  tools: [
+    {
+      type: "function",
+      function: {
+        name: "get_warehouses",
+        description: "Get list of warehouses with location details",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_products",
+        description: "Get product catalog with SKU, valuation method, and reorder settings",
+        parameters: {
+          type: "object",
+          properties: {
+            search: { type: "string", description: "Search term to filter by SKU or name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_stock",
+        description: "Get current stock levels by warehouse and product",
+        parameters: {
+          type: "object",
+          properties: {
+            warehouse_name: { type: "string", description: "Filter by warehouse name" },
+            product_sku: { type: "string", description: "Filter by product SKU" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_low_stock_alerts",
+        description: "Get products that are below their reorder point",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_stock_transfers",
+        description: "Get stock transfers between warehouses",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["draft", "pending", "in_transit", "completed", "cancelled"], description: "Filter by status" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_cycle_counts",
+        description: "Get scheduled and completed cycle counts",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["scheduled", "in_progress", "completed", "cancelled"], description: "Filter by status" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_valuation",
+        description: "Get total inventory valuation summary by warehouse",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_serial_numbers",
+        description: "Get serial numbers for serialized products",
+        parameters: {
+          type: "object",
+          properties: {
+            product_sku: { type: "string", description: "Filter by product SKU" },
+            status: { type: "string", description: "Filter by status (available, sold, etc.)" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_batch_lots",
+        description: "Get batch/lot information for batch-tracked products",
+        parameters: {
+          type: "object",
+          properties: {
+            product_sku: { type: "string", description: "Filter by product SKU" },
+            expiring_within_days: { type: "number", description: "Get batches expiring within X days" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_summary",
+        description: "Get overall inventory summary with key metrics",
+        parameters: { type: "object", properties: {}, required: [] },
       },
     },
   ],
@@ -2520,6 +2665,319 @@ Collections Department`,
         });
       }
 
+      // ============ INVENTORY TOOLS ============
+      case "get_warehouses": {
+        const { data: warehouses } = await supabase
+          .from("warehouses")
+          .select("*")
+          .eq("org_id", orgId)
+          .eq("is_active", true)
+          .order("name");
+
+        return JSON.stringify({
+          warehouses: (warehouses || []).map((w: any) => ({
+            id: w.id,
+            code: w.code,
+            name: w.name,
+            address: w.address,
+          })),
+          count: (warehouses || []).length,
+        });
+      }
+
+      case "get_products": {
+        let query = supabase
+          .from("products")
+          .select("*")
+          .eq("org_id", orgId)
+          .eq("is_active", true)
+          .order("name");
+
+        const search = args.search as string | undefined;
+        if (search) {
+          query = query.or(`sku.ilike.%${search}%,name.ilike.%${search}%`);
+        }
+
+        const { data: products } = await query;
+
+        return JSON.stringify({
+          products: (products || []).map((p: any) => ({
+            id: p.id,
+            sku: p.sku,
+            name: p.name,
+            unit_of_measure: p.unit_of_measure,
+            valuation_method: p.valuation_method,
+            standard_cost: p.standard_cost,
+            reorder_point: p.reorder_point,
+            reorder_quantity: p.reorder_quantity,
+            is_serialized: p.is_serialized,
+            is_batch_tracked: p.is_batch_tracked,
+          })),
+          count: (products || []).length,
+        });
+      }
+
+      case "get_inventory_stock": {
+        const { data: stock } = await supabase
+          .from("inventory_stock")
+          .select(`
+            *,
+            products(sku, name, reorder_point),
+            warehouses(code, name)
+          `)
+          .eq("org_id", orgId);
+
+        let filteredStock = stock || [];
+        const warehouseName = args.warehouse_name as string | undefined;
+        const productSku = args.product_sku as string | undefined;
+
+        if (warehouseName) {
+          filteredStock = filteredStock.filter((s: any) => 
+            s.warehouses?.name?.toLowerCase().includes(warehouseName.toLowerCase())
+          );
+        }
+        if (productSku) {
+          filteredStock = filteredStock.filter((s: any) => 
+            s.products?.sku?.toLowerCase().includes(productSku.toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          stock: filteredStock.map((s: any) => ({
+            sku: s.products?.sku,
+            product: s.products?.name,
+            warehouse: s.warehouses?.name,
+            quantity_on_hand: s.quantity_on_hand,
+            quantity_reserved: s.quantity_reserved,
+            quantity_available: s.quantity_available,
+            unit_cost: s.unit_cost,
+            total_value: s.total_value,
+            reorder_point: s.products?.reorder_point,
+            is_low_stock: s.products?.reorder_point && s.quantity_on_hand <= s.products.reorder_point,
+          })),
+          count: filteredStock.length,
+        });
+      }
+
+      case "get_low_stock_alerts": {
+        const { data: stock } = await supabase
+          .from("inventory_stock")
+          .select(`
+            *,
+            products(sku, name, reorder_point, reorder_quantity),
+            warehouses(code, name)
+          `)
+          .eq("org_id", orgId);
+
+        const lowStock = (stock || []).filter((s: any) => 
+          s.products?.reorder_point && Number(s.quantity_on_hand) <= Number(s.products.reorder_point)
+        );
+
+        return JSON.stringify({
+          low_stock_items: lowStock.map((s: any) => ({
+            sku: s.products?.sku,
+            product: s.products?.name,
+            warehouse: s.warehouses?.name,
+            current_quantity: s.quantity_on_hand,
+            reorder_point: s.products?.reorder_point,
+            suggested_order_qty: s.products?.reorder_quantity,
+            shortage: s.products.reorder_point - s.quantity_on_hand,
+          })),
+          count: lowStock.length,
+          requires_action: lowStock.length > 0,
+        });
+      }
+
+      case "get_stock_transfers": {
+        let query = supabase
+          .from("stock_transfers")
+          .select(`
+            *,
+            from_warehouse:warehouses!stock_transfers_from_warehouse_id_fkey(code, name),
+            to_warehouse:warehouses!stock_transfers_to_warehouse_id_fkey(code, name)
+          `)
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false });
+
+        const status = args.status as string | undefined;
+        if (status) {
+          query = query.eq("status", status);
+        }
+
+        const { data: transfers } = await query;
+
+        return JSON.stringify({
+          transfers: (transfers || []).map((t: any) => ({
+            transfer_number: t.transfer_number,
+            from_warehouse: t.from_warehouse?.name,
+            to_warehouse: t.to_warehouse?.name,
+            status: t.status,
+            transfer_date: t.transfer_date,
+            expected_arrival: t.expected_arrival_date,
+          })),
+          count: (transfers || []).length,
+        });
+      }
+
+      case "get_cycle_counts": {
+        let query = supabase
+          .from("cycle_counts")
+          .select(`*, warehouses(code, name)`)
+          .eq("org_id", orgId)
+          .order("scheduled_date", { ascending: false });
+
+        const status = args.status as string | undefined;
+        if (status) {
+          query = query.eq("status", status);
+        }
+
+        const { data: counts } = await query;
+
+        return JSON.stringify({
+          cycle_counts: (counts || []).map((c: any) => ({
+            count_number: c.count_number,
+            warehouse: c.warehouses?.name,
+            status: c.status,
+            scheduled_date: c.scheduled_date,
+            started_at: c.started_at,
+            completed_at: c.completed_at,
+          })),
+          count: (counts || []).length,
+        });
+      }
+
+      case "get_inventory_valuation": {
+        const { data: stock } = await supabase
+          .from("inventory_stock")
+          .select(`*, warehouses(code, name)`)
+          .eq("org_id", orgId);
+
+        const byWarehouse: Record<string, { name: string; total_value: number; item_count: number }> = {};
+        let totalValue = 0;
+
+        (stock || []).forEach((s: any) => {
+          const whName = s.warehouses?.name || "Unknown";
+          if (!byWarehouse[whName]) {
+            byWarehouse[whName] = { name: whName, total_value: 0, item_count: 0 };
+          }
+          byWarehouse[whName].total_value += Number(s.total_value || 0);
+          byWarehouse[whName].item_count += Number(s.quantity_on_hand || 0);
+          totalValue += Number(s.total_value || 0);
+        });
+
+        return JSON.stringify({
+          total_inventory_value: totalValue,
+          by_warehouse: Object.values(byWarehouse),
+          warehouse_count: Object.keys(byWarehouse).length,
+        });
+      }
+
+      case "get_serial_numbers": {
+        let query = supabase
+          .from("serial_numbers")
+          .select(`*, products(sku, name), warehouses(name)`)
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        const productSku = args.product_sku as string | undefined;
+        const status = args.status as string | undefined;
+
+        const { data: serials } = await query;
+
+        let filtered = serials || [];
+        if (productSku) {
+          filtered = filtered.filter((s: any) => 
+            s.products?.sku?.toLowerCase().includes(productSku.toLowerCase())
+          );
+        }
+        if (status) {
+          filtered = filtered.filter((s: any) => s.status === status);
+        }
+
+        return JSON.stringify({
+          serial_numbers: filtered.map((s: any) => ({
+            serial_number: s.serial_number,
+            product_sku: s.products?.sku,
+            product_name: s.products?.name,
+            warehouse: s.warehouses?.name,
+            status: s.status,
+          })),
+          count: filtered.length,
+        });
+      }
+
+      case "get_batch_lots": {
+        const { data: batches } = await supabase
+          .from("batch_lots")
+          .select(`*, products(sku, name), warehouses(name)`)
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        let filtered = batches || [];
+        const productSku = args.product_sku as string | undefined;
+        const expiringDays = args.expiring_within_days as number | undefined;
+
+        if (productSku) {
+          filtered = filtered.filter((b: any) => 
+            b.products?.sku?.toLowerCase().includes(productSku.toLowerCase())
+          );
+        }
+
+        if (expiringDays) {
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() + expiringDays);
+          filtered = filtered.filter((b: any) => 
+            b.expiry_date && new Date(b.expiry_date) <= cutoffDate
+          );
+        }
+
+        return JSON.stringify({
+          batch_lots: filtered.map((b: any) => ({
+            batch_number: b.batch_number,
+            product_sku: b.products?.sku,
+            product_name: b.products?.name,
+            warehouse: b.warehouses?.name,
+            quantity: b.quantity,
+            manufacture_date: b.manufacture_date,
+            expiry_date: b.expiry_date,
+            status: b.status,
+          })),
+          count: filtered.length,
+        });
+      }
+
+      case "get_inventory_summary": {
+        const [stockResult, productsResult, warehousesResult, transfersResult] = await Promise.all([
+          supabase.from("inventory_stock").select("quantity_on_hand, total_value, products(reorder_point)").eq("org_id", orgId),
+          supabase.from("products").select("id").eq("org_id", orgId).eq("is_active", true),
+          supabase.from("warehouses").select("id").eq("org_id", orgId).eq("is_active", true),
+          supabase.from("stock_transfers").select("id, status").eq("org_id", orgId),
+        ]);
+
+        const stock = stockResult.data || [];
+        const totalValue = stock.reduce((sum: number, s: any) => sum + Number(s.total_value || 0), 0);
+        const totalItems = stock.reduce((sum: number, s: any) => sum + Number(s.quantity_on_hand || 0), 0);
+        const lowStockCount = stock.filter((s: any) => 
+          s.products?.reorder_point && Number(s.quantity_on_hand) <= Number(s.products.reorder_point)
+        ).length;
+
+        const transfers = transfersResult.data || [];
+        const pendingTransfers = transfers.filter((t: any) => 
+          t.status === "pending" || t.status === "in_transit"
+        ).length;
+
+        return JSON.stringify({
+          total_inventory_value: totalValue,
+          total_items_in_stock: totalItems,
+          low_stock_alerts: lowStockCount,
+          pending_transfers: pendingTransfers,
+          warehouse_count: (warehousesResult.data || []).length,
+          product_count: (productsResult.data || []).length,
+        });
+      }
+
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -2557,7 +3015,7 @@ async function routeToAgent(userMessage: string): Promise<string> {
 
   console.log("Router selected agent:", agentName);
 
-  if (["bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", "o2c_agent"].includes(agentName)) {
+  if (["bookkeeper_agent", "collections_agent", "close_assistant_agent", "p2p_agent", "o2c_agent", "inventory_agent"].includes(agentName)) {
     return agentName;
   }
   return "bookkeeper_agent";
@@ -2573,6 +3031,8 @@ function getAgentConfig(agentName: string) {
       return P2P_AGENT;
     case "o2c_agent":
       return O2C_AGENT;
+    case "inventory_agent":
+      return INVENTORY_AGENT;
     default:
       return BOOKKEEPER_AGENT;
   }
