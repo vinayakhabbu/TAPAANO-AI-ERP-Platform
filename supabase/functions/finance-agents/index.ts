@@ -1347,13 +1347,20 @@ const PRODUCTION_AGENT = {
 
 Capabilities:
 - View and manage Bill of Materials (BOMs) with components and routing operations
-- Create and track production orders through their lifecycle
+- Create and track production orders through their lifecycle (MTS and MTO)
+- Support Make-to-Stock (MTS) and Make-to-Order (MTO) planning strategies
+- Post goods receipts from production with proper stock type handling
+- Track confirmed vs planned quantities for production orders
 - Manage work centers with capacity and efficiency settings
 - Run MRP (Material Requirements Planning) to identify shortages
 - Plan and monitor capacity utilization
 - Track shop floor operations and progress
 - Handle backflush processing for material consumption
+- Query inventory by stock type (unrestricted vs sales order reserved)
 - Analyze production metrics and bottlenecks
+
+MTS (Make-to-Stock): Products manufactured to stock without sales order linkage. Goods receipts go to unrestricted stock.
+MTO (Make-to-Order): Products manufactured for specific sales orders. Goods receipts are tagged to sales order stock.
 
 Be precise with quantities and schedules. Help optimize production throughput. Flag capacity constraints proactively.`,
   tools: [
@@ -1384,12 +1391,13 @@ Be precise with quantities and schedules. Help optimize production throughput. F
       type: "function",
       function: {
         name: "get_production_orders",
-        description: "Get production orders with status and progress",
+        description: "Get production orders with status, progress, and MTS/MTO info",
         parameters: {
           type: "object",
           properties: {
-            status: { type: "string", enum: ["draft", "planned", "released", "in_progress", "completed", "cancelled"], description: "Filter by status" },
+            status: { type: "string", enum: ["draft", "planned", "released", "in_progress", "partially_delivered", "completed", "cancelled"], description: "Filter by status" },
             product_name: { type: "string", description: "Filter by product name" },
+            planning_strategy: { type: "string", enum: ["mts", "mto"], description: "Filter by planning strategy (Make-to-Stock or Make-to-Order)" },
           },
           required: [],
         },
@@ -1496,14 +1504,54 @@ Be precise with quantities and schedules. Help optimize production throughput. F
       type: "function",
       function: {
         name: "get_inventory_stock",
-        description: "Get current stock levels to check material availability",
+        description: "Get current stock levels with stock type (unrestricted vs sales order reserved)",
         parameters: {
           type: "object",
           properties: {
             product_sku: { type: "string", description: "Filter by product SKU" },
+            stock_type: { type: "string", enum: ["unrestricted", "sales_order_stock"], description: "Filter by stock type" },
           },
           required: [],
         },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_production_goods_receipts",
+        description: "Get goods receipts from production orders",
+        parameters: {
+          type: "object",
+          properties: {
+            production_order_number: { type: "string", description: "Filter by production order number" },
+            stock_type: { type: "string", enum: ["unrestricted", "sales_order_stock"], description: "Filter by stock type" },
+            limit: { type: "number", description: "Number of records (default 20)" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_inventory_by_stock_type",
+        description: "Get inventory position summary grouped by stock type",
+        parameters: {
+          type: "object",
+          properties: {
+            product_sku: { type: "string", description: "Filter by product SKU" },
+            warehouse_name: { type: "string", description: "Filter by warehouse name" },
+          },
+          required: [],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_mto_production_status",
+        description: "Get MTO (Make-to-Order) production status with sales order linkage",
+        parameters: { type: "object", properties: {}, required: [] },
       },
     },
   ],
@@ -4164,9 +4212,10 @@ Collections Department`,
           .from("production_orders")
           .select(`
             *,
-            product:products(name, sku),
+            product:products(name, sku, planning_strategy),
             bom:bom_headers(bom_number),
-            warehouse:warehouses(name)
+            warehouse:warehouses(name),
+            sales_order:sales_orders(so_number)
           `)
           .eq("org_id", orgId)
           .order("created_at", { ascending: false })
@@ -4182,16 +4231,24 @@ Collections Department`,
             o.product?.name?.toLowerCase().includes((args.product_name as string).toLowerCase())
           );
         }
+        if (args.planning_strategy) {
+          filtered = filtered.filter((o: any) => 
+            o.product?.planning_strategy === args.planning_strategy
+          );
+        }
 
         return JSON.stringify({
           production_orders: filtered.map((o: any) => ({
             order_number: o.order_number,
             product: o.product?.name,
+            planning_strategy: o.product?.planning_strategy?.toUpperCase() || "MTS",
+            sales_order: o.sales_order?.so_number || null,
             bom: o.bom?.bom_number,
             warehouse: o.warehouse?.name,
             planned_quantity: o.planned_quantity,
+            confirmed_quantity: o.confirmed_quantity,
             completed_quantity: o.completed_quantity,
-            progress_pct: o.planned_quantity > 0 ? Math.round((o.completed_quantity / o.planned_quantity) * 100) : 0,
+            progress_pct: o.planned_quantity > 0 ? Math.round((o.confirmed_quantity / o.planned_quantity) * 100) : 0,
             status: o.status,
             priority: o.priority,
             planned_start: o.planned_start_date,
@@ -4516,6 +4573,128 @@ Collections Department`,
             components_pending: o.components?.filter((c: any) => !c.is_backflushed).length || 0,
           })),
           count: pending.length,
+        });
+      }
+
+      case "get_production_goods_receipts": {
+        let query = supabase
+          .from("production_goods_receipts")
+          .select(`
+            *,
+            production_order:production_orders(order_number),
+            product:products(name, sku),
+            warehouse:warehouses(name),
+            sales_order:sales_orders(so_number)
+          `)
+          .eq("org_id", orgId)
+          .order("posting_date", { ascending: false })
+          .limit((args.limit as number) || 20);
+
+        if (args.stock_type) query = query.eq("stock_type", args.stock_type);
+
+        const { data: receipts } = await query;
+
+        let filtered = receipts || [];
+        if (args.production_order_number) {
+          filtered = filtered.filter((r: any) => 
+            r.production_order?.order_number?.toLowerCase().includes((args.production_order_number as string).toLowerCase())
+          );
+        }
+
+        return JSON.stringify({
+          goods_receipts: filtered.map((r: any) => ({
+            receipt_number: r.receipt_number,
+            production_order: r.production_order?.order_number,
+            product: r.product?.name,
+            quantity: r.quantity,
+            uom: r.uom,
+            stock_type: r.stock_type === 'sales_order_stock' ? 'Sales Order Stock' : 'Unrestricted',
+            sales_order: r.sales_order?.so_number || null,
+            warehouse: r.warehouse?.name,
+            posting_date: r.posting_date,
+          })),
+          total_count: filtered.length,
+        });
+      }
+
+      case "get_inventory_by_stock_type": {
+        let query = supabase
+          .from("inventory_stock")
+          .select(`
+            *,
+            product:products(name, sku),
+            warehouse:warehouses(name),
+            sales_order:sales_orders(so_number)
+          `)
+          .eq("org_id", orgId)
+          .gt("quantity_on_hand", 0);
+
+        const { data: stock } = await query;
+
+        let filtered = stock || [];
+        if (args.product_sku) {
+          filtered = filtered.filter((s: any) => 
+            s.product?.sku?.toLowerCase().includes((args.product_sku as string).toLowerCase())
+          );
+        }
+        if (args.warehouse_name) {
+          filtered = filtered.filter((s: any) => 
+            s.warehouse?.name?.toLowerCase().includes((args.warehouse_name as string).toLowerCase())
+          );
+        }
+
+        // Group by stock type
+        const unrestricted = filtered.filter((s: any) => s.stock_type === 'unrestricted');
+        const salesOrderStock = filtered.filter((s: any) => s.stock_type === 'sales_order_stock');
+
+        const summarize = (items: any[]) => items.map((s: any) => ({
+          product: s.product?.name,
+          sku: s.product?.sku,
+          warehouse: s.warehouse?.name,
+          quantity: s.quantity_on_hand,
+          reserved: s.quantity_reserved,
+          available: s.quantity_available,
+          sales_order: s.sales_order?.so_number || null,
+        }));
+
+        return JSON.stringify({
+          unrestricted_stock: {
+            items: summarize(unrestricted),
+            total_quantity: unrestricted.reduce((sum: number, s: any) => sum + (s.quantity_on_hand || 0), 0),
+          },
+          sales_order_stock: {
+            items: summarize(salesOrderStock),
+            total_quantity: salesOrderStock.reduce((sum: number, s: any) => sum + (s.quantity_on_hand || 0), 0),
+          },
+        });
+      }
+
+      case "get_mto_production_status": {
+        const { data: orders } = await supabase
+          .from("production_orders")
+          .select(`
+            *,
+            product:products(name, sku, planning_strategy),
+            sales_order:sales_orders(so_number, customer:customers(name))
+          `)
+          .eq("org_id", orgId)
+          .not("sales_order_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        return JSON.stringify({
+          mto_orders: (orders || []).map((o: any) => ({
+            order_number: o.order_number,
+            product: o.product?.name,
+            sales_order: o.sales_order?.so_number,
+            customer: o.sales_order?.customer?.name,
+            status: o.status,
+            planned_quantity: o.planned_quantity,
+            confirmed_quantity: o.confirmed_quantity,
+            delivery_progress_pct: o.planned_quantity > 0 ? Math.round((o.confirmed_quantity / o.planned_quantity) * 100) : 0,
+            planned_end: o.planned_end_date,
+          })),
+          total_mto_orders: (orders || []).length,
         });
       }
 
