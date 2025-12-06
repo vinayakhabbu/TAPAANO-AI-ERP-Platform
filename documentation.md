@@ -366,31 +366,196 @@ supabase/
 
 ## Key Features Summary
 
-| Feature | Status |
-|---------|--------|
-| Multi-tenant architecture | ✅ |
-| Role-based access control | ✅ |
-| Order-to-Cash (O2C) | ✅ |
-| Procure-to-Pay (P2P) | ✅ |
-| General Ledger | ✅ |
-| Banking & Reconciliation | ✅ |
-| Period Close Management | ✅ |
-| AI Copilot | ✅ |
-| Dark/Light Theme | ✅ |
-| Responsive Design | ✅ |
-| Real-time Updates | ✅ |
+### Implemented Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Multi-tenant architecture | ✅ | Organization-based data isolation |
+| Role-based access control | ✅ | Admin, Moderator, User, Viewer roles |
+| Order-to-Cash (O2C) | ✅ | Full sales cycle management |
+| Procure-to-Pay (P2P) | ✅ | Full procurement cycle management |
+| General Ledger | ✅ | Chart of accounts, journal entries |
+| Banking & Reconciliation | ✅ | Bank accounts, transactions, matching |
+| Period Close Management | ✅ | Close tasks, checklists, tracking |
+| AI Copilot | ✅ | Natural language queries |
+| Dark/Light Theme | ✅ | User preference theming |
+| Responsive Design | ✅ | Mobile-friendly UI |
+| Real-time Updates | ✅ | Live data synchronization |
 
 ---
 
-## Future Enhancements
+## Feature Roadmap
 
-- [ ] Automated bank feed imports
-- [ ] Auto-matching rules engine
-- [ ] Financial reporting (P&L, Balance Sheet)
-- [ ] Budget vs Actual tracking
-- [ ] Intercompany transactions
-- [ ] Approval workflows with notifications
-- [ ] Document attachments
-- [ ] Audit trail viewer
-- [ ] Multi-currency support
-- [ ] Tax calculation engine
+### Financial Management
+
+#### Accounting (Current)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Journal Entries | ✅ | Create, post, reverse journal entries |
+| Accounts Receivable | ✅ | Invoice management, payment tracking |
+| Accounts Payable | ✅ | Bill management, payment processing |
+| Chart of Accounts | ✅ | Hierarchical account structure |
+| Trial Balance | ✅ | Real-time balance calculation |
+
+#### Controlling (Planned)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Cash Flow Management | 🔲 | Track and forecast cash flows |
+| Fixed Asset Management | 🔲 | Asset register, depreciation tracking |
+| Budget Control | 🔲 | Budget creation and variance analysis |
+| Project Cost Monitoring | 🔲 | Track costs by project/cost center |
+| Cost Center Accounting | 🔲 | Allocate expenses to cost centers |
+
+#### Financial Reporting & Analysis (Planned)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Profit & Loss Statement | 🔲 | Income statement generation |
+| Balance Sheet | 🔲 | Financial position report |
+| Cash Flow Statement | 🔲 | Statement of cash flows |
+| Custom Report Builder | 🔲 | User-defined report templates |
+| Real-time Dashboards | ✅ | Key metrics visualization |
+| Audit Trail Reports | 🔲 | Complete transaction history |
+
+---
+
+### Sales & Customer Management
+
+#### Sales Management (Current)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Customer Master Data | ✅ | Store customer information |
+| Sales Orders | ✅ | Create and manage sales orders |
+| Shipment Tracking | ✅ | Track deliveries and carriers |
+| Invoice Generation | ✅ | Create invoices from orders |
+| Credit Limit Management | ✅ | Set customer credit limits |
+
+#### Sales Management (Planned)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Opportunity Management | 🔲 | Track sales opportunities |
+| Sales Pipeline | 🔲 | Visual pipeline tracking |
+| Sales Forecasting | 🔲 | Predict future sales |
+| Quotation Management | 🔲 | Create and track quotes |
+| Sales Analytics | 🔲 | Sales performance reports |
+| Mobile Sales App | 🔲 | On-the-go sales management |
+
+#### Service Management (Planned)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Service Contracts | 🔲 | Manage service agreements |
+| Warranty Tracking | 🔲 | Track product warranties |
+| Service Call Management | 🔲 | Log and respond to service requests |
+| Field Service | 🔲 | Manage on-site service visits |
+
+#### Marketing (Planned)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Campaign Management | 🔲 | Create marketing campaigns |
+| Lead Management | 🔲 | Track and nurture leads |
+| Campaign Analytics | 🔲 | Measure campaign effectiveness |
+| Email Integration | 🔲 | Email campaign automation |
+
+---
+
+### Purchasing & Inventory Control
+
+#### Procurement (Current)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Vendor Master Data | ✅ | Store vendor information |
+| Purchase Orders | ✅ | Create and manage POs |
+| Goods Receipts | ✅ | Record incoming goods |
+| Three-Way Matching | ✅ | PO ↔ GR ↔ Bill matching |
+| Payment Runs | ✅ | Batch payment processing |
+| Document Linking | ✅ | Link related documents |
+
+#### Procurement (Planned)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Purchase Requisitions | 🔲 | Internal purchase requests |
+| Vendor Evaluation | 🔲 | Rate and score vendors |
+| Blanket Purchase Orders | 🔲 | Long-term purchase agreements |
+| Multi-currency Purchasing | 🔲 | Buy in foreign currencies |
+
+#### Inventory Management (Planned)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Warehouse Management | 🔲 | Multiple warehouse support |
+| Bin Location Management | 🔲 | Sub-zone stock management |
+| Inventory Valuation | 🔲 | FIFO, LIFO, Average costing |
+| Stock Transfers | 🔲 | Inter-warehouse transfers |
+| Cycle Counting | 🔲 | Scheduled inventory counts |
+| Reorder Point Planning | 🔲 | Automatic replenishment alerts |
+| Serial/Batch Tracking | 🔲 | Track items by serial/batch |
+| Consignment Inventory | 🔲 | Manage consigned stock |
+
+---
+
+### Production Planning (Planned)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Bill of Materials (BOM) | 🔲 | Multi-level BOM management |
+| Production Orders | 🔲 | Manufacturing order management |
+| Material Requirements Planning | 🔲 | MRP calculations |
+| Capacity Planning | 🔲 | Resource scheduling |
+| Shop Floor Control | 🔲 | Track production progress |
+| Work Center Management | 🔲 | Define production resources |
+| Backflush Processing | 🔲 | Automatic material consumption |
+
+---
+
+### Banking & Reconciliation
+
+#### Current Features
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Bank Account Management | ✅ | Multiple accounts per entity |
+| Transaction Recording | ✅ | Manual transaction entry |
+| Invoice/Bill Matching | ✅ | Match transactions to documents |
+| Account Reconciliation | ✅ | Reconcile bank statements |
+
+#### Planned Features
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Bank Feed Integration | 🔲 | Automated transaction import |
+| Payment Processing | ✅ | ACH, Check, Wire payments |
+| Auto-Matching Rules | 🔲 | Rule-based transaction matching |
+| Bank Statement Import | 🔲 | Import OFX/QFX/CSV files |
+| Positive Pay | 🔲 | Check fraud prevention |
+
+---
+
+### Additional Planned Features
+
+#### Document Management
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Document Attachments | 🔲 | Attach files to transactions |
+| Document Templates | 🔲 | Customizable print layouts |
+| E-invoicing | 🔲 | Electronic invoice exchange |
+| Digital Signatures | 🔲 | Sign documents electronically |
+
+#### Workflow & Automation
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Approval Workflows | 🔲 | Configurable approval chains |
+| Email Notifications | 🔲 | Automated alerts |
+| Scheduled Reports | 🔲 | Auto-generated reports |
+| Recurring Transactions | 🔲 | Automated recurring entries |
+
+#### Integrations
+| Feature | Status | Description |
+|---------|--------|-------------|
+| API Access | ✅ | RESTful API via Edge Functions |
+| Webhook Support | 🔲 | Real-time event notifications |
+| Third-party Connectors | 🔲 | External system integrations |
+
+---
+
+## Legend
+
+| Symbol | Meaning |
+|--------|---------|
+| ✅ | Implemented |
+| 🔲 | Planned / Roadmap |
