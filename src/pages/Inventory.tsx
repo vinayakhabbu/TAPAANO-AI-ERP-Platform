@@ -26,6 +26,9 @@ import {
   Tag,
   ArrowRight,
   MoreHorizontal,
+  PackageCheck,
+  Truck,
+  FileText,
 } from "lucide-react";
 import {
   useWarehouses,
@@ -36,11 +39,16 @@ import {
   useSerialNumbers,
   useBatchLots,
   useInventorySummary,
+  useGoodsReceipts,
+  useShipments,
+  useInventoryTransactions,
 } from "@/hooks/useInventory";
 import { WarehouseForm } from "@/components/forms/WarehouseForm";
 import { ProductForm } from "@/components/forms/ProductForm";
 import { StockTransferForm } from "@/components/forms/StockTransferForm";
 import { CycleCountForm } from "@/components/forms/CycleCountForm";
+import { GoodsReceiptForm } from "@/components/forms/GoodsReceiptForm";
+import { ShipmentForm } from "@/components/forms/ShipmentForm";
 import { format } from "date-fns";
 
 const transferStatusConfig: Record<string, { label: string; className: string }> = {
@@ -66,6 +74,9 @@ const Inventory = () => {
   const { data: cycleCounts = [], isLoading: countsLoading } = useCycleCounts();
   const { data: serialNumbers = [], isLoading: serialsLoading } = useSerialNumbers();
   const { data: batchLots = [], isLoading: batchLoading } = useBatchLots();
+  const { data: goodsReceipts = [], isLoading: receiptsLoading } = useGoodsReceipts();
+  const { data: shipments = [], isLoading: shipmentsLoading } = useShipments();
+  const { data: transactions = [], isLoading: transactionsLoading } = useInventoryTransactions();
   const summary = useInventorySummary();
 
   const formatDate = (dateStr: string) => {
@@ -180,6 +191,18 @@ const Inventory = () => {
           <TabsTrigger value="transfers" className="gap-2">
             <ArrowLeftRight className="h-4 w-4 hidden sm:inline" />
             Transfers
+          </TabsTrigger>
+          <TabsTrigger value="receipts" className="gap-2">
+            <PackageCheck className="h-4 w-4 hidden sm:inline" />
+            Receipts
+          </TabsTrigger>
+          <TabsTrigger value="shipments" className="gap-2">
+            <Truck className="h-4 w-4 hidden sm:inline" />
+            Shipments
+          </TabsTrigger>
+          <TabsTrigger value="transactions" className="gap-2">
+            <FileText className="h-4 w-4 hidden sm:inline" />
+            Transactions
           </TabsTrigger>
           <TabsTrigger value="counting" className="gap-2">
             <ClipboardList className="h-4 w-4 hidden sm:inline" />
@@ -465,6 +488,238 @@ const Inventory = () => {
                       </TableRow>
                     );
                   })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Goods Receipts Tab */}
+        <TabsContent value="receipts" className="mt-4">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Goods Receipts</h3>
+                <p className="text-sm text-muted-foreground">Receive goods from purchase orders</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search receipts..." className="w-full sm:w-64 pl-9" />
+                </div>
+                <GoodsReceiptForm />
+              </div>
+            </div>
+
+            {receiptsLoading ? (
+              <TableSkeleton rows={5} cols={6} />
+            ) : goodsReceipts.length === 0 ? (
+              <EmptyState
+                icon={PackageCheck}
+                title="No goods receipts"
+                description="Receive goods from purchase orders to create receipts"
+                actionButton={<GoodsReceiptForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />New Receipt</Button>} />}
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">Receipt #</TableHead>
+                    <TableHead className="text-muted-foreground">PO Number</TableHead>
+                    <TableHead className="text-muted-foreground">Vendor</TableHead>
+                    <TableHead className="text-muted-foreground">Entity</TableHead>
+                    <TableHead className="text-muted-foreground">Receipt Date</TableHead>
+                    <TableHead className="text-muted-foreground">Notes</TableHead>
+                    <TableHead className="text-muted-foreground w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {goodsReceipts.map((receipt: any) => (
+                    <TableRow key={receipt.id} className="border-border">
+                      <TableCell className="font-medium text-foreground">{receipt.receipt_number}</TableCell>
+                      <TableCell className="text-primary font-medium">
+                        {receipt.purchase_orders?.po_number || "—"}
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {receipt.purchase_orders?.vendors?.name || "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {receipt.entities?.name || "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(receipt.receipt_date)}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                        {receipt.notes || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Shipments Tab */}
+        <TabsContent value="shipments" className="mt-4">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Shipments</h3>
+                <p className="text-sm text-muted-foreground">Ship goods from sales orders</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search shipments..." className="w-full sm:w-64 pl-9" />
+                </div>
+                <ShipmentForm />
+              </div>
+            </div>
+
+            {shipmentsLoading ? (
+              <TableSkeleton rows={5} cols={7} />
+            ) : shipments.length === 0 ? (
+              <EmptyState
+                icon={Truck}
+                title="No shipments"
+                description="Ship goods from confirmed sales orders"
+                actionButton={<ShipmentForm trigger={<Button variant="outline" className="gap-2"><Plus className="h-4 w-4" />New Shipment</Button>} />}
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">Shipment #</TableHead>
+                    <TableHead className="text-muted-foreground">SO Number</TableHead>
+                    <TableHead className="text-muted-foreground">Customer</TableHead>
+                    <TableHead className="text-muted-foreground">Carrier</TableHead>
+                    <TableHead className="text-muted-foreground">Ship Date</TableHead>
+                    <TableHead className="text-muted-foreground">Tracking #</TableHead>
+                    <TableHead className="text-muted-foreground w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {shipments.map((shipment: any) => (
+                    <TableRow key={shipment.id} className="border-border">
+                      <TableCell className="font-medium text-foreground">{shipment.shipment_number}</TableCell>
+                      <TableCell className="text-primary font-medium">
+                        {shipment.sales_orders?.so_number || "—"}
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {shipment.sales_orders?.customers?.name || "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{shipment.carrier || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(shipment.ship_date)}</TableCell>
+                      <TableCell className="text-muted-foreground font-mono text-xs">
+                        {shipment.tracking_number || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Inventory Transactions Tab */}
+        <TabsContent value="transactions" className="mt-4">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Inventory Transactions</h3>
+                <p className="text-sm text-muted-foreground">All inventory movements from receipts and shipments</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search transactions..." className="w-full sm:w-64 pl-9" />
+                </div>
+              </div>
+            </div>
+
+            {transactionsLoading ? (
+              <TableSkeleton rows={5} cols={8} />
+            ) : transactions.length === 0 ? (
+              <EmptyState
+                icon={FileText}
+                title="No transactions"
+                description="Transactions are auto-created when goods are received or shipped"
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">Date</TableHead>
+                    <TableHead className="text-muted-foreground">Type</TableHead>
+                    <TableHead className="text-muted-foreground">Product</TableHead>
+                    <TableHead className="text-muted-foreground">Warehouse</TableHead>
+                    <TableHead className="text-muted-foreground text-right">Qty</TableHead>
+                    <TableHead className="text-muted-foreground text-right">Unit Cost</TableHead>
+                    <TableHead className="text-muted-foreground">Reference</TableHead>
+                    <TableHead className="text-muted-foreground">Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((tx: any) => (
+                    <TableRow key={tx.id} className="border-border">
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(tx.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          className={cn(
+                            "font-medium capitalize",
+                            tx.transaction_type === "receipt" 
+                              ? "bg-success/10 text-success" 
+                              : tx.transaction_type === "shipment"
+                              ? "bg-warning/10 text-warning"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {tx.transaction_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{tx.products?.name || "—"}</span>
+                          <span className="text-xs text-muted-foreground">{tx.products?.sku}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{tx.warehouses?.name || "—"}</TableCell>
+                      <TableCell className={cn(
+                        "text-right font-medium",
+                        Number(tx.quantity) > 0 ? "text-success" : "text-destructive"
+                      )}>
+                        {Number(tx.quantity) > 0 ? "+" : ""}{Number(tx.quantity).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right text-foreground">
+                        {formatCurrency(Number(tx.unit_cost))}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <div className="flex flex-col">
+                          <span className="text-xs uppercase">{tx.reference_type || "—"}</span>
+                          {tx.serial_numbers?.serial_number && (
+                            <span className="text-xs text-primary">S/N: {tx.serial_numbers.serial_number}</span>
+                          )}
+                          {tx.batch_lots?.batch_number && (
+                            <span className="text-xs text-primary">Batch: {tx.batch_lots.batch_number}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground max-w-[150px] truncate">
+                        {tx.notes || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             )}
