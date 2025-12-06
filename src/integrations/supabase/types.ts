@@ -1096,6 +1096,140 @@ export type Database = {
           },
         ]
       }
+      quotation_lines: {
+        Row: {
+          account_id: string | null
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          quantity: number
+          quotation_id: string
+          unit_price: number
+        }
+        Insert: {
+          account_id?: string | null
+          amount?: number
+          created_at?: string
+          description: string
+          id?: string
+          quantity?: number
+          quotation_id: string
+          unit_price?: number
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          quantity?: number
+          quotation_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_lines_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotations: {
+        Row: {
+          converted_so_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          entity_id: string
+          id: string
+          notes: string | null
+          org_id: string
+          quote_date: string
+          quote_number: string
+          status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          tax: number
+          total: number
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          converted_so_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          entity_id: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          quote_date?: string
+          quote_number: string
+          status?: Database["public"]["Enums"]["quotation_status"]
+          subtotal?: number
+          tax?: number
+          total?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          converted_so_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          entity_id?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          quote_date?: string
+          quote_number?: string
+          status?: Database["public"]["Enums"]["quotation_status"]
+          subtotal?: number
+          tax?: number
+          total?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_converted_so_id_fkey"
+            columns: ["converted_so_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_order_lines: {
         Row: {
           account_id: string | null
@@ -1439,6 +1573,13 @@ export type Database = {
         | "partially_received"
         | "received"
         | "cancelled"
+      quotation_status:
+        | "draft"
+        | "sent"
+        | "accepted"
+        | "rejected"
+        | "expired"
+        | "converted"
       transaction_status: "pending" | "matched" | "reconciled"
     }
     CompositeTypes: {
@@ -1588,6 +1729,14 @@ export const Constants = {
         "partially_received",
         "received",
         "cancelled",
+      ],
+      quotation_status: [
+        "draft",
+        "sent",
+        "accepted",
+        "rejected",
+        "expired",
+        "converted",
       ],
       transaction_status: ["pending", "matched", "reconciled"],
     },
