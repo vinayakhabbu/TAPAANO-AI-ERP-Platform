@@ -7,7 +7,6 @@ import {
   FileText,
   Building2,
   CalendarCheck,
-  ClipboardList,
   Settings,
   HelpCircle,
   Sparkles,
@@ -28,8 +27,7 @@ const navCategories = [
   {
     label: "Sales",
     items: [
-      { icon: ClipboardList, label: "Quotations", href: "/quotations" },
-      { icon: Receipt, label: "Receivables", href: "/ar" },
+      { icon: Receipt, label: "Order to Cash", href: "/ar" },
     ],
   },
   {

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   Search,
@@ -28,13 +35,19 @@ import {
   Truck,
   CreditCard,
   ArrowRight,
+  ClipboardList,
+  Send,
+  X,
 } from "lucide-react";
 import { useReceivables } from "@/hooks/useReceivables";
+import { useQuotations, useUpdateQuotationStatus, useConvertToSalesOrder } from "@/hooks/useQuotations";
 import { format } from "date-fns";
 import { SalesOrderForm } from "@/components/forms/SalesOrderForm";
 import { ShipmentForm } from "@/components/forms/ShipmentForm";
 import { InvoiceForm } from "@/components/forms/InvoiceForm";
 import { CustomerForm } from "@/components/forms/CustomerForm";
+import { QuotationForm } from "@/components/forms/QuotationForm";
+import { useToast } from "@/hooks/use-toast";
 
 const invoiceStatusConfig = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
@@ -52,14 +65,58 @@ const soStatusConfig = {
   cancelled: { label: "Cancelled", className: "bg-destructive/10 text-destructive" },
 };
 
+const quotationStatusConfig: Record<string, { label: string; className: string }> = {
+  draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
+  sent: { label: "Sent", className: "bg-primary/10 text-primary" },
+  accepted: { label: "Accepted", className: "bg-success/10 text-success" },
+  rejected: { label: "Rejected", className: "bg-destructive/10 text-destructive" },
+  expired: { label: "Expired", className: "bg-warning/10 text-warning" },
+  converted: { label: "Converted", className: "bg-cash/10 text-cash" },
+};
+
 const Receivables = () => {
   const { customers, invoices, salesOrders, shipments, stats, isLoading } = useReceivables();
+  const { data: quotations, isLoading: quotationsLoading } = useQuotations();
+  const updateQuotationStatus = useUpdateQuotationStatus();
+  const convertToSO = useConvertToSalesOrder();
+  const { toast } = useToast();
+  const [quotationFormOpen, setQuotationFormOpen] = useState(false);
+
+  const handleQuotationStatusUpdate = async (id: string, status: "sent" | "accepted" | "rejected") => {
+    try {
+      await updateQuotationStatus.mutateAsync({ id, status });
+      toast({ title: "Status Updated", description: `Quotation marked as ${status}` });
+    } catch {
+      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+    }
+  };
+
+  const handleConvertToSO = async (id: string) => {
+    try {
+      await convertToSO.mutateAsync(id);
+      toast({ title: "Converted", description: "Sales Order created from quotation" });
+    } catch {
+      toast({ title: "Error", description: "Failed to convert", variant: "destructive" });
+    }
+  };
+
+  const quotationStats = {
+    total: quotations?.length || 0,
+    pending: quotations?.filter((q) => q.status === "sent").length || 0,
+  };
 
   return (
-    <AppLayout title="Accounts Receivable" subtitle="Order to Cash cycle management">
+    <AppLayout title="Order to Cash" subtitle="Quote to collection cycle management">
       {/* O2C Flow Indicator */}
       <div className="mb-6 rounded-xl border border-border bg-card p-4">
         <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary/50">
+              <ClipboardList className="h-4 w-4 text-secondary-foreground" />
+            </div>
+            <span className="text-sm font-medium text-foreground">Quote</span>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
               <ShoppingCart className="h-4 w-4 text-primary" />
@@ -91,7 +148,23 @@ const Receivables = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-secondary/50 p-2.5">
+              <ClipboardList className="h-5 w-5 text-secondary-foreground" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Pending Quotes</p>
+              {quotationsLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <p className="text-2xl font-bold text-foreground">{quotationStats.pending}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-primary/10 p-2.5">
@@ -162,8 +235,12 @@ const Receivables = () => {
       </div>
 
       {/* Tabs for O2C stages */}
-      <Tabs defaultValue="sales-orders" className="mt-6">
+      <Tabs defaultValue="quotations" className="mt-6">
         <TabsList className="bg-muted/50">
+          <TabsTrigger value="quotations" className="gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Quotations
+          </TabsTrigger>
           <TabsTrigger value="sales-orders" className="gap-2">
             <ShoppingCart className="h-4 w-4" />
             Sales Orders
@@ -181,6 +258,131 @@ const Receivables = () => {
             Collections
           </TabsTrigger>
         </TabsList>
+
+        {/* Quotations Tab */}
+        <TabsContent value="quotations">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Quotations</h3>
+                <p className="text-sm text-muted-foreground">Create and manage customer quotations</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search quotes..." className="w-64 pl-9" />
+                </div>
+                <CustomerForm />
+                <Button onClick={() => setQuotationFormOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  New Quote
+                </Button>
+              </div>
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground">Quote #</TableHead>
+                  <TableHead className="text-muted-foreground">Customer</TableHead>
+                  <TableHead className="text-muted-foreground">Date</TableHead>
+                  <TableHead className="text-muted-foreground">Valid Until</TableHead>
+                  <TableHead className="text-muted-foreground text-right">Total</TableHead>
+                  <TableHead className="text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-muted-foreground w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {quotationsLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i} className="border-border">
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : !quotations || quotations.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <ClipboardList className="h-8 w-8" />
+                        <p>No quotations found</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 gap-2"
+                          onClick={() => setQuotationFormOpen(true)}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Create your first quote
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  quotations.map((quote) => {
+                    const status = quotationStatusConfig[quote.status] || quotationStatusConfig.draft;
+                    return (
+                      <TableRow key={quote.id} className="border-border">
+                        <TableCell className="font-medium text-foreground">{quote.quote_number}</TableCell>
+                        <TableCell className="text-foreground">{quote.customers?.name || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(new Date(quote.quote_date), "MMM d, yyyy")}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {quote.valid_until ? format(new Date(quote.valid_until), "MMM d, yyyy") : "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-foreground">
+                          ${quote.total.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={cn("font-medium", status.className)}>
+                            {status.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {quote.status === "draft" && (
+                                <DropdownMenuItem onClick={() => handleQuotationStatusUpdate(quote.id, "sent")}>
+                                  <Send className="h-4 w-4 mr-2" /> Mark as Sent
+                                </DropdownMenuItem>
+                              )}
+                              {quote.status === "sent" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleQuotationStatusUpdate(quote.id, "accepted")}>
+                                    <ArrowRight className="h-4 w-4 mr-2" /> Mark Accepted
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleQuotationStatusUpdate(quote.id, "rejected")}>
+                                    <X className="h-4 w-4 mr-2" /> Mark Rejected
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {quote.status === "accepted" && (
+                                <DropdownMenuItem onClick={() => handleConvertToSO(quote.id)}>
+                                  <ArrowRight className="h-4 w-4 mr-2" /> Convert to Sales Order
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
 
         {/* Sales Orders Tab */}
         <TabsContent value="sales-orders">
@@ -538,6 +740,8 @@ const Receivables = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      <QuotationForm open={quotationFormOpen} onOpenChange={setQuotationFormOpen} />
     </AppLayout>
   );
 };
