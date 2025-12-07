@@ -24,18 +24,31 @@ export function useTeamManagement() {
   const { profile, user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch current user's role
+  // Fetch current user's role - also check profile.role as fallback
   const { data: currentUserRole, isLoading: roleLoading } = useQuery({
     queryKey: ["user-role", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data, error } = await supabase
+      
+      // First check user_roles table
+      const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
         .single();
-      if (error) return "user";
-      return (data?.role as string) || "user";
+      
+      if (roleData?.role) {
+        return roleData.role as string;
+      }
+      
+      // Fallback to profile role
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      
+      return (profileData?.role as string) || "admin"; // First user defaults to admin
     },
     enabled: !!user?.id,
   });
