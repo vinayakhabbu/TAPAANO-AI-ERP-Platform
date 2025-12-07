@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Production from "./pages/Production";
 import CRM from "./pages/CRM";
 import Controlling from "./pages/Controlling";
+import ServiceManagement from "./pages/ServiceManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/close" element={<PeriodClose />} />
               <Route path="/production" element={<Production />} />
               <Route path="/controlling" element={<Controlling />} />
+              <Route path="/service" element={<ServiceManagement />} />
               <Route path="/settings" element={<Settings />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
