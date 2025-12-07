@@ -61,6 +61,11 @@ const routeToContext: Record<string, { context: string; label: string; prompts: 
     label: "Production",
     prompts: ["Active production orders", "Capacity utilization", "BOM summary"],
   },
+  "/controlling": {
+    context: "controlling",
+    label: "Controlling",
+    prompts: ["Show cost centers", "Budget variance analysis", "CO documents summary", "Internal orders status"],
+  },
 };
 
 const defaultConfig = {
