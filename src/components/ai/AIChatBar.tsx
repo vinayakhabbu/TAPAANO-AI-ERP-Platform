@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Send, Bot, User, Loader2, Wrench, MessageSquare, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Sparkles, Send, Bot, User, Loader2, Wrench, MessageSquare, ChevronLeft, ChevronRight, Trash2, Zap } from "lucide-react";
 
 interface Message {
   id: string;
@@ -12,7 +12,7 @@ interface Message {
   content: string;
   timestamp: Date;
   toolCalls?: number;
-  agentUsed?: string;
+  agentsUsed?: string[];
 }
 
 interface AIChatBarProps {
@@ -20,59 +20,14 @@ interface AIChatBarProps {
   onToggle: () => void;
 }
 
-const routeToContext: Record<string, { context: string; label: string; prompts: string[] }> = {
-  "/crm": {
-    context: "crm",
-    label: "CRM & Sales",
-    prompts: ["Show me the pipeline summary", "What are my at-risk deals?", "Analyze win/loss patterns", "Show top opportunities"],
-  },
-  "/receivables": {
-    context: "finance",
-    label: "Finance",
-    prompts: ["Show AR aging summary", "What invoices are overdue?", "Get receivables metrics"],
-  },
-  "/payables": {
-    context: "finance",
-    label: "Finance",
-    prompts: ["Show AP summary", "What bills are due soon?", "Get payables metrics"],
-  },
-  "/general-ledger": {
-    context: "finance",
-    label: "Finance",
-    prompts: ["Show GL summary", "Get journal entries", "Account balances"],
-  },
-  "/banking": {
-    context: "finance",
-    label: "Finance",
-    prompts: ["Show cash position", "Bank account summary", "Recent transactions"],
-  },
-  "/financial-reports": {
-    context: "finance",
-    label: "Finance",
-    prompts: ["Generate income statement", "Balance sheet summary", "Cash flow report"],
-  },
-  "/inventory": {
-    context: "inventory",
-    label: "Inventory",
-    prompts: ["Show stock levels", "Low stock items", "Warehouse summary"],
-  },
-  "/production": {
-    context: "production",
-    label: "Production",
-    prompts: ["Active production orders", "Capacity utilization", "BOM summary"],
-  },
-  "/controlling": {
-    context: "controlling",
-    label: "Controlling",
-    prompts: ["Show cost centers", "Budget variance analysis", "CO documents summary", "Internal orders status"],
-  },
-};
-
-const defaultConfig = {
-  context: "default",
-  label: "General",
-  prompts: ["How can you help me?", "What features are available?", "Show system overview"],
-};
+const SUGGESTED_PROMPTS = [
+  "Give me an overview of the business",
+  "Show pipeline and AR summary",
+  "What needs my attention today?",
+  "How is inventory looking?",
+  "Show production status",
+  "Any open service calls?",
+];
 
 export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
   const { orgId } = useAuth();
@@ -83,19 +38,18 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const config = routeToContext[location.pathname] || defaultConfig;
-
   const getInitialMessage = (): Message => ({
     id: "1",
     role: "assistant",
-    content: `Hi! I'm Agent River, your ${config.label} AI assistant. Ask me anything about your ${config.label.toLowerCase()} data!`,
+    content: `Hi! I'm **Agent River**, your unified AI assistant for the entire ERP system. I can help with:\n\n• **CRM** - Pipeline, opportunities, customers\n• **Finance** - AR/AP, cash, invoices, bills\n• **Inventory** - Stock, warehouses, products\n• **Production** - BOMs, orders, capacity\n• **Controlling** - Cost centers, budgets\n• **Service** - Contracts, calls, visits\n\nAsk me anything!`,
     timestamp: new Date(),
   });
 
-  // Reset messages when context changes
   useEffect(() => {
-    setMessages([getInitialMessage()]);
-  }, [location.pathname]);
+    if (messages.length === 0) {
+      setMessages([getInitialMessage()]);
+    }
+  }, []);
 
   useEffect(() => {
     if (!collapsed && inputRef.current) {
@@ -123,13 +77,12 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("unified-agent", {
+      const { data, error } = await supabase.functions.invoke("agent-river", {
         body: {
           messages: [...messages.filter((m) => m.id !== "1"), userMessage].map((m) => ({
             role: m.role,
             content: m.content,
           })),
-          context: config.context,
         },
       });
 
@@ -140,6 +93,8 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
         role: "assistant",
         content: data.response || "I apologize, but I couldn't process that request.",
         timestamp: new Date(),
+        toolCalls: data.tool_calls,
+        agentsUsed: data.agents_used,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -168,6 +123,10 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
     setMessages([getInitialMessage()]);
   };
 
+  const formatAgentName = (name: string) => {
+    return name.replace('_agent', '').replace('_', ' ');
+  };
+
   return (
     <aside
       className={cn(
@@ -188,18 +147,18 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
       {/* Header */}
       <div className={cn("flex items-center border-b border-border h-16", collapsed ? "justify-center px-2" : "justify-between px-4")}>
         {collapsed ? (
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
         ) : (
           <>
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Agent River</h3>
-                <p className="text-xs text-muted-foreground">{config.label} Context</p>
+                <p className="text-xs text-muted-foreground">Unified AI Assistant</p>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={clearChat} className="h-8 w-8 text-muted-foreground hover:text-foreground">
@@ -222,20 +181,25 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map((message) => (
               <div key={message.id} className={cn("flex gap-2 animate-fade-in", message.role === "user" ? "flex-row-reverse" : "")}>
-                <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", message.role === "user" ? "bg-primary" : "bg-muted")}>
-                  {message.role === "user" ? <User className="h-3.5 w-3.5 text-primary-foreground" /> : <Bot className="h-3.5 w-3.5 text-muted-foreground" />}
+                <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", message.role === "user" ? "bg-primary" : "bg-gradient-to-br from-primary/20 to-muted")}>
+                  {message.role === "user" ? <User className="h-3.5 w-3.5 text-primary-foreground" /> : <Bot className="h-3.5 w-3.5 text-primary" />}
                 </div>
                 <div className={cn("max-w-[85%]", message.role === "user" ? "text-right" : "")}>
                   <div className={cn("rounded-lg px-3 py-2 text-xs whitespace-pre-wrap leading-relaxed", message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
                     {message.content}
                   </div>
-                  {(message.toolCalls || message.agentUsed) && (
-                    <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                      {message.agentUsed && <span className="rounded bg-muted px-1 py-0.5">{message.agentUsed.replace("_agent", "").replace("_", " ")}</span>}
+                  {(message.toolCalls || message.agentsUsed) && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                      {message.agentsUsed?.map((agent) => (
+                        <span key={agent} className="flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-primary">
+                          <Zap className="h-2 w-2" />
+                          {formatAgentName(agent)}
+                        </span>
+                      ))}
                       {message.toolCalls && message.toolCalls > 0 && (
                         <span className="flex items-center gap-0.5">
                           <Wrench className="h-2.5 w-2.5" />
-                          {message.toolCalls}
+                          {message.toolCalls} tools
                         </span>
                       )}
                     </div>
@@ -245,12 +209,12 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
             ))}
             {isLoading && (
               <div className="flex gap-2 animate-fade-in">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <Bot className="h-3.5 w-3.5 text-muted-foreground" />
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-muted">
+                  <Bot className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
                   <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                  <span className="text-xs text-muted-foreground">Thinking...</span>
+                  <span className="text-xs text-muted-foreground">Analyzing with specialized agents...</span>
                 </div>
               </div>
             )}
@@ -262,7 +226,7 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
             <div className="px-4 pb-2">
               <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider">Try asking</p>
               <div className="flex flex-wrap gap-1.5">
-                {config.prompts.map((prompt) => (
+                {SUGGESTED_PROMPTS.map((prompt) => (
                   <button
                     key={prompt}
                     onClick={() => handlePromptClick(prompt)}
@@ -283,7 +247,7 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={orgId ? `Ask about ${config.label.toLowerCase()}...` : "Sign in to chat"}
+                placeholder={orgId ? "Ask Agent River anything..." : "Sign in to chat"}
                 disabled={!orgId}
                 className="h-10 w-full rounded-lg border border-border bg-muted/50 pl-3 pr-10 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
               />
