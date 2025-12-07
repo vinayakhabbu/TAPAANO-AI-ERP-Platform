@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.finance-agents]
 verify_jwt = false
+
+[functions.crm-agent]
+verify_jwt = false
