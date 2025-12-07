@@ -48,6 +48,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PipelineKanban } from "@/components/pipeline/PipelineKanban";
 import { PipelineFunnel } from "@/components/pipeline/PipelineFunnel";
 import { SalesForecasting } from "@/components/forecasting/SalesForecasting";
+import { SalesAnalytics } from "@/components/analytics/SalesAnalytics";
 
 const CRM = () => {
   const [pipelineView, setPipelineView] = useState<"kanban" | "funnel">("kanban");
@@ -172,6 +173,10 @@ const CRM = () => {
           <TabsTrigger value="forecasting" className="gap-2">
             <TrendingUp className="h-4 w-4" />
             Forecasting
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analytics
           </TabsTrigger>
         </TabsList>
 
@@ -475,6 +480,21 @@ const CRM = () => {
             </div>
             <div className="p-4">
               <SalesForecasting />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="border-b border-border p-4">
+              <h3 className="text-lg font-semibold text-foreground">Sales Analytics</h3>
+              <p className="text-sm text-muted-foreground">
+                Performance metrics, trends, and pipeline insights
+              </p>
+            </div>
+            <div className="p-4">
+              <SalesAnalytics />
             </div>
           </div>
         </TabsContent>
