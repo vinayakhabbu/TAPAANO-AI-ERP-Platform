@@ -1,4 +1,7 @@
 project_id = "hmjfkdyxrapbteowszvg"
 
+[functions.global-search]
+verify_jwt = false
+
 [functions.agent-river]
 verify_jwt = false
