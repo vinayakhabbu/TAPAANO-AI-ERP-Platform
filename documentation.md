@@ -2,7 +2,7 @@
 
 ## Overview
 
-A comprehensive, multi-tenant financial management system built for modern enterprises. The application provides end-to-end financial operations management including Order-to-Cash (O2C), Procure-to-Pay (P2P), General Ledger, Banking, and Period Close modules with an integrated AI Copilot.
+A comprehensive, multi-tenant financial management system built for modern enterprises. The application provides end-to-end financial operations management including Order-to-Cash (O2C), Procure-to-Pay (P2P), General Ledger, Banking, Period Close, CRM, and Production modules with an integrated context-aware AI Agent called "Agent River".
 
 ---
 
@@ -240,20 +240,78 @@ Organization
 
 ---
 
-### 8. AI Copilot
-**Purpose**: Natural language interface for financial queries and actions
+### 8. CRM (`/crm`)
+**Purpose**: Customer Relationship Management and Sales Pipeline
+
+**Features**:
+
+#### Pipeline Management
+- Visual Kanban board for opportunity tracking
+- Funnel view for conversion analysis
+- Drag-and-drop stage transitions
+- Stage workflow: `lead` → `qualified` → `proposal` → `negotiation` → `closed_won` / `closed_lost`
+
+#### Opportunity Management
+- Track sales opportunities with expected values
+- Probability-weighted pipeline calculations
+- Expected close date tracking
+- Customer linkage
+
+#### Sales Analytics
+- Key Performance Metrics (Win Rate, Avg Deal Size, Sales Cycle, Pipeline Velocity)
+- Revenue & Deals Trend charts
+- Pipeline Distribution (Pie chart)
+- Stage Conversion Rates (Bar chart)
+- Performance by Source analysis
+- Quick Stats overview
+
+#### Sales Forecasting
+- AI-powered sales predictions
+- Period-based forecasting
+- Weighted pipeline analysis
+
+---
+
+### 9. Agent River (AI Assistant)
+**Purpose**: Context-aware AI assistant for natural language queries across all modules
 
 **Capabilities**:
+- **Context-Aware**: Automatically adapts to current page/module
+- **Multi-Domain**: Supports CRM, Finance, Inventory, Production contexts
+- **Tool-Enabled**: Uses OpenAI function calling for database queries
 - Query any master or transaction data
 - Get summaries and metrics
-- Answer questions about AR aging, AP status, cash position
+- Answer questions about pipeline, AR aging, AP status, cash position, inventory levels
 - Natural language to database query translation
 
+**Context Modes**:
+| Route | Context | Capabilities |
+|-------|---------|--------------|
+| `/crm` | CRM & Sales | Pipeline summary, at-risk deals, win/loss analysis, opportunity queries |
+| `/receivables`, `/payables`, `/banking`, `/general-ledger` | Finance | AR/AP summaries, cash position, invoice/bill queries |
+| `/inventory` | Inventory | Stock levels, warehouse summary, low stock alerts |
+| `/production` | Production | Production orders, capacity, BOM queries |
+| Other routes | General | Cross-module queries and assistance |
+
 **Technical Implementation**:
-- Edge Function: `finance-chat`
-- Agents: `finance-agents`
-- Chat history persistence
+- Edge Function: `unified-agent`
+- Model: GPT-4o-mini with function calling
+- UI Component: `AIChatBar` (sidebar panel)
 - Org-scoped context awareness
+- Suggested prompts adapt to current context
+
+**AI Tools Available**:
+| Tool | Context | Description |
+|------|---------|-------------|
+| `get_pipeline_summary` | CRM | Pipeline metrics by stage |
+| `get_opportunities` | CRM | Query opportunities with filters |
+| `get_at_risk_deals` | CRM | Identify stalled or closing-soon deals |
+| `analyze_win_loss` | CRM | Win/loss patterns and rates |
+| `get_ar_summary` | Finance | AR aging and outstanding totals |
+| `get_ap_summary` | Finance | AP outstanding and due amounts |
+| `get_cash_position` | Finance | Total cash across bank accounts |
+| `get_stock_levels` | Inventory | Current stock quantities |
+| `get_warehouse_summary` | Inventory | Warehouse capacity and status |
 
 ---
 
@@ -335,17 +393,30 @@ USING (EXISTS (
 
 ## API / Edge Functions
 
+### `unified-agent`
+- **Purpose**: Context-aware AI agent for all modules
+- **Endpoint**: `/functions/v1/unified-agent`
+- **Method**: POST
+- **Auth**: Not required (public)
+- **Features**: Multi-context support (CRM, Finance, Inventory, Production), OpenAI function calling
+
+### `crm-agent`
+- **Purpose**: CRM-specific AI agent (legacy)
+- **Endpoint**: `/functions/v1/crm-agent`
+- **Method**: POST
+- **Auth**: Not required (public)
+
 ### `finance-chat`
-- **Purpose**: AI copilot chat interface
+- **Purpose**: Finance AI chat interface
 - **Endpoint**: `/functions/v1/finance-chat`
 - **Method**: POST
 - **Auth**: Required (Bearer token)
 
 ### `finance-agents`
-- **Purpose**: AI agent actions and tools
+- **Purpose**: Finance AI agent actions and tools
 - **Endpoint**: `/functions/v1/finance-agents`
 - **Method**: POST
-- **Auth**: Required (Bearer token)
+- **Auth**: Not required (public)
 
 ---
 
@@ -354,29 +425,46 @@ USING (EXISTS (
 ```
 src/
 ├── components/
-│   ├── ai/                 # AI Copilot components
+│   ├── ai/                 # AI Agent components
+│   │   └── AIChatBar.tsx   # Context-aware AI sidebar
+│   ├── analytics/          # Analytics components
+│   │   └── SalesAnalytics.tsx
+│   ├── crm/                # CRM-specific components
 │   ├── dashboard/          # Dashboard widgets
+│   ├── forecasting/        # Forecasting components
 │   ├── forms/              # Data entry forms
 │   ├── layout/             # App layout components
+│   ├── pipeline/           # Pipeline visualization
+│   │   ├── PipelineKanban.tsx
+│   │   └── PipelineFunnel.tsx
 │   └── ui/                 # Shadcn UI components
 ├── hooks/
 │   ├── useAuth.tsx         # Authentication hook
 │   ├── useBanking.ts       # Banking data hook
+│   ├── useCRMAgent.ts      # CRM AI agent hook
 │   ├── useGeneralLedger.ts # GL data hook
+│   ├── useOpportunities.ts # CRM opportunities hook
 │   ├── usePayables.ts      # AP data hook
 │   ├── usePeriodClose.ts   # Close data hook
-│   └── useReceivables.ts   # AR data hook
+│   ├── useQuotations.ts    # Quotations hook
+│   ├── useReceivables.ts   # AR data hook
+│   └── useSalesForecasting.ts # Forecasting hook
 ├── integrations/
 │   └── supabase/           # Supabase client & types
 ├── lib/
+│   ├── pdfExport.ts        # PDF generation utilities
 │   └── utils.ts            # Utility functions
 ├── pages/
 │   ├── Auth.tsx            # Login/signup page
 │   ├── Banking.tsx         # Banking module
+│   ├── CRM.tsx             # CRM module
+│   ├── FinancialReports.tsx # Reports module
 │   ├── GeneralLedger.tsx   # GL module
 │   ├── Index.tsx           # Dashboard
+│   ├── Inventory.tsx       # Inventory module
 │   ├── Payables.tsx        # Procure to Pay module
 │   ├── PeriodClose.tsx     # Close module
+│   ├── Production.tsx      # Production module
 │   ├── Receivables.tsx     # AR module
 │   └── Settings.tsx        # User settings
 └── main.tsx                # App entry point
@@ -384,8 +472,10 @@ src/
 supabase/
 ├── config.toml             # Supabase configuration
 └── functions/
-    ├── finance-agents/     # AI agents edge function
-    └── finance-chat/       # Chat edge function
+    ├── crm-agent/          # CRM AI agent
+    ├── finance-agents/     # Finance AI agents
+    ├── finance-chat/       # Chat edge function
+    └── unified-agent/      # Context-aware unified AI agent
 ```
 
 ---
@@ -414,7 +504,12 @@ supabase/
 | Financial Reports | ✅ | P&L, Balance Sheet, Cash Flow |
 | Banking & Reconciliation | ✅ | Bank accounts, transactions, matching |
 | Period Close Management | ✅ | Close tasks, checklists, tracking |
-| AI Copilot | ✅ | Natural language queries |
+| **CRM & Pipeline** | ✅ | Opportunity management, Kanban/Funnel views |
+| **Sales Analytics** | ✅ | Win rates, trends, conversion analysis |
+| **Sales Forecasting** | ✅ | AI-powered sales predictions |
+| **Agent River (AI)** | ✅ | Context-aware AI assistant |
+| Inventory Management | ✅ | Warehouses, stock, transactions |
+| Production Planning | ✅ | BOMs, production orders, MRP |
 | Dark/Light Theme | ✅ | User preference theming |
 | Responsive Design | ✅ | Mobile-friendly UI |
 | Real-time Updates | ✅ | Live data synchronization |
@@ -476,10 +571,10 @@ supabase/
 | Feature | Status | Description |
 |---------|--------|-------------|
 | **Opportunity Management** | ✅ | Track sales opportunities with pipeline stages (Lead → Qualified → Proposal → Negotiation → Won/Lost) |
-| Sales Pipeline | 🔲 | Visual pipeline tracking |
-| Sales Forecasting | 🔲 | Predict future sales |
+| **Sales Pipeline** | ✅ | Visual Kanban and Funnel pipeline tracking |
+| **Sales Forecasting** | ✅ | AI-powered sales predictions |
 | **Quotation Management** | ✅ | Create, track quotes, and convert to sales orders |
-| Sales Analytics | 🔲 | Sales performance reports |
+| **Sales Analytics** | ✅ | Win rates, trends, conversion analysis, performance metrics |
 | Mobile Sales App | 🔲 | On-the-go sales management |
 
 #### Service Management (Planned)
