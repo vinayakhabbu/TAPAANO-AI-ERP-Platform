@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, TrendingUp, TrendingDown, Building2, Landmark, Target, FolderKanban } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Building2, Landmark, Target, FolderKanban, FileText, ClipboardList } from 'lucide-react';
 import { useControlling } from '@/hooks/useControlling';
+import { useCODocuments, useInternalOrders } from '@/hooks/useCOIntegration';
 import CostCenterForm from '@/components/forms/CostCenterForm';
 import ProjectCostForm from '@/components/forms/ProjectCostForm';
 import FixedAssetForm from '@/components/forms/FixedAssetForm';
 import BudgetForm from '@/components/forms/BudgetForm';
 import CashFlowForecastForm from '@/components/forms/CashFlowForecastForm';
+import InternalOrderForm from '@/components/forms/InternalOrderForm';
 import CashFlowChart from '@/components/controlling/CashFlowChart';
 import BudgetVarianceChart from '@/components/controlling/BudgetVarianceChart';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -23,6 +25,7 @@ const Controlling = () => {
   const [assetDialogOpen, setAssetDialogOpen] = useState(false);
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [forecastDialogOpen, setForecastDialogOpen] = useState(false);
+  const [internalOrderDialogOpen, setInternalOrderDialogOpen] = useState(false);
 
   const {
     costCenters,
@@ -36,6 +39,9 @@ const Controlling = () => {
     cashFlowForecasts,
     cashFlowForecastsLoading,
   } = useControlling();
+
+  const { data: coDocuments, isLoading: coDocumentsLoading } = useCODocuments();
+  const { data: internalOrders, isLoading: internalOrdersLoading } = useInternalOrders();
 
   // Calculate summary metrics
   const totalAssetValue = fixedAssets.reduce((sum, a) => sum + a.book_value, 0);
@@ -95,12 +101,14 @@ const Controlling = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
           <TabsTrigger value="budgets">Budgets</TabsTrigger>
           <TabsTrigger value="assets">Fixed Assets</TabsTrigger>
           <TabsTrigger value="projects">Projects</TabsTrigger>
           <TabsTrigger value="cost-centers">Cost Centers</TabsTrigger>
+          <TabsTrigger value="internal-orders">Internal Orders</TabsTrigger>
+          <TabsTrigger value="co-documents">CO Documents</TabsTrigger>
         </TabsList>
 
         {/* Cash Flow Tab */}
@@ -390,6 +398,153 @@ const Controlling = () => {
                   )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Internal Orders Tab */}
+        <TabsContent value="internal-orders" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Internal Orders</h2>
+            <Dialog open={internalOrderDialogOpen} onOpenChange={setInternalOrderDialogOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus className="mr-2 h-4 w-4" />New Internal Order</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Internal Order</DialogTitle>
+                </DialogHeader>
+                <InternalOrderForm onSuccess={() => setInternalOrderDialogOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Internal Order List</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Valid From</TableHead>
+                    <TableHead>Valid To</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(internalOrders || []).map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">{order.code}</TableCell>
+                      <TableCell>{order.name}</TableCell>
+                      <TableCell className="capitalize">{order.order_type}</TableCell>
+                      <TableCell>{new Date(order.valid_from).toLocaleDateString()}</TableCell>
+                      <TableCell>{order.valid_to ? new Date(order.valid_to).toLocaleDateString() : '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant={order.status === 'open' ? 'default' : 'secondary'}>{order.status}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {(!internalOrders || internalOrders.length === 0) && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No internal orders yet</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* CO Documents Tab - Shows GL to CO Integration */}
+        <TabsContent value="co-documents" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Controlling Documents</h2>
+              <p className="text-sm text-muted-foreground">
+                CO documents are automatically created from GL journal entries with cost-relevant accounts
+              </p>
+            </div>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                CO Document List (GL → CO Integration)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>CO Doc #</TableHead>
+                    <TableHead>Journal Entry</TableHead>
+                    <TableHead>Posting Date</TableHead>
+                    <TableHead>Source Module</TableHead>
+                    <TableHead className="text-right">Lines</TableHead>
+                    <TableHead className="text-right">Total Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(coDocuments || []).map((doc: any) => {
+                    const totalAmount = (doc.co_document_lines || []).reduce(
+                      (sum: number, line: any) => sum + (line.amount || 0), 0
+                    );
+                    return (
+                      <TableRow key={doc.id}>
+                        <TableCell className="font-medium">{doc.document_number}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {doc.journal_entry?.entry_number || '-'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(doc.posting_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="capitalize">{doc.source_module}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{doc.co_document_lines?.length || 0}</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(totalAmount)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {(!coDocuments || coDocuments.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        No CO documents yet. Post a journal entry with a cost-relevant GL account to create one.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Integration Rules
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-2">GL → CO Flow</h4>
+                  <p className="text-sm text-muted-foreground">
+                    When a journal entry is posted with expense/revenue accounts marked for controlling,
+                    a CO document is automatically created with cost center and internal order assignments.
+                  </p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-2">Banking → GL → CO Flow</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Bank transactions (charges, interest) are posted through GL first, 
+                    then automatically create CO documents for cost-relevant accounts.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

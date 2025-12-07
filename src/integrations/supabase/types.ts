@@ -18,7 +18,10 @@ export type Database = {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
           code: string
+          controlling_category: string | null
           created_at: string
+          default_cost_center_id: string | null
+          default_internal_order_id: string | null
           id: string
           is_active: boolean
           name: string
@@ -29,7 +32,10 @@ export type Database = {
         Insert: {
           account_type: Database["public"]["Enums"]["account_type"]
           code: string
+          controlling_category?: string | null
           created_at?: string
+          default_cost_center_id?: string | null
+          default_internal_order_id?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -40,7 +46,10 @@ export type Database = {
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
           code?: string
+          controlling_category?: string | null
           created_at?: string
+          default_cost_center_id?: string | null
+          default_internal_order_id?: string | null
           id?: string
           is_active?: boolean
           name?: string
@@ -49,6 +58,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "accounts_default_cost_center_id_fkey"
+            columns: ["default_cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_default_internal_order_id_fkey"
+            columns: ["default_internal_order_id"]
+            isOneToOne: false
+            referencedRelation: "internal_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "accounts_org_id_fkey"
             columns: ["org_id"]
@@ -250,6 +273,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          journal_entry_id: string | null
           matched_bill_id: string | null
           matched_invoice_id: string | null
           org_id: string
@@ -264,6 +288,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          journal_entry_id?: string | null
           matched_bill_id?: string | null
           matched_invoice_id?: string | null
           org_id: string
@@ -278,6 +303,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          journal_entry_id?: string | null
           matched_bill_id?: string | null
           matched_invoice_id?: string | null
           org_id?: string
@@ -292,6 +318,13 @@ export type Database = {
             columns: ["bank_account_id"]
             isOneToOne: false
             referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
             referencedColumns: ["id"]
           },
           {
@@ -1081,6 +1114,135 @@ export type Database = {
           },
         ]
       }
+      co_document_lines: {
+        Row: {
+          account_id: string
+          amount: number
+          co_document_id: string
+          cost_center_id: string | null
+          created_at: string
+          currency: string
+          id: string
+          internal_order_id: string | null
+          journal_line_id: string
+          line_number: number
+          profit_center_id: string | null
+          wbs_element_id: string | null
+        }
+        Insert: {
+          account_id: string
+          amount?: number
+          co_document_id: string
+          cost_center_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          internal_order_id?: string | null
+          journal_line_id: string
+          line_number: number
+          profit_center_id?: string | null
+          wbs_element_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          co_document_id?: string
+          cost_center_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          internal_order_id?: string | null
+          journal_line_id?: string
+          line_number?: number
+          profit_center_id?: string | null
+          wbs_element_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "co_document_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "co_document_lines_co_document_id_fkey"
+            columns: ["co_document_id"]
+            isOneToOne: false
+            referencedRelation: "co_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "co_document_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "co_document_lines_internal_order_id_fkey"
+            columns: ["internal_order_id"]
+            isOneToOne: false
+            referencedRelation: "internal_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "co_document_lines_journal_line_id_fkey"
+            columns: ["journal_line_id"]
+            isOneToOne: false
+            referencedRelation: "journal_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      co_documents: {
+        Row: {
+          created_at: string
+          currency: string
+          document_number: string
+          id: string
+          journal_entry_id: string
+          org_id: string
+          posting_date: string
+          source_module: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          document_number: string
+          id?: string
+          journal_entry_id: string
+          org_id: string
+          posting_date?: string
+          source_module?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          document_number?: string
+          id?: string
+          journal_entry_id?: string
+          org_id?: string
+          posting_date?: string
+          source_module?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "co_documents_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: true
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "co_documents_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consignment_transactions: {
         Row: {
           created_at: string
@@ -1176,6 +1338,8 @@ export type Database = {
           org_id: string
           parent_id: string | null
           updated_at: string
+          valid_from: string | null
+          valid_to: string | null
         }
         Insert: {
           code: string
@@ -1188,6 +1352,8 @@ export type Database = {
           org_id: string
           parent_id?: string | null
           updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
         }
         Update: {
           code?: string
@@ -1200,6 +1366,8 @@ export type Database = {
           org_id?: string
           parent_id?: string | null
           updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
         }
         Relationships: [
           {
@@ -1586,6 +1754,53 @@ export type Database = {
             columns: ["purchase_order_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      internal_orders: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+          order_type: string
+          org_id: string
+          status: string
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          order_type?: string
+          org_id: string
+          status?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          order_type?: string
+          org_id?: string
+          status?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_orders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -2027,6 +2242,7 @@ export type Database = {
           memo: string | null
           org_id: string
           posted_at: string | null
+          source_module: string | null
           status: Database["public"]["Enums"]["journal_status"]
           updated_at: string
         }
@@ -2040,6 +2256,7 @@ export type Database = {
           memo?: string | null
           org_id: string
           posted_at?: string | null
+          source_module?: string | null
           status?: Database["public"]["Enums"]["journal_status"]
           updated_at?: string
         }
@@ -2053,6 +2270,7 @@ export type Database = {
           memo?: string | null
           org_id?: string
           posted_at?: string | null
+          source_module?: string | null
           status?: Database["public"]["Enums"]["journal_status"]
           updated_at?: string
         }
@@ -2076,30 +2294,42 @@ export type Database = {
       journal_lines: {
         Row: {
           account_id: string
+          cost_center_id: string | null
           created_at: string
           credit: number
           debit: number
           id: string
+          internal_order_id: string | null
           journal_entry_id: string
           memo: string | null
+          profit_center_id: string | null
+          wbs_element_id: string | null
         }
         Insert: {
           account_id: string
+          cost_center_id?: string | null
           created_at?: string
           credit?: number
           debit?: number
           id?: string
+          internal_order_id?: string | null
           journal_entry_id: string
           memo?: string | null
+          profit_center_id?: string | null
+          wbs_element_id?: string | null
         }
         Update: {
           account_id?: string
+          cost_center_id?: string | null
           created_at?: string
           credit?: number
           debit?: number
           id?: string
+          internal_order_id?: string | null
           journal_entry_id?: string
           memo?: string | null
+          profit_center_id?: string | null
+          wbs_element_id?: string | null
         }
         Relationships: [
           {
@@ -2107,6 +2337,20 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_internal_order_id_fkey"
+            columns: ["internal_order_id"]
+            isOneToOne: false
+            referencedRelation: "internal_orders"
             referencedColumns: ["id"]
           },
           {
