@@ -291,6 +291,7 @@ Organization
 | `/receivables`, `/payables`, `/banking`, `/general-ledger` | Finance | AR/AP summaries, cash position, invoice/bill queries |
 | `/inventory` | Inventory | Stock levels, warehouse summary, low stock alerts |
 | `/production` | Production | Production orders, capacity, BOM queries |
+| `/controlling` | Controlling | Cost centers, internal orders, budgets, fixed assets, cash flow forecasts, project costs |
 | Other routes | General | Cross-module queries and assistance |
 
 **Technical Implementation**:
@@ -312,6 +313,14 @@ Organization
 | `get_cash_position` | Finance | Total cash across bank accounts |
 | `get_stock_levels` | Inventory | Current stock quantities |
 | `get_warehouse_summary` | Inventory | Warehouse capacity and status |
+| `get_cost_centers` | Controlling | Query cost centers with hierarchy |
+| `get_internal_orders` | Controlling | Query internal orders by type/status |
+| `get_co_documents` | Controlling | Get CO documents with journal details |
+| `get_cost_center_balance` | Controlling | Calculate cost center balance by period |
+| `get_budget_variance` | Controlling | Analyze budget vs actual variance |
+| `get_fixed_assets` | Controlling | Query fixed assets with depreciation |
+| `get_cash_flow_forecast` | Controlling | Get cash flow forecasts by category |
+| `get_project_costs` | Controlling | Query project costs and budgets |
 
 ---
 
@@ -538,14 +547,18 @@ supabase/
 | Period Selection | ✅ | Custom date range filtering |
 | PDF Export | ✅ | Export reports to PDF |
 
-#### Controlling (Planned)
+#### Controlling (`/controlling`) - ✅ Implemented
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Cash Flow Forecasting | 🔲 | Predict future cash flows |
-| Fixed Asset Management | 🔲 | Asset register, depreciation tracking |
-| Budget Control | 🔲 | Budget creation and variance analysis |
-| Project Cost Monitoring | 🔲 | Track costs by project/cost center |
-| Cost Center Accounting | 🔲 | Allocate expenses to cost centers |
+| Cost Center Accounting | ✅ | Allocate expenses to cost centers with hierarchy support |
+| Internal Orders | ✅ | Track costs by internal orders (overhead, investment, accrual types) |
+| CO Documents | ✅ | Controlling documents linked to journal entries |
+| Budget Control | ✅ | Budget creation and variance analysis |
+| Cash Flow Forecasting | ✅ | Predict future cash flows with expected vs actual tracking |
+| Fixed Asset Management | ✅ | Asset register, depreciation tracking, disposal management |
+| Project Cost Monitoring | ✅ | Track costs by project with budget lines |
+| Budget Variance Analysis | ✅ | Visual variance charts and reporting |
+| Agent River Integration | ✅ | AI-powered controlling queries and analysis |
 
 #### Advanced Reporting (Planned)
 | Feature | Status | Description |
