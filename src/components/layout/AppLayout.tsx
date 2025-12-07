@@ -1,8 +1,9 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
-import { AIChatBar } from "@/components/ai/AIChatBar";
+import { UnifiedAIChat } from "@/components/ai/UnifiedAIChat";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -11,7 +12,6 @@ interface AppLayoutProps {
 }
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
-const AI_PANEL_COLLAPSED_KEY = "ai-panel-collapsed";
 
 export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -19,18 +19,9 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
     return saved === "true";
   });
 
-  const [aiPanelCollapsed, setAiPanelCollapsed] = useState(() => {
-    const saved = localStorage.getItem(AI_PANEL_COLLAPSED_KEY);
-    return saved === "true";
-  });
-
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
   }, [sidebarCollapsed]);
-
-  useEffect(() => {
-    localStorage.setItem(AI_PANEL_COLLAPSED_KEY, String(aiPanelCollapsed));
-  }, [aiPanelCollapsed]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,8 +29,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
       <div
         className={cn(
           "transition-all duration-300",
-          sidebarCollapsed ? "ml-16" : "ml-64",
-          aiPanelCollapsed ? "mr-14" : "mr-80"
+          sidebarCollapsed ? "ml-16" : "ml-64"
         )}
       >
         <Header title={title} subtitle={subtitle} />
@@ -47,7 +37,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
           {children}
         </main>
       </div>
-      <AIChatBar collapsed={aiPanelCollapsed} onToggle={() => setAiPanelCollapsed(!aiPanelCollapsed)} />
+      <UnifiedAIChat />
     </div>
   );
 }

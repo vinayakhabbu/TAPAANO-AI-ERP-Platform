@@ -37,7 +37,6 @@ import {
   Phone,
   LayoutGrid,
   BarChart3,
-  Bot,
 } from "lucide-react";
 import { useOpportunities, useUpdateOpportunityStage, useOpportunityStats, OPPORTUNITY_STAGES } from "@/hooks/useOpportunities";
 import { useQuery } from "@tanstack/react-query";
@@ -50,7 +49,7 @@ import { PipelineKanban } from "@/components/pipeline/PipelineKanban";
 import { PipelineFunnel } from "@/components/pipeline/PipelineFunnel";
 import { SalesForecasting } from "@/components/forecasting/SalesForecasting";
 import { SalesAnalytics } from "@/components/analytics/SalesAnalytics";
-import { CRMAgentChat } from "@/components/crm/CRMAgentChat";
+
 
 const CRM = () => {
   const [pipelineView, setPipelineView] = useState<"kanban" | "funnel">("kanban");
@@ -179,10 +178,6 @@ const CRM = () => {
           <TabsTrigger value="analytics" className="gap-2">
             <BarChart3 className="h-4 w-4" />
             Analytics
-          </TabsTrigger>
-          <TabsTrigger value="agent" className="gap-2">
-            <Bot className="h-4 w-4" />
-            AI Agent
           </TabsTrigger>
         </TabsList>
 
@@ -505,24 +500,6 @@ const CRM = () => {
           </div>
         </TabsContent>
 
-        {/* AI Agent Tab */}
-        <TabsContent value="agent">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <CRMAgentChat />
-            <div className="space-y-4">
-              <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="font-semibold text-foreground mb-2">What can the AI Agent do?</h3>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li>• Analyze your sales pipeline and opportunities</li>
-                  <li>• Identify at-risk deals needing attention</li>
-                  <li>• Provide follow-up recommendations</li>
-                  <li>• Analyze win/loss patterns</li>
-                  <li>• Look up customer details and history</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </TabsContent>
       </Tabs>
     </AppLayout>
   );
