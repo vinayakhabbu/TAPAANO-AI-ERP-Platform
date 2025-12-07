@@ -111,13 +111,12 @@ export function TeamSettings() {
             <CardTitle>Team Members</CardTitle>
             <CardDescription>Manage users in your organization</CardDescription>
           </div>
-          {isAdmin && (
-            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Users className="h-4 w-4" />
-                  Invite Member
-                </Button>
+          <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Users className="h-4 w-4" />
+                Invite Member
+              </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -190,10 +189,9 @@ export function TeamSettings() {
                   >
                     {inviteMember.isPending ? "Sending..." : "Send Invitation"}
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent>
           {isLoading ? (
