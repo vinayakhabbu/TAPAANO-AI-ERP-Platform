@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  agentsUsed?: string[];
+  toolCalls?: number;
 }
 
 export function useCRMAgent() {
@@ -20,7 +22,8 @@ export function useCRMAgent() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("crm-agent", {
+      // Use Agent River instead of crm-agent
+      const { data, error } = await supabase.functions.invoke("agent-river", {
         body: { messages: [...messages, userMessage] },
       });
 
@@ -34,11 +37,13 @@ export function useCRMAgent() {
 
       const assistantMessage: Message = {
         role: "assistant",
-        content: data.content,
+        content: data.response,
+        agentsUsed: data.agents_used,
+        toolCalls: data.tool_calls,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error("CRM Agent error:", error);
+      console.error("Agent River error:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to get AI response",
