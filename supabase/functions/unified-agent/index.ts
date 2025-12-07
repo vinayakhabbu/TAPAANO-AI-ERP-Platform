@@ -76,8 +76,19 @@ You understand the integration between GL and CO:
 
 Be precise with cost allocations and provide actionable controlling insights.`,
 
+  service: `You are a Service Management AI Agent with expertise in service operations, warranty tracking, and field service.
+You can help with:
+- Service contract management and renewals
+- Warranty tracking and claims
+- Service call management and resolution
+- Field service visit scheduling and tracking
+- Service performance metrics and SLAs
+- Customer service history
+
+Focus on service excellence, timely responses, and customer satisfaction.`,
+
   default: `You are a helpful ERP AI Assistant for business operations.
-You can assist with various business functions including CRM, Finance, Inventory, Production, and Controlling.
+You can assist with various business functions including CRM, Finance, Inventory, Production, Controlling, and Service Management.
 Provide clear, actionable guidance based on the user's questions.`
 };
 
@@ -268,6 +279,74 @@ const controllingTools = [
   }
 ];
 
+const serviceTools = [
+  {
+    type: "function",
+    function: {
+      name: "get_service_contracts",
+      description: "Get service contracts with status and renewal information",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["active", "expired", "pending"], description: "Filter by status" }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_warranties",
+      description: "Get warranty records with expiration information",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["active", "expired", "claimed"], description: "Filter by status" }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_service_calls",
+      description: "Get service calls/tickets with priority and status",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["open", "in_progress", "pending_parts", "completed", "cancelled"], description: "Filter by status" },
+          priority: { type: "string", enum: ["low", "medium", "high", "critical"], description: "Filter by priority" }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_field_visits",
+      description: "Get scheduled field service visits",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["scheduled", "in_progress", "completed", "cancelled"], description: "Filter by status" }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_service_stats",
+      description: "Get service management statistics and KPIs",
+      parameters: { type: "object", properties: {}, required: [] }
+    }
+  }
+];
+
 function getToolsForContext(context: string) {
   switch (context) {
     case 'crm': return crmTools;
@@ -279,6 +358,7 @@ function getToolsForContext(context: string) {
       return financeTools;
     case 'inventory': return inventoryTools;
     case 'controlling': return controllingTools;
+    case 'service': return serviceTools;
     default: return [];
   }
 }
@@ -500,6 +580,59 @@ async function executeTool(toolName: string, args: any, supabase: any): Promise<
           variance: (p.budget_amount || 0) - (p.actual_cost || 0),
           cost_center: p.cost_centers?.name
         })) || []);
+      }
+
+      // Service Management tools
+      case 'get_service_contracts': {
+        let query = supabase.from('service_contracts').select('*, customers(name)');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.order('end_date', { ascending: true }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_warranties': {
+        let query = supabase.from('warranties').select('*, customers(name), products(name)');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.order('end_date', { ascending: true }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_service_calls': {
+        let query = supabase.from('service_calls').select('*, customers(name)');
+        if (args.status) query = query.eq('status', args.status);
+        if (args.priority) query = query.eq('priority', args.priority);
+        const { data } = await query.order('created_at', { ascending: false }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_field_visits': {
+        let query = supabase.from('field_service_visits').select('*, customers(name), service_calls(call_number, subject)');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.order('scheduled_start', { ascending: true }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_service_stats': {
+        const { data: contracts } = await supabase.from('service_contracts').select('status');
+        const { data: warranties } = await supabase.from('warranties').select('status');
+        const { data: calls } = await supabase.from('service_calls').select('status, priority');
+        const { data: visits } = await supabase.from('field_service_visits').select('status');
+
+        const activeContracts = contracts?.filter((c: any) => c.status === 'active').length || 0;
+        const activeWarranties = warranties?.filter((w: any) => w.status === 'active').length || 0;
+        const openCalls = calls?.filter((c: any) => !['completed', 'cancelled'].includes(c.status)).length || 0;
+        const criticalCalls = calls?.filter((c: any) => c.priority === 'critical' && !['completed', 'cancelled'].includes(c.status)).length || 0;
+        const scheduledVisits = visits?.filter((v: any) => v.status === 'scheduled').length || 0;
+
+        return JSON.stringify({
+          active_contracts: activeContracts,
+          active_warranties: activeWarranties,
+          open_service_calls: openCalls,
+          critical_calls: criticalCalls,
+          scheduled_visits: scheduledVisits,
+          total_contracts: contracts?.length || 0,
+          total_warranties: warranties?.length || 0
+        });
       }
       
       default:

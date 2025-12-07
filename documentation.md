@@ -2,7 +2,7 @@
 
 ## Overview
 
-A comprehensive, multi-tenant financial management system built for modern enterprises. The application provides end-to-end financial operations management including Order-to-Cash (O2C), Procure-to-Pay (P2P), General Ledger, Banking, Period Close, CRM, and Production modules with an integrated context-aware AI Agent called "Agent River".
+A comprehensive, multi-tenant financial management system built for modern enterprises. The application provides end-to-end financial operations management including Order-to-Cash (O2C), Procure-to-Pay (P2P), General Ledger, Banking, Period Close, CRM, Production, Controlling, and Service Management modules with an integrated context-aware AI Agent called "Agent River".
 
 ---
 
@@ -277,7 +277,7 @@ Organization
 
 **Capabilities**:
 - **Context-Aware**: Automatically adapts to current page/module
-- **Multi-Domain**: Supports CRM, Finance, Inventory, Production contexts
+- **Multi-Domain**: Supports CRM, Finance, Inventory, Production, Controlling, Service contexts
 - **Tool-Enabled**: Uses OpenAI function calling for database queries
 - Query any master or transaction data
 - Get summaries and metrics
@@ -292,6 +292,7 @@ Organization
 | `/inventory` | Inventory | Stock levels, warehouse summary, low stock alerts |
 | `/production` | Production | Production orders, capacity, BOM queries |
 | `/controlling` | Controlling | Cost centers, internal orders, budgets, fixed assets, cash flow forecasts, project costs |
+| `/service` | Service | Service contracts, warranties, service calls, field visits, service stats |
 | Other routes | General | Cross-module queries and assistance |
 
 **Technical Implementation**:
@@ -321,6 +322,11 @@ Organization
 | `get_fixed_assets` | Controlling | Query fixed assets with depreciation |
 | `get_cash_flow_forecast` | Controlling | Get cash flow forecasts by category |
 | `get_project_costs` | Controlling | Query project costs and budgets |
+| `get_service_contracts` | Service | Query service contracts with status/renewal info |
+| `get_warranties` | Service | Query warranties with expiration info |
+| `get_service_calls` | Service | Query service calls/tickets by status/priority |
+| `get_field_visits` | Service | Query scheduled field service visits |
+| `get_service_stats` | Service | Service management KPIs and stats |
 
 ---
 
@@ -590,13 +596,14 @@ supabase/
 | **Sales Analytics** | ✅ | Win rates, trends, conversion analysis, performance metrics |
 | Mobile Sales App | 🔲 | On-the-go sales management |
 
-#### Service Management (Planned)
+#### Service Management (`/service`) - ✅ Implemented
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Service Contracts | 🔲 | Manage service agreements |
-| Warranty Tracking | 🔲 | Track product warranties |
-| Service Call Management | 🔲 | Log and respond to service requests |
-| Field Service | 🔲 | Manage on-site service visits |
+| Service Contracts | ✅ | Manage service agreements with renewals and billing |
+| Warranty Tracking | ✅ | Track product warranties with expiration alerts |
+| Service Call Management | ✅ | Log, track, and respond to service requests with priority handling |
+| Field Service | ✅ | Schedule and manage on-site service visits |
+| Agent River Integration | ✅ | AI-powered service queries and analysis |
 
 #### Marketing (Planned)
 | Feature | Status | Description |
