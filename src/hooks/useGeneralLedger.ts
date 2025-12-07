@@ -30,7 +30,12 @@ export const useJournalEntries = () => {
             debit,
             credit,
             memo,
-            account:accounts(name, code)
+            cost_center_id,
+            internal_order_id,
+            profit_center_id,
+            wbs_element_id,
+            account:accounts(name, code, controlling_category),
+            cost_center:cost_centers(code, name)
           )
         `)
         .order("entry_date", { ascending: false })
