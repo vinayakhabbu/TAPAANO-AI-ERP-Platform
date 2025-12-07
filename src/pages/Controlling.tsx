@@ -14,6 +14,7 @@ import BudgetForm from '@/components/forms/BudgetForm';
 import CashFlowForecastForm from '@/components/forms/CashFlowForecastForm';
 import CashFlowChart from '@/components/controlling/CashFlowChart';
 import BudgetVarianceChart from '@/components/controlling/BudgetVarianceChart';
+import { AppLayout } from '@/components/layout/AppLayout';
 
 const Controlling = () => {
   const [activeTab, setActiveTab] = useState('cash-flow');
@@ -46,13 +47,8 @@ const Controlling = () => {
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Controlling</h1>
-          <p className="text-muted-foreground">Financial planning, budgeting, and cost management</p>
-        </div>
-      </div>
+    <AppLayout title="Controlling" subtitle="Financial planning, budgeting, and cost management">
+      <div className="space-y-6">
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -398,7 +394,8 @@ const Controlling = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </AppLayout>
   );
 };
 
