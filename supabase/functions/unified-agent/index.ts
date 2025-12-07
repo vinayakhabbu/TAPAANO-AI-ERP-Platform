@@ -57,8 +57,27 @@ You can help with:
 
 Focus on manufacturing efficiency and resource optimization.`,
 
+  controlling: `You are a Controlling (CO) AI Agent with expertise in cost accounting, management reporting, and financial controlling.
+You can help with:
+- Cost center analysis and reporting
+- Internal order management and tracking
+- Budget vs actual variance analysis
+- CO document review (cost postings from GL)
+- Profitability analysis by cost center/internal order
+- Cash flow forecasting and analysis
+- Fixed asset depreciation and tracking
+- Project cost monitoring
+
+You understand the integration between GL and CO:
+- GL is the single source of truth for legal accounting
+- CO tracks costs by cost centers and internal orders for management reporting
+- All GL postings with controlling_category != 'NO_CO' create CO documents
+- Banking impacts CO only indirectly through GL postings
+
+Be precise with cost allocations and provide actionable controlling insights.`,
+
   default: `You are a helpful ERP AI Assistant for business operations.
-You can assist with various business functions including CRM, Finance, Inventory, and Production.
+You can assist with various business functions including CRM, Finance, Inventory, Production, and Controlling.
 Provide clear, actionable guidance based on the user's questions.`
 };
 
@@ -158,6 +177,97 @@ const inventoryTools = [
   }
 ];
 
+const controllingTools = [
+  {
+    type: "function",
+    function: {
+      name: "get_cost_centers",
+      description: "Get list of cost centers with their status and hierarchy",
+      parameters: { type: "object", properties: {}, required: [] }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_internal_orders",
+      description: "Get internal orders for overhead cost tracking",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["open", "closed"], description: "Filter by status" }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_co_documents",
+      description: "Get controlling documents that were created from GL journal entries",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "Maximum number of documents to return" }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_cost_center_balance",
+      description: "Get the balance/spending for a specific cost center",
+      parameters: {
+        type: "object",
+        properties: {
+          cost_center_code: { type: "string", description: "Cost center code to look up" }
+        },
+        required: ["cost_center_code"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_budget_variance",
+      description: "Get budget vs actual variance analysis",
+      parameters: { type: "object", properties: {}, required: [] }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_fixed_assets",
+      description: "Get fixed assets with depreciation status",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["active", "disposed", "fully_depreciated"], description: "Filter by status" }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_cash_flow_forecast",
+      description: "Get cash flow forecast data",
+      parameters: { type: "object", properties: {}, required: [] }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_project_costs",
+      description: "Get project cost summary",
+      parameters: { type: "object", properties: {}, required: [] }
+    }
+  }
+];
+
 function getToolsForContext(context: string) {
   switch (context) {
     case 'crm': return crmTools;
@@ -168,6 +278,7 @@ function getToolsForContext(context: string) {
     case 'banking':
       return financeTools;
     case 'inventory': return inventoryTools;
+    case 'controlling': return controllingTools;
     default: return [];
   }
 }
@@ -275,6 +386,120 @@ async function executeTool(toolName: string, args: any, supabase: any): Promise<
       case 'get_warehouse_summary': {
         const { data: warehouses } = await supabase.from('warehouses').select('*').eq('is_active', true);
         return JSON.stringify(warehouses || []);
+      }
+
+      // Controlling tools
+      case 'get_cost_centers': {
+        const { data: costCenters } = await supabase.from('cost_centers').select('*').eq('is_active', true);
+        return JSON.stringify(costCenters || []);
+      }
+
+      case 'get_internal_orders': {
+        let query = supabase.from('internal_orders').select('*');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_co_documents': {
+        const { data: coDocs } = await supabase
+          .from('co_documents')
+          .select('*, journal_entries(entry_number, memo, entry_date)')
+          .order('created_at', { ascending: false })
+          .limit(args.limit || 10);
+        return JSON.stringify(coDocs || []);
+      }
+
+      case 'get_cost_center_balance': {
+        const { data: costCenter } = await supabase
+          .from('cost_centers')
+          .select('id, code, name')
+          .eq('code', args.cost_center_code)
+          .maybeSingle();
+
+        if (!costCenter) return JSON.stringify({ error: "Cost center not found" });
+
+        const { data: coLines } = await supabase
+          .from('co_document_lines')
+          .select('amount')
+          .eq('cost_center_id', costCenter.id);
+
+        const totalAmount = coLines?.reduce((sum: number, line: any) => sum + (line.amount || 0), 0) || 0;
+
+        return JSON.stringify({
+          cost_center: costCenter,
+          total_costs: totalAmount,
+          line_count: coLines?.length || 0
+        });
+      }
+
+      case 'get_budget_variance': {
+        const { data: budgets } = await supabase
+          .from('budgets')
+          .select('*, budget_lines(*)')
+          .eq('status', 'approved')
+          .limit(5);
+
+        const variance = budgets?.map((b: any) => {
+          const totalBudgeted = b.budget_lines?.reduce((s: number, l: any) => s + (l.budgeted_amount || 0), 0) || 0;
+          const totalActual = b.budget_lines?.reduce((s: number, l: any) => s + (l.actual_amount || 0), 0) || 0;
+          return {
+            budget: b.name,
+            fiscal_year: b.fiscal_year,
+            budgeted: totalBudgeted,
+            actual: totalActual,
+            variance: totalBudgeted - totalActual,
+            variance_pct: totalBudgeted > 0 ? ((totalBudgeted - totalActual) / totalBudgeted * 100).toFixed(1) : 0
+          };
+        }) || [];
+
+        return JSON.stringify(variance);
+      }
+
+      case 'get_fixed_assets': {
+        let query = supabase.from('fixed_assets').select('*');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_cash_flow_forecast': {
+        const { data: forecasts } = await supabase
+          .from('cash_flow_forecasts')
+          .select('*')
+          .gte('forecast_date', new Date().toISOString().split('T')[0])
+          .order('forecast_date', { ascending: true })
+          .limit(30);
+
+        const summary = forecasts?.reduce((acc: any, f: any) => {
+          acc.total_expected_inflow += f.expected_inflow || 0;
+          acc.total_expected_outflow += f.expected_outflow || 0;
+          return acc;
+        }, { total_expected_inflow: 0, total_expected_outflow: 0 });
+
+        return JSON.stringify({
+          forecast_count: forecasts?.length || 0,
+          ...summary,
+          net_cash_flow: (summary?.total_expected_inflow || 0) - (summary?.total_expected_outflow || 0),
+          recent_forecasts: forecasts?.slice(0, 10) || []
+        });
+      }
+
+      case 'get_project_costs': {
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('*, cost_centers(name)')
+          .limit(10);
+
+        return JSON.stringify(projects?.map((p: any) => ({
+          project_number: p.project_number,
+          name: p.name,
+          status: p.status,
+          budget: p.budget_amount,
+          actual: p.actual_cost,
+          variance: (p.budget_amount || 0) - (p.actual_cost || 0),
+          cost_center: p.cost_centers?.name
+        })) || []);
       }
       
       default:
