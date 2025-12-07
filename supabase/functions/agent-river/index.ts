@@ -19,16 +19,23 @@ const AGENT_RIVER_SYSTEM = `You are Agent River, the unified AI orchestrator for
 
 You have access to specialized sub-agents that you can delegate tasks to:
 1. **crm_agent**: Sales pipeline, opportunities, customer relationships, win/loss analysis
-2. **finance_agent**: AR/AP, cash position, bank transactions, journal entries, financial metrics
-3. **inventory_agent**: Stock levels, warehouses, products, transfers, cycle counts, batch/serial tracking
-4. **production_agent**: BOMs, production orders, work centers, MRP, capacity planning
-5. **controlling_agent**: Cost centers, internal orders, budget variance, CO documents, fixed assets
-6. **service_agent**: Service contracts, warranties, service calls, field visits
+2. **finance_agent**: AR/AP aging, cash position, bank transactions, journal entries, financial metrics
+3. **o2c_agent**: Order-to-Cash - Quotations, sales orders, shipments, customer invoices, revenue tracking
+4. **p2p_agent**: Procure-to-Pay - Purchase requisitions, purchase orders, goods receipts, vendor bills, payment runs
+5. **inventory_agent**: Stock levels, warehouses, products, transfers, cycle counts, batch/serial tracking
+6. **production_agent**: BOMs, production orders, work centers, MRP, capacity planning
+7. **controlling_agent**: Cost centers, internal orders, budget variance, CO documents, fixed assets
+8. **service_agent**: Service contracts, warranties, service calls, field visits
 
 When a user asks a question:
 1. Analyze which agent(s) can best answer the question
 2. Call the appropriate agent tool(s) with a clear, specific task
 3. Synthesize the results into a cohesive response
+
+Route queries appropriately:
+- Quotations, sales orders, shipments, customer invoices → o2c_agent
+- Purchase requisitions, POs, goods receipts, vendor bills, payment runs → p2p_agent
+- General AR/AP summaries, cash, banking, GL → finance_agent
 
 You can call multiple agents in parallel for complex queries that span modules.
 Always provide actionable, data-driven insights. Format numbers clearly.`;
@@ -47,16 +54,40 @@ const SUB_AGENTS = {
     ]
   },
   finance_agent: {
-    description: "Handles finance queries: AR/AP, cash position, invoices, bills, payments, journal entries",
-    prompt: `You are a finance specialist. Analyze financial data and provide insights. Use tools to query AR, AP, banking, and GL data.`,
+    description: "Handles general finance queries: AR/AP aging summaries, cash position, bank transactions, journal entries, general financial metrics",
+    prompt: `You are a finance specialist. Analyze financial data and provide insights. Use tools to query AR aging, AP summary, banking, and GL data.`,
     tools: [
-      { type: "function", function: { name: "get_ar_aging", description: "Get AR aging summary", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_ar_aging", description: "Get AR aging summary with buckets", parameters: { type: "object", properties: {}, required: [] } } },
       { type: "function", function: { name: "get_ap_summary", description: "Get AP summary", parameters: { type: "object", properties: {}, required: [] } } },
       { type: "function", function: { name: "get_cash_position", description: "Get cash position across bank accounts", parameters: { type: "object", properties: {}, required: [] } } },
-      { type: "function", function: { name: "get_invoices", description: "Get invoices", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "sent", "paid", "overdue"] }, customer_name: { type: "string" } }, required: [] } } },
-      { type: "function", function: { name: "get_bills", description: "Get bills", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "pending", "paid", "overdue"] }, vendor_name: { type: "string" } }, required: [] } } },
       { type: "function", function: { name: "get_journal_entries", description: "Get journal entries", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "posted", "reversed"] } }, required: [] } } },
       { type: "function", function: { name: "get_bank_transactions", description: "Get bank transactions", parameters: { type: "object", properties: { status: { type: "string", enum: ["pending", "matched", "reconciled"] } }, required: [] } } },
+      { type: "function", function: { name: "get_key_metrics", description: "Get key financial metrics", parameters: { type: "object", properties: {}, required: [] } } },
+    ]
+  },
+  o2c_agent: {
+    description: "Handles Order-to-Cash: quotations, sales orders, shipments, customer invoices, revenue tracking",
+    prompt: `You are an Order-to-Cash specialist. Manage the full revenue cycle from quotations to cash collection. Use tools to query quotations, sales orders, shipments, and invoices.`,
+    tools: [
+      { type: "function", function: { name: "get_quotations", description: "Get quotations", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "sent", "accepted", "rejected", "expired", "converted"] }, customer_name: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_quotation_summary", description: "Get quotation pipeline summary", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_sales_orders", description: "Get sales orders", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "approved", "shipped", "invoiced", "completed", "cancelled"] }, customer_name: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_shipments", description: "Get shipments", parameters: { type: "object", properties: { so_number: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_invoices", description: "Get customer invoices", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "sent", "paid", "overdue"] }, customer_name: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_o2c_cycle_summary", description: "Get O2C cycle metrics", parameters: { type: "object", properties: {}, required: [] } } },
+    ]
+  },
+  p2p_agent: {
+    description: "Handles Procure-to-Pay: purchase requisitions, purchase orders, goods receipts, vendor bills, payment runs, 3-way matching",
+    prompt: `You are a Procure-to-Pay specialist. Manage the full procurement cycle from requisitions to payments. Use tools to query requisitions, POs, goods receipts, bills, and payment runs.`,
+    tools: [
+      { type: "function", function: { name: "get_purchase_requisitions", description: "Get purchase requisitions", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "pending_approval", "approved", "rejected", "converted", "cancelled"] } }, required: [] } } },
+      { type: "function", function: { name: "get_purchase_orders", description: "Get purchase orders", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "pending_approval", "approved", "partially_received", "received", "cancelled"] }, vendor_name: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_goods_receipts", description: "Get goods receipts", parameters: { type: "object", properties: { po_number: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_bills", description: "Get vendor bills", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "pending", "paid", "overdue"] }, vendor_name: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_payment_runs", description: "Get payment runs", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "pending_approval", "approved", "processing", "completed", "failed"] } }, required: [] } } },
+      { type: "function", function: { name: "get_p2p_cycle_summary", description: "Get P2P cycle metrics", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_vendors", description: "Get vendors", parameters: { type: "object", properties: { search: { type: "string" } }, required: [] } } },
     ]
   },
   inventory_agent: {
@@ -125,11 +156,39 @@ const ORCHESTRATOR_TOOLS = [
     type: "function",
     function: {
       name: "call_finance_agent",
-      description: "Delegate finance queries: AR/AP, cash position, invoices, bills, journal entries",
+      description: "Delegate general finance queries: AR/AP aging summaries, cash position, bank transactions, journal entries, key metrics",
       parameters: {
         type: "object",
         properties: {
           task: { type: "string", description: "The specific task or question for the Finance agent" }
+        },
+        required: ["task"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "call_o2c_agent",
+      description: "Delegate Order-to-Cash queries: quotations, sales orders, shipments, customer invoices, revenue tracking",
+      parameters: {
+        type: "object",
+        properties: {
+          task: { type: "string", description: "The specific task or question for the O2C agent" }
+        },
+        required: ["task"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "call_p2p_agent",
+      description: "Delegate Procure-to-Pay queries: purchase requisitions, purchase orders, goods receipts, vendor bills, payment runs",
+      parameters: {
+        type: "object",
+        properties: {
+          task: { type: "string", description: "The specific task or question for the P2P agent" }
         },
         required: ["task"]
       }
@@ -349,6 +408,154 @@ async function executeSubAgentTool(toolName: string, args: any, supabase: any): 
         let query = supabase.from('bank_transactions').select('*, bank_accounts(name)');
         if (args.status) query = query.eq('status', args.status);
         const { data } = await query.order('transaction_date', { ascending: false }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_key_metrics': {
+        const { data: invoices } = await supabase.from('invoices').select('total, amount_paid, issue_date').neq('status', 'paid');
+        const { data: bills } = await supabase.from('bills').select('total, amount_paid');
+        const { data: bankAccounts } = await supabase.from('bank_accounts').select('current_balance').eq('is_active', true);
+        
+        const totalAR = invoices?.reduce((s: number, i: any) => s + (i.total - i.amount_paid), 0) || 0;
+        const totalAP = bills?.reduce((s: number, b: any) => s + (b.total - b.amount_paid), 0) || 0;
+        const totalCash = bankAccounts?.reduce((s: number, a: any) => s + (a.current_balance || 0), 0) || 0;
+        
+        return JSON.stringify({
+          total_receivables: totalAR,
+          total_payables: totalAP,
+          total_cash: totalCash,
+          working_capital: totalCash + totalAR - totalAP,
+          invoice_count: invoices?.length || 0,
+          bill_count: bills?.length || 0
+        });
+      }
+
+      // O2C Tools
+      case 'get_quotations': {
+        let query = supabase.from('quotations').select('*, customers(name)');
+        if (args.status) query = query.eq('status', args.status);
+        if (args.customer_name) query = query.ilike('customers.name', `%${args.customer_name}%`);
+        const { data } = await query.order('created_at', { ascending: false }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_quotation_summary': {
+        const { data: quotations } = await supabase.from('quotations').select('status, total');
+        const statuses = ['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted'];
+        const summary = statuses.map(status => ({
+          status,
+          count: quotations?.filter((q: any) => q.status === status).length || 0,
+          total_value: quotations?.filter((q: any) => q.status === status).reduce((s: number, q: any) => s + (q.total || 0), 0) || 0
+        }));
+        return JSON.stringify({
+          total_quotations: quotations?.length || 0,
+          by_status: summary
+        });
+      }
+
+      case 'get_sales_orders': {
+        let query = supabase.from('sales_orders').select('*, customers(name)');
+        if (args.status) query = query.eq('status', args.status);
+        if (args.customer_name) query = query.ilike('customers.name', `%${args.customer_name}%`);
+        const { data } = await query.order('created_at', { ascending: false }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_shipments': {
+        let query = supabase.from('shipments').select('*, sales_orders(order_number, customers(name))');
+        if (args.so_number) query = query.ilike('sales_orders.order_number', `%${args.so_number}%`);
+        const { data } = await query.order('created_at', { ascending: false }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_o2c_cycle_summary': {
+        const { data: quotations } = await supabase.from('quotations').select('status');
+        const { data: salesOrders } = await supabase.from('sales_orders').select('status');
+        const { data: shipments } = await supabase.from('shipments').select('status');
+        const { data: invoices } = await supabase.from('invoices').select('status, total, amount_paid');
+        
+        return JSON.stringify({
+          quotations: {
+            total: quotations?.length || 0,
+            pending: quotations?.filter((q: any) => ['draft', 'sent'].includes(q.status)).length || 0,
+            converted: quotations?.filter((q: any) => q.status === 'converted').length || 0
+          },
+          sales_orders: {
+            total: salesOrders?.length || 0,
+            open: salesOrders?.filter((s: any) => !['completed', 'cancelled'].includes(s.status)).length || 0
+          },
+          shipments: {
+            total: shipments?.length || 0,
+            pending: shipments?.filter((s: any) => s.status === 'pending').length || 0
+          },
+          invoices: {
+            total: invoices?.length || 0,
+            unpaid: invoices?.filter((i: any) => i.status !== 'paid').length || 0,
+            total_outstanding: invoices?.filter((i: any) => i.status !== 'paid').reduce((s: number, i: any) => s + (i.total - i.amount_paid), 0) || 0
+          }
+        });
+      }
+
+      // P2P Tools
+      case 'get_purchase_requisitions': {
+        let query = supabase.from('purchase_requisitions').select('*');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.order('created_at', { ascending: false }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_purchase_orders': {
+        let query = supabase.from('purchase_orders').select('*, vendors(name)');
+        if (args.status) query = query.eq('status', args.status);
+        if (args.vendor_name) query = query.ilike('vendors.name', `%${args.vendor_name}%`);
+        const { data } = await query.order('created_at', { ascending: false }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_goods_receipts': {
+        let query = supabase.from('goods_receipts').select('*, purchase_orders(po_number, vendors(name))');
+        if (args.po_number) query = query.ilike('purchase_orders.po_number', `%${args.po_number}%`);
+        const { data } = await query.order('created_at', { ascending: false }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_payment_runs': {
+        let query = supabase.from('payment_runs').select('*');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.order('created_at', { ascending: false }).limit(20);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_p2p_cycle_summary': {
+        const { data: requisitions } = await supabase.from('purchase_requisitions').select('status');
+        const { data: purchaseOrders } = await supabase.from('purchase_orders').select('status');
+        const { data: goodsReceipts } = await supabase.from('goods_receipts').select('id');
+        const { data: bills } = await supabase.from('bills').select('status, total, amount_paid');
+        
+        return JSON.stringify({
+          requisitions: {
+            total: requisitions?.length || 0,
+            pending_approval: requisitions?.filter((r: any) => r.status === 'pending_approval').length || 0
+          },
+          purchase_orders: {
+            total: purchaseOrders?.length || 0,
+            open: purchaseOrders?.filter((p: any) => !['received', 'cancelled'].includes(p.status)).length || 0
+          },
+          goods_receipts: {
+            total: goodsReceipts?.length || 0
+          },
+          bills: {
+            total: bills?.length || 0,
+            unpaid: bills?.filter((b: any) => b.status !== 'paid').length || 0,
+            total_outstanding: bills?.filter((b: any) => b.status !== 'paid').reduce((s: number, b: any) => s + (b.total - b.amount_paid), 0) || 0
+          }
+        });
+      }
+
+      case 'get_vendors': {
+        let query = supabase.from('vendors').select('*');
+        if (args.search) query = query.ilike('name', `%${args.search}%`);
+        const { data } = await query.limit(20);
         return JSON.stringify(data || []);
       }
 
@@ -633,6 +840,8 @@ async function executeOrchestratorTool(toolName: string, args: any, supabase: an
   const agentMap: Record<string, string> = {
     'call_crm_agent': 'crm_agent',
     'call_finance_agent': 'finance_agent',
+    'call_o2c_agent': 'o2c_agent',
+    'call_p2p_agent': 'p2p_agent',
     'call_inventory_agent': 'inventory_agent',
     'call_production_agent': 'production_agent',
     'call_controlling_agent': 'controlling_agent',
