@@ -1585,6 +1585,106 @@ export type Database = {
           },
         ]
       }
+      field_service_visits: {
+        Row: {
+          actual_end: string | null
+          actual_start: string | null
+          created_at: string
+          customer_id: string
+          customer_signature: string | null
+          id: string
+          location_address: string | null
+          location_notes: string | null
+          mileage: number | null
+          notes: string | null
+          org_id: string
+          parts_used: string | null
+          scheduled_end: string | null
+          scheduled_start: string
+          service_call_id: string | null
+          status: string
+          technician_id: string | null
+          travel_time_hours: number | null
+          updated_at: string
+          visit_number: string
+          visit_type: string
+          work_performed: string | null
+          work_time_hours: number | null
+        }
+        Insert: {
+          actual_end?: string | null
+          actual_start?: string | null
+          created_at?: string
+          customer_id: string
+          customer_signature?: string | null
+          id?: string
+          location_address?: string | null
+          location_notes?: string | null
+          mileage?: number | null
+          notes?: string | null
+          org_id: string
+          parts_used?: string | null
+          scheduled_end?: string | null
+          scheduled_start: string
+          service_call_id?: string | null
+          status?: string
+          technician_id?: string | null
+          travel_time_hours?: number | null
+          updated_at?: string
+          visit_number: string
+          visit_type?: string
+          work_performed?: string | null
+          work_time_hours?: number | null
+        }
+        Update: {
+          actual_end?: string | null
+          actual_start?: string | null
+          created_at?: string
+          customer_id?: string
+          customer_signature?: string | null
+          id?: string
+          location_address?: string | null
+          location_notes?: string | null
+          mileage?: number | null
+          notes?: string | null
+          org_id?: string
+          parts_used?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string
+          service_call_id?: string | null
+          status?: string
+          technician_id?: string | null
+          travel_time_hours?: number | null
+          updated_at?: string
+          visit_number?: string
+          visit_type?: string
+          work_performed?: string | null
+          work_time_hours?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_service_visits_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_service_visits_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_service_visits_service_call_id_fkey"
+            columns: ["service_call_id"]
+            isOneToOne: false
+            referencedRelation: "service_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fixed_assets: {
         Row: {
           accumulated_depreciation: number
@@ -3862,6 +3962,207 @@ export type Database = {
           },
         ]
       }
+      service_calls: {
+        Row: {
+          actual_duration_hours: number | null
+          assigned_to: string | null
+          call_number: string
+          call_type: string
+          completed_at: string | null
+          contract_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          description: string | null
+          estimated_duration_hours: number | null
+          id: string
+          is_billable: boolean | null
+          labor_cost: number | null
+          org_id: string
+          parts_cost: number | null
+          priority: string
+          product_id: string | null
+          reported_at: string
+          reported_issue: string | null
+          resolution: string | null
+          scheduled_date: string | null
+          status: string
+          subject: string
+          total_cost: number | null
+          updated_at: string
+          warranty_id: string | null
+        }
+        Insert: {
+          actual_duration_hours?: number | null
+          assigned_to?: string | null
+          call_number: string
+          call_type?: string
+          completed_at?: string | null
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          description?: string | null
+          estimated_duration_hours?: number | null
+          id?: string
+          is_billable?: boolean | null
+          labor_cost?: number | null
+          org_id: string
+          parts_cost?: number | null
+          priority?: string
+          product_id?: string | null
+          reported_at?: string
+          reported_issue?: string | null
+          resolution?: string | null
+          scheduled_date?: string | null
+          status?: string
+          subject: string
+          total_cost?: number | null
+          updated_at?: string
+          warranty_id?: string | null
+        }
+        Update: {
+          actual_duration_hours?: number | null
+          assigned_to?: string | null
+          call_number?: string
+          call_type?: string
+          completed_at?: string | null
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          description?: string | null
+          estimated_duration_hours?: number | null
+          id?: string
+          is_billable?: boolean | null
+          labor_cost?: number | null
+          org_id?: string
+          parts_cost?: number | null
+          priority?: string
+          product_id?: string | null
+          reported_at?: string
+          reported_issue?: string | null
+          resolution?: string | null
+          scheduled_date?: string | null
+          status?: string
+          subject?: string
+          total_cost?: number | null
+          updated_at?: string
+          warranty_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_calls_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "service_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_warranty_id_fkey"
+            columns: ["warranty_id"]
+            isOneToOne: false
+            referencedRelation: "warranties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_contracts: {
+        Row: {
+          auto_renew: boolean | null
+          billing_frequency: string | null
+          contract_number: string
+          contract_type: string
+          contract_value: number
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          description: string | null
+          end_date: string
+          id: string
+          org_id: string
+          renewal_period_months: number | null
+          start_date: string
+          status: string
+          terms_and_conditions: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_renew?: boolean | null
+          billing_frequency?: string | null
+          contract_number: string
+          contract_type?: string
+          contract_value?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          description?: string | null
+          end_date: string
+          id?: string
+          org_id: string
+          renewal_period_months?: number | null
+          start_date: string
+          status?: string
+          terms_and_conditions?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_renew?: boolean | null
+          billing_frequency?: string | null
+          contract_number?: string
+          contract_type?: string
+          contract_value?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          org_id?: string
+          renewal_period_months?: number | null
+          start_date?: string
+          status?: string
+          terms_and_conditions?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_contracts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_contracts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipment_lines: {
         Row: {
           created_at: string
@@ -4202,6 +4503,82 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      warranties: {
+        Row: {
+          coverage_details: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          notes: string | null
+          org_id: string
+          product_id: string | null
+          purchase_date: string | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+          warranty_end_date: string
+          warranty_number: string
+          warranty_start_date: string
+          warranty_type: string
+        }
+        Insert: {
+          coverage_details?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          product_id?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          warranty_end_date: string
+          warranty_number: string
+          warranty_start_date: string
+          warranty_type?: string
+        }
+        Update: {
+          coverage_details?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          product_id?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          warranty_end_date?: string
+          warranty_number?: string
+          warranty_start_date?: string
+          warranty_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranties_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_centers: {
         Row: {
