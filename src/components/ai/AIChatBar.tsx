@@ -41,7 +41,7 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
   const getInitialMessage = (): Message => ({
     id: "1",
     role: "assistant",
-    content: `Hi! I'm **Agent River**, your unified AI assistant for the entire ERP system. I can help with:\n\n• **CRM** - Pipeline, opportunities, customers\n• **Finance** - AR/AP, cash, invoices, bills\n• **Inventory** - Stock, warehouses, products\n• **Production** - BOMs, orders, capacity\n• **Controlling** - Cost centers, budgets\n• **Service** - Contracts, calls, visits\n\nAsk me anything!`,
+    content: `Hi! I'm **Agent River**, your unified AI assistant for the entire ERP system. I orchestrate specialized agents:\n\n• **CRM** - Pipeline, opportunities, customers\n• **Finance** - AR/AP aging, cash, banking, GL\n• **O2C** - Quotations, sales orders, shipments, invoices\n• **P2P** - Requisitions, POs, goods receipts, bills\n• **Inventory** - Stock, warehouses, products\n• **Production** - BOMs, orders, capacity\n• **Controlling** - Cost centers, budgets\n• **Service** - Contracts, calls, visits\n\nAsk me anything!`,
     timestamp: new Date(),
   });
 
