@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { NavLink } from "@/components/NavLink";
-import { LayoutDashboard, BookOpen, Receipt, FileText, Building2, CalendarCheck, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight, BarChart3, Package, Factory, Target } from "lucide-react";
+import { LayoutDashboard, BookOpen, Receipt, FileText, Building2, CalendarCheck, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight, BarChart3, Package, Factory, Target, PieChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 const navCategories = [{
@@ -49,6 +49,10 @@ const navCategories = [{
     icon: Building2,
     label: "Banking",
     href: "/banking"
+  }, {
+    icon: PieChart,
+    label: "Controlling",
+    href: "/controlling"
   }]
 }, {
   label: "Reports & Close",

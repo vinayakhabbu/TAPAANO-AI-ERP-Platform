@@ -109,6 +109,70 @@ export type Database = {
           },
         ]
       }
+      asset_depreciation: {
+        Row: {
+          accumulated_depreciation: number
+          asset_id: string
+          book_value: number
+          created_at: string
+          depreciation_amount: number
+          id: string
+          journal_entry_id: string | null
+          org_id: string
+          period_date: string
+          posted: boolean
+          posted_at: string | null
+        }
+        Insert: {
+          accumulated_depreciation: number
+          asset_id: string
+          book_value: number
+          created_at?: string
+          depreciation_amount: number
+          id?: string
+          journal_entry_id?: string | null
+          org_id: string
+          period_date: string
+          posted?: boolean
+          posted_at?: string | null
+        }
+        Update: {
+          accumulated_depreciation?: number
+          asset_id?: string
+          book_value?: number
+          created_at?: string
+          depreciation_amount?: number
+          id?: string
+          journal_entry_id?: string | null
+          org_id?: string
+          period_date?: string
+          posted?: boolean
+          posted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_depreciation_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_depreciation_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_depreciation_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_accounts: {
         Row: {
           account_id: string | null
@@ -656,6 +720,143 @@ export type Database = {
           },
         ]
       }
+      budget_lines: {
+        Row: {
+          account_id: string | null
+          actual_amount: number
+          budget_id: string
+          budgeted_amount: number
+          cost_center_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          period_month: number
+          project_id: string | null
+          updated_at: string
+          variance: number | null
+        }
+        Insert: {
+          account_id?: string | null
+          actual_amount?: number
+          budget_id: string
+          budgeted_amount?: number
+          cost_center_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          period_month: number
+          project_id?: string | null
+          updated_at?: string
+          variance?: number | null
+        }
+        Update: {
+          account_id?: string | null
+          actual_amount?: number
+          budget_id?: string
+          budgeted_amount?: number
+          cost_center_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          period_month?: number
+          project_id?: string | null
+          updated_at?: string
+          variance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_lines_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_lines_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          budget_number: string
+          created_at: string
+          entity_id: string
+          fiscal_year: number
+          id: string
+          name: string
+          notes: string | null
+          org_id: string
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          budget_number: string
+          created_at?: string
+          entity_id: string
+          fiscal_year: number
+          id?: string
+          name: string
+          notes?: string | null
+          org_id: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          budget_number?: string
+          created_at?: string
+          entity_id?: string
+          fiscal_year?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          org_id?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       capacity_schedules: {
         Row: {
           actual_hours: number
@@ -709,6 +910,78 @@ export type Database = {
             columns: ["work_center_id"]
             isOneToOne: false
             referencedRelation: "work_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_flow_forecasts: {
+        Row: {
+          actual_inflow: number
+          actual_outflow: number
+          category: string
+          confidence_level: string | null
+          created_at: string
+          description: string | null
+          entity_id: string
+          expected_inflow: number
+          expected_outflow: number
+          forecast_date: string
+          id: string
+          notes: string | null
+          org_id: string
+          source_id: string | null
+          source_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_inflow?: number
+          actual_outflow?: number
+          category: string
+          confidence_level?: string | null
+          created_at?: string
+          description?: string | null
+          entity_id: string
+          expected_inflow?: number
+          expected_outflow?: number
+          forecast_date: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_inflow?: number
+          actual_outflow?: number
+          category?: string
+          confidence_level?: string | null
+          created_at?: string
+          description?: string | null
+          entity_id?: string
+          expected_inflow?: number
+          expected_outflow?: number
+          forecast_date?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_flow_forecasts_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_flow_forecasts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -887,6 +1160,60 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_centers: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          manager_id: string | null
+          name: string
+          org_id: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          manager_id?: string | null
+          name: string
+          org_id: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          manager_id?: string | null
+          name?: string
+          org_id?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_centers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cost_centers_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
             referencedColumns: ["id"]
           },
         ]
@@ -1083,6 +1410,93 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "entities_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixed_assets: {
+        Row: {
+          accumulated_depreciation: number
+          acquisition_cost: number
+          acquisition_date: string
+          asset_number: string
+          book_value: number
+          category: string
+          cost_center_id: string | null
+          created_at: string
+          depreciation_method: string
+          description: string | null
+          disposal_amount: number | null
+          disposed_date: string | null
+          id: string
+          location: string | null
+          name: string
+          notes: string | null
+          org_id: string
+          salvage_value: number
+          status: string
+          updated_at: string
+          useful_life_months: number
+        }
+        Insert: {
+          accumulated_depreciation?: number
+          acquisition_cost: number
+          acquisition_date: string
+          asset_number: string
+          book_value?: number
+          category: string
+          cost_center_id?: string | null
+          created_at?: string
+          depreciation_method?: string
+          description?: string | null
+          disposal_amount?: number | null
+          disposed_date?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          notes?: string | null
+          org_id: string
+          salvage_value?: number
+          status?: string
+          updated_at?: string
+          useful_life_months: number
+        }
+        Update: {
+          accumulated_depreciation?: number
+          acquisition_cost?: number
+          acquisition_date?: string
+          asset_number?: string
+          book_value?: number
+          category?: string
+          cost_center_id?: string | null
+          created_at?: string
+          depreciation_method?: string
+          description?: string | null
+          disposal_amount?: number | null
+          disposed_date?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          notes?: string | null
+          org_id?: string
+          salvage_value?: number
+          status?: string
+          updated_at?: string
+          useful_life_months?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixed_assets_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixed_assets_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2472,6 +2886,82 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          actual_cost: number
+          budget_amount: number
+          cost_center_id: string | null
+          created_at: string
+          customer_id: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          org_id: string
+          project_number: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_cost?: number
+          budget_amount?: number
+          cost_center_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          org_id: string
+          project_number: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_cost?: number
+          budget_amount?: number
+          cost_center_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          org_id?: string
+          project_number?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
