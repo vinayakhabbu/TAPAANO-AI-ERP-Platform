@@ -19,6 +19,7 @@ import Production from "./pages/Production";
 import CRM from "./pages/CRM";
 import Controlling from "./pages/Controlling";
 import ServiceManagement from "./pages/ServiceManagement";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/controlling" element={<Controlling />} />
               <Route path="/service" element={<ServiceManagement />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/help" element={<Help />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
