@@ -28,14 +28,12 @@ import {
   Upload,
   Zap,
   Shield,
-  Rss,
 } from "lucide-react";
 import { useBankAccounts, useBankTransactions } from "@/hooks/useBanking";
-import { useAutoMatchTransactions, useBankFeedConnections } from "@/hooks/useBankingReconciliation";
+import { useAutoMatchTransactions } from "@/hooks/useBankingReconciliation";
 import { format } from "date-fns";
 import { MatchingRulesDialog } from "@/components/banking/MatchingRulesDialog";
 import { StatementImportDialog } from "@/components/banking/StatementImportDialog";
-import { BankFeedDialog } from "@/components/banking/BankFeedDialog";
 import { PositivePayDialog } from "@/components/banking/PositivePayDialog";
 import { toast } from "sonner";
 
@@ -48,17 +46,14 @@ const statusConfig = {
 const Banking = () => {
   const [matchingRulesOpen, setMatchingRulesOpen] = useState(false);
   const [statementImportOpen, setStatementImportOpen] = useState(false);
-  const [bankFeedOpen, setBankFeedOpen] = useState(false);
   const [positivePayOpen, setPositivePayOpen] = useState(false);
 
   const { data: bankAccounts, isLoading: accountsLoading } = useBankAccounts();
   const { data: transactions, isLoading: transactionsLoading, refetch: refetchTransactions } = useBankTransactions();
-  const { data: feedConnections } = useBankFeedConnections();
   const autoMatchMutation = useAutoMatchTransactions();
 
   const totalBalance = bankAccounts?.reduce((sum, a) => sum + Number(a.current_balance), 0) || 0;
   const unmatchedCount = transactions?.filter((t) => t.status === "pending").length || 0;
-  const connectedFeeds = feedConnections?.filter((f) => f.connection_status === "connected").length || 0;
 
   const handleAutoMatchAll = async () => {
     try {
@@ -74,13 +69,6 @@ const Banking = () => {
     <AppLayout title="Banking" subtitle="Bank accounts and transaction reconciliation">
       {/* Quick Actions Bar */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
-        <Button variant="outline" className="gap-2" onClick={() => setBankFeedOpen(true)}>
-          <Rss className="h-4 w-4" />
-          Bank Feeds
-          {connectedFeeds > 0 && (
-            <Badge variant="secondary" className="ml-1">{connectedFeeds}</Badge>
-          )}
-        </Button>
         <Button variant="outline" className="gap-2" onClick={() => setStatementImportOpen(true)}>
           <Upload className="h-4 w-4" />
           Import Statement
@@ -308,7 +296,6 @@ const Banking = () => {
       {/* Dialogs */}
       <MatchingRulesDialog open={matchingRulesOpen} onOpenChange={setMatchingRulesOpen} />
       <StatementImportDialog open={statementImportOpen} onOpenChange={setStatementImportOpen} />
-      <BankFeedDialog open={bankFeedOpen} onOpenChange={setBankFeedOpen} />
       <PositivePayDialog open={positivePayOpen} onOpenChange={setPositivePayOpen} />
     </AppLayout>
   );
