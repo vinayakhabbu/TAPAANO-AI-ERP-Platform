@@ -1,10 +1,11 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, User, Shield, Users } from "lucide-react";
+import { Building2, User, Shield, Users, Key } from "lucide-react";
 import { ProfileSettings } from "@/components/settings/ProfileSettings";
 import { OrganizationSettings } from "@/components/settings/OrganizationSettings";
 import { TeamSettings } from "@/components/settings/TeamSettings";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { APIKeysSettings } from "@/components/settings/APIKeysSettings";
 
 const Settings = () => {
   return (
@@ -27,6 +28,10 @@ const Settings = () => {
             <Shield className="h-4 w-4" />
             Security
           </TabsTrigger>
+          <TabsTrigger value="api-keys" className="gap-2">
+            <Key className="h-4 w-4" />
+            API Keys
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -43,6 +48,10 @@ const Settings = () => {
 
         <TabsContent value="security">
           <SecuritySettings />
+        </TabsContent>
+
+        <TabsContent value="api-keys">
+          <APIKeysSettings />
         </TabsContent>
       </Tabs>
     </AppLayout>

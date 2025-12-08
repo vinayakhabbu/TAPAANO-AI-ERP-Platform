@@ -1004,14 +1004,29 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
-    console.log('Agent River request - messages:', messages.length);
-
-    if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
-    }
+    const { messages, org_id } = await req.json();
+    console.log('Agent River request - messages:', messages.length, 'org_id:', org_id);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Try to get user's OpenAI key from their organization
+    let apiKey = openAIApiKey;
+    if (org_id) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('openai_api_key')
+        .eq('id', org_id)
+        .single();
+      
+      if (orgData?.openai_api_key) {
+        apiKey = orgData.openai_api_key;
+        console.log('Using user-provided OpenAI API key');
+      }
+    }
+
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY not configured. Please add your OpenAI API key in Settings > API Keys.');
+    }
 
     const apiMessages = [
       { role: 'system', content: AGENT_RIVER_SYSTEM },
@@ -1022,7 +1037,7 @@ serve(async (req) => {
     let response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -1073,7 +1088,7 @@ serve(async (req) => {
       response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
