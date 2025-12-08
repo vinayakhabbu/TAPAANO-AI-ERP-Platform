@@ -7,7 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -890,7 +889,7 @@ async function executeSubAgentTool(toolName: string, args: any, supabase: any): 
 // SUB-AGENT EXECUTION
 // ============================================================================
 
-async function executeSubAgent(agentName: string, task: string, supabase: any): Promise<{ response: string; toolCalls: number }> {
+async function executeSubAgent(agentName: string, task: string, supabase: any, apiKey: string): Promise<{ response: string; toolCalls: number }> {
   const agent = SUB_AGENTS[agentName as keyof typeof SUB_AGENTS];
   if (!agent) {
     return { response: `Unknown agent: ${agentName}`, toolCalls: 0 };
@@ -909,7 +908,7 @@ async function executeSubAgent(agentName: string, task: string, supabase: any): 
   let response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -945,7 +944,7 @@ async function executeSubAgent(agentName: string, task: string, supabase: any): 
     response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -968,7 +967,7 @@ async function executeSubAgent(agentName: string, task: string, supabase: any): 
 // ORCHESTRATOR TOOL EXECUTION
 // ============================================================================
 
-async function executeOrchestratorTool(toolName: string, args: any, supabase: any): Promise<string> {
+async function executeOrchestratorTool(toolName: string, args: any, supabase: any, apiKey: string): Promise<string> {
   const agentMap: Record<string, string> = {
     'call_crm_agent': 'crm_agent',
     'call_finance_agent': 'finance_agent',
@@ -986,7 +985,7 @@ async function executeOrchestratorTool(toolName: string, args: any, supabase: an
     return JSON.stringify({ error: `Unknown orchestrator tool: ${toolName}` });
   }
 
-  const result = await executeSubAgent(agentName, args.task, supabase);
+  const result = await executeSubAgent(agentName, args.task, supabase, apiKey);
   return JSON.stringify({
     agent: agentName,
     response: result.response,
@@ -1009,8 +1008,8 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Try to get user's OpenAI key from their organization
-    let apiKey = openAIApiKey;
+    // Get user's OpenAI key from their organization
+    let apiKey: string | null = null;
     if (org_id) {
       const { data: orgData } = await supabase
         .from('organizations')
@@ -1067,7 +1066,7 @@ serve(async (req) => {
       for (const toolCall of assistantMessage.tool_calls) {
         totalToolCalls++;
         const args = JSON.parse(toolCall.function.arguments || '{}');
-        const result = await executeOrchestratorTool(toolCall.function.name, args, supabase);
+        const result = await executeOrchestratorTool(toolCall.function.name, args, supabase, apiKey);
         
         try {
           const parsed = JSON.parse(result);
