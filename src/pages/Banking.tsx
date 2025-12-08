@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +25,18 @@ import {
   Sparkles,
   Check,
   X,
+  Upload,
+  Zap,
+  Shield,
+  Rss,
 } from "lucide-react";
 import { useBankAccounts, useBankTransactions } from "@/hooks/useBanking";
+import { useAutoMatchTransactions } from "@/hooks/useBankingReconciliation";
 import { format } from "date-fns";
+import { MatchingRulesDialog } from "@/components/banking/MatchingRulesDialog";
+import { StatementImportDialog } from "@/components/banking/StatementImportDialog";
+import { BankFeedDialog } from "@/components/banking/BankFeedDialog";
+import { PositivePayDialog } from "@/components/banking/PositivePayDialog";
 
 const statusConfig = {
   pending: { label: "Unmatched", className: "bg-warning/10 text-warning" },

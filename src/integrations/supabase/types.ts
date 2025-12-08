@@ -266,6 +266,138 @@ export type Database = {
           },
         ]
       }
+      bank_feed_connections: {
+        Row: {
+          auto_import: boolean
+          bank_account_id: string
+          connection_metadata: Json | null
+          connection_status: string
+          created_at: string
+          error_message: string | null
+          id: string
+          last_sync_at: string | null
+          last_sync_status: string | null
+          org_id: string
+          provider: string
+          sync_frequency: string
+          updated_at: string
+        }
+        Insert: {
+          auto_import?: boolean
+          bank_account_id: string
+          connection_metadata?: Json | null
+          connection_status?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          org_id: string
+          provider?: string
+          sync_frequency?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_import?: boolean
+          bank_account_id?: string
+          connection_metadata?: Json | null
+          connection_status?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          org_id?: string
+          provider?: string
+          sync_frequency?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_feed_connections_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_feed_connections_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_statement_imports: {
+        Row: {
+          bank_account_id: string
+          created_at: string
+          duplicate_transactions: number
+          error_message: string | null
+          file_name: string
+          file_type: string
+          id: string
+          import_date: string
+          imported_by: string | null
+          imported_transactions: number
+          org_id: string
+          statement_end_date: string | null
+          statement_start_date: string | null
+          status: string
+          total_transactions: number
+        }
+        Insert: {
+          bank_account_id: string
+          created_at?: string
+          duplicate_transactions?: number
+          error_message?: string | null
+          file_name: string
+          file_type: string
+          id?: string
+          import_date?: string
+          imported_by?: string | null
+          imported_transactions?: number
+          org_id: string
+          statement_end_date?: string | null
+          statement_start_date?: string | null
+          status?: string
+          total_transactions?: number
+        }
+        Update: {
+          bank_account_id?: string
+          created_at?: string
+          duplicate_transactions?: number
+          error_message?: string | null
+          file_name?: string
+          file_type?: string
+          id?: string
+          import_date?: string
+          imported_by?: string | null
+          imported_transactions?: number
+          org_id?: string
+          statement_end_date?: string | null
+          statement_start_date?: string | null
+          status?: string
+          total_transactions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_imports_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_imports_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_transactions: {
         Row: {
           amount: number
@@ -273,9 +405,11 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          import_id: string | null
           journal_entry_id: string | null
           matched_bill_id: string | null
           matched_invoice_id: string | null
+          matched_rule_id: string | null
           org_id: string
           status: Database["public"]["Enums"]["transaction_status"]
           suggested_account_id: string | null
@@ -288,9 +422,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          import_id?: string | null
           journal_entry_id?: string | null
           matched_bill_id?: string | null
           matched_invoice_id?: string | null
+          matched_rule_id?: string | null
           org_id: string
           status?: Database["public"]["Enums"]["transaction_status"]
           suggested_account_id?: string | null
@@ -303,9 +439,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          import_id?: string | null
           journal_entry_id?: string | null
           matched_bill_id?: string | null
           matched_invoice_id?: string | null
+          matched_rule_id?: string | null
           org_id?: string
           status?: Database["public"]["Enums"]["transaction_status"]
           suggested_account_id?: string | null
@@ -318,6 +456,13 @@ export type Database = {
             columns: ["bank_account_id"]
             isOneToOne: false
             referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_imports"
             referencedColumns: ["id"]
           },
           {
@@ -339,6 +484,13 @@ export type Database = {
             columns: ["matched_invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_matched_rule_id_fkey"
+            columns: ["matched_rule_id"]
+            isOneToOne: false
+            referencedRelation: "matching_rules"
             referencedColumns: ["id"]
           },
           {
@@ -2462,6 +2614,91 @@ export type Database = {
           },
         ]
       }
+      matching_rules: {
+        Row: {
+          auto_reconcile: boolean
+          created_at: string
+          description: string | null
+          field_to_match: string
+          id: string
+          is_active: boolean
+          last_matched_at: string | null
+          match_amount_max: number | null
+          match_amount_min: number | null
+          match_count: number
+          match_pattern: string
+          name: string
+          org_id: string
+          priority: number
+          rule_type: string
+          target_account_id: string | null
+          target_cost_center_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_reconcile?: boolean
+          created_at?: string
+          description?: string | null
+          field_to_match?: string
+          id?: string
+          is_active?: boolean
+          last_matched_at?: string | null
+          match_amount_max?: number | null
+          match_amount_min?: number | null
+          match_count?: number
+          match_pattern: string
+          name: string
+          org_id: string
+          priority?: number
+          rule_type?: string
+          target_account_id?: string | null
+          target_cost_center_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_reconcile?: boolean
+          created_at?: string
+          description?: string | null
+          field_to_match?: string
+          id?: string
+          is_active?: boolean
+          last_matched_at?: string | null
+          match_amount_max?: number | null
+          match_amount_min?: number | null
+          match_count?: number
+          match_pattern?: string
+          name?: string
+          org_id?: string
+          priority?: number
+          rule_type?: string
+          target_account_id?: string | null
+          target_cost_center_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matching_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_rules_target_account_id_fkey"
+            columns: ["target_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_rules_target_cost_center_id_fkey"
+            columns: ["target_cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mrp_results: {
         Row: {
           created_at: string
@@ -2774,6 +3011,91 @@ export type Database = {
             columns: ["bank_account_id"]
             isOneToOne: false
             referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      positive_pay_checks: {
+        Row: {
+          amount: number
+          bank_account_id: string
+          bill_id: string | null
+          check_number: string
+          created_at: string
+          exception_reason: string | null
+          id: string
+          issue_date: string
+          org_id: string
+          payee_name: string
+          payment_run_id: string | null
+          presented_amount: number | null
+          presented_date: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+          void_date: string | null
+        }
+        Insert: {
+          amount: number
+          bank_account_id: string
+          bill_id?: string | null
+          check_number: string
+          created_at?: string
+          exception_reason?: string | null
+          id?: string
+          issue_date: string
+          org_id: string
+          payee_name: string
+          payment_run_id?: string | null
+          presented_amount?: number | null
+          presented_date?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          void_date?: string | null
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string
+          bill_id?: string | null
+          check_number?: string
+          created_at?: string
+          exception_reason?: string | null
+          id?: string
+          issue_date?: string
+          org_id?: string
+          payee_name?: string
+          payment_run_id?: string | null
+          presented_amount?: number | null
+          presented_date?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          void_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positive_pay_checks_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "positive_pay_checks_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "positive_pay_checks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -4635,6 +4957,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_matching_rules: {
+        Args: { p_transaction_id: string }
+        Returns: string
+      }
       get_user_org_id: { Args: never; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
