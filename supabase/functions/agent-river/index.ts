@@ -19,13 +19,14 @@ const AGENT_RIVER_SYSTEM = `You are Agent River, the unified AI orchestrator for
 
 You have access to specialized sub-agents that you can delegate tasks to:
 1. **crm_agent**: Sales pipeline, opportunities, customer relationships, win/loss analysis
-2. **finance_agent**: AR/AP aging, cash position, bank transactions, journal entries, financial metrics
-3. **o2c_agent**: Order-to-Cash - Quotations, sales orders, shipments, customer invoices, revenue tracking
-4. **p2p_agent**: Procure-to-Pay - Purchase requisitions, purchase orders, goods receipts, vendor bills, payment runs
-5. **inventory_agent**: Stock levels, warehouses, products, transfers, cycle counts, batch/serial tracking
-6. **production_agent**: BOMs, production orders, work centers, MRP, capacity planning
-7. **controlling_agent**: Cost centers, internal orders, budget variance, CO documents, fixed assets
-8. **service_agent**: Service contracts, warranties, service calls, field visits
+2. **finance_agent**: AR/AP aging, cash position, journal entries, financial metrics
+3. **banking_agent**: Bank accounts, transactions, reconciliation, matching rules, statement imports, positive pay
+4. **o2c_agent**: Order-to-Cash - Quotations, sales orders, shipments, customer invoices, revenue tracking
+5. **p2p_agent**: Procure-to-Pay - Purchase requisitions, purchase orders, goods receipts, vendor bills, payment runs
+6. **inventory_agent**: Stock levels, warehouses, products, transfers, cycle counts, batch/serial tracking
+7. **production_agent**: BOMs, production orders, work centers, MRP, capacity planning
+8. **controlling_agent**: Cost centers, internal orders, budget variance, CO documents, fixed assets
+9. **service_agent**: Service contracts, warranties, service calls, field visits
 
 When a user asks a question:
 1. Analyze which agent(s) can best answer the question
@@ -35,7 +36,8 @@ When a user asks a question:
 Route queries appropriately:
 - Quotations, sales orders, shipments, customer invoices → o2c_agent
 - Purchase requisitions, POs, goods receipts, vendor bills, payment runs → p2p_agent
-- General AR/AP summaries, cash, banking, GL → finance_agent
+- General AR/AP summaries, GL, key metrics → finance_agent
+- Bank accounts, transactions, reconciliation, matching, positive pay → banking_agent
 
 You can call multiple agents in parallel for complex queries that span modules.
 Always provide actionable, data-driven insights. Format numbers clearly.`;
@@ -54,15 +56,26 @@ const SUB_AGENTS = {
     ]
   },
   finance_agent: {
-    description: "Handles general finance queries: AR/AP aging summaries, cash position, bank transactions, journal entries, general financial metrics",
-    prompt: `You are a finance specialist. Analyze financial data and provide insights. Use tools to query AR aging, AP summary, banking, and GL data.`,
+    description: "Handles general finance queries: AR/AP aging summaries, journal entries, general financial metrics",
+    prompt: `You are a finance specialist. Analyze financial data and provide insights. Use tools to query AR aging, AP summary, and GL data.`,
     tools: [
       { type: "function", function: { name: "get_ar_aging", description: "Get AR aging summary with buckets", parameters: { type: "object", properties: {}, required: [] } } },
       { type: "function", function: { name: "get_ap_summary", description: "Get AP summary", parameters: { type: "object", properties: {}, required: [] } } },
-      { type: "function", function: { name: "get_cash_position", description: "Get cash position across bank accounts", parameters: { type: "object", properties: {}, required: [] } } },
       { type: "function", function: { name: "get_journal_entries", description: "Get journal entries", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "posted", "reversed"] } }, required: [] } } },
-      { type: "function", function: { name: "get_bank_transactions", description: "Get bank transactions", parameters: { type: "object", properties: { status: { type: "string", enum: ["pending", "matched", "reconciled"] } }, required: [] } } },
       { type: "function", function: { name: "get_key_metrics", description: "Get key financial metrics", parameters: { type: "object", properties: {}, required: [] } } },
+    ]
+  },
+  banking_agent: {
+    description: "Handles banking queries: bank accounts, transactions, reconciliation status, matching rules, statement imports, positive pay checks",
+    prompt: `You are a banking and reconciliation specialist. Analyze bank accounts, transactions, and reconciliation data. Use tools to query banking information and provide insights on reconciliation status.`,
+    tools: [
+      { type: "function", function: { name: "get_bank_accounts", description: "Get bank accounts with balances", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_bank_transactions", description: "Get bank transactions", parameters: { type: "object", properties: { status: { type: "string", enum: ["pending", "matched", "reconciled"] }, limit: { type: "number" } }, required: [] } } },
+      { type: "function", function: { name: "get_reconciliation_summary", description: "Get reconciliation status summary", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_matching_rules", description: "Get auto-matching rules", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_statement_imports", description: "Get bank statement import history", parameters: { type: "object", properties: { limit: { type: "number" } }, required: [] } } },
+      { type: "function", function: { name: "get_positive_pay_checks", description: "Get positive pay checks", parameters: { type: "object", properties: { status: { type: "string", enum: ["issued", "presented", "paid", "void", "exception"] } }, required: [] } } },
+      { type: "function", function: { name: "get_cash_position", description: "Get cash position across bank accounts", parameters: { type: "object", properties: {}, required: [] } } },
     ]
   },
   o2c_agent: {
@@ -156,11 +169,25 @@ const ORCHESTRATOR_TOOLS = [
     type: "function",
     function: {
       name: "call_finance_agent",
-      description: "Delegate general finance queries: AR/AP aging summaries, cash position, bank transactions, journal entries, key metrics",
+      description: "Delegate general finance queries: AR/AP aging summaries, journal entries, key metrics",
       parameters: {
         type: "object",
         properties: {
           task: { type: "string", description: "The specific task or question for the Finance agent" }
+        },
+        required: ["task"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "call_banking_agent",
+      description: "Delegate banking queries: bank accounts, transactions, reconciliation, matching rules, statement imports, positive pay",
+      parameters: {
+        type: "object",
+        properties: {
+          task: { type: "string", description: "The specific task or question for the Banking agent" }
         },
         required: ["task"]
       }
@@ -405,10 +432,115 @@ async function executeSubAgentTool(toolName: string, args: any, supabase: any): 
       }
 
       case 'get_bank_transactions': {
-        let query = supabase.from('bank_transactions').select('*, bank_accounts(name)');
+        let query = supabase.from('bank_transactions').select('*, bank_accounts(name), matched_invoice:invoices(invoice_number), matched_bill:bills(bill_number)');
         if (args.status) query = query.eq('status', args.status);
-        const { data } = await query.order('transaction_date', { ascending: false }).limit(20);
+        const limit = args.limit || 20;
+        const { data } = await query.order('transaction_date', { ascending: false }).limit(limit);
         return JSON.stringify(data || []);
+      }
+
+      // Banking Tools
+      case 'get_bank_accounts': {
+        const { data: accounts } = await supabase.from('bank_accounts').select('*').eq('is_active', true).order('name');
+        return JSON.stringify({
+          accounts: accounts?.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            bank_name: a.bank_name,
+            account_number: a.account_number ? '****' + a.account_number.slice(-4) : null,
+            balance: a.current_balance,
+            currency: a.currency
+          })) || [],
+          total_balance: accounts?.reduce((s: number, a: any) => s + (a.current_balance || 0), 0) || 0,
+          account_count: accounts?.length || 0
+        });
+      }
+
+      case 'get_reconciliation_summary': {
+        const { data: transactions } = await supabase.from('bank_transactions').select('status, amount');
+        const pending = transactions?.filter((t: any) => t.status === 'pending') || [];
+        const matched = transactions?.filter((t: any) => t.status === 'matched') || [];
+        const reconciled = transactions?.filter((t: any) => t.status === 'reconciled') || [];
+        
+        return JSON.stringify({
+          total_transactions: transactions?.length || 0,
+          pending: {
+            count: pending.length,
+            total_amount: pending.reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0)
+          },
+          matched: {
+            count: matched.length,
+            total_amount: matched.reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0)
+          },
+          reconciled: {
+            count: reconciled.length,
+            total_amount: reconciled.reduce((s: number, t: any) => s + Math.abs(t.amount || 0), 0)
+          },
+          reconciliation_rate: transactions?.length ? ((reconciled.length / transactions.length) * 100).toFixed(1) + '%' : '0%'
+        });
+      }
+
+      case 'get_matching_rules': {
+        const { data: rules } = await supabase.from('matching_rules').select('*, target_account:accounts(name, code)').eq('is_active', true).order('priority');
+        return JSON.stringify({
+          rules: rules?.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            rule_type: r.rule_type,
+            field_to_match: r.field_to_match,
+            pattern: r.match_pattern,
+            target_account: r.target_account ? `${r.target_account.code} - ${r.target_account.name}` : null,
+            auto_reconcile: r.auto_reconcile,
+            match_count: r.match_count,
+            priority: r.priority
+          })) || [],
+          total_rules: rules?.length || 0
+        });
+      }
+
+      case 'get_statement_imports': {
+        const limit = args.limit || 20;
+        const { data: imports } = await supabase.from('bank_statement_imports').select('*, bank_account:bank_accounts(name)').order('import_date', { ascending: false }).limit(limit);
+        return JSON.stringify({
+          imports: imports?.map((i: any) => ({
+            id: i.id,
+            file_name: i.file_name,
+            file_type: i.file_type,
+            bank_account: i.bank_account?.name,
+            import_date: i.import_date,
+            status: i.status,
+            total_transactions: i.total_transactions,
+            imported_transactions: i.imported_transactions,
+            duplicate_transactions: i.duplicate_transactions
+          })) || [],
+          total_imports: imports?.length || 0
+        });
+      }
+
+      case 'get_positive_pay_checks': {
+        let query = supabase.from('positive_pay_checks').select('*, bank_account:bank_accounts(name), bill:bills(bill_number, vendor:vendors(name))');
+        if (args.status) query = query.eq('status', args.status);
+        const { data: checks } = await query.order('issue_date', { ascending: false }).limit(50);
+        
+        const statusCounts: Record<string, number> = {};
+        checks?.forEach((c: any) => {
+          statusCounts[c.status] = (statusCounts[c.status] || 0) + 1;
+        });
+        
+        return JSON.stringify({
+          checks: checks?.map((c: any) => ({
+            id: c.id,
+            check_number: c.check_number,
+            payee_name: c.payee_name,
+            amount: c.amount,
+            issue_date: c.issue_date,
+            status: c.status,
+            bank_account: c.bank_account?.name,
+            vendor: c.bill?.vendor?.name
+          })) || [],
+          total_checks: checks?.length || 0,
+          by_status: statusCounts
+        });
       }
 
       case 'get_key_metrics': {
@@ -840,6 +972,7 @@ async function executeOrchestratorTool(toolName: string, args: any, supabase: an
   const agentMap: Record<string, string> = {
     'call_crm_agent': 'crm_agent',
     'call_finance_agent': 'finance_agent',
+    'call_banking_agent': 'banking_agent',
     'call_o2c_agent': 'o2c_agent',
     'call_p2p_agent': 'p2p_agent',
     'call_inventory_agent': 'inventory_agent',
