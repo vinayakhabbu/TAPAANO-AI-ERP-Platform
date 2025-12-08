@@ -1,4 +1,4 @@
-# Finance ERP Application Documentation
+# TAPAANO AI ERP Platform Documentation
 
 ## Overview
 
@@ -9,35 +9,38 @@ A comprehensive, multi-tenant financial management system built for modern enter
 ## Technology Stack
 
 ### Frontend
-| Technology | Purpose |
-|------------|---------|
-| **React 18** | UI library |
-| **TypeScript** | Type-safe development |
-| **Vite** | Build tool and dev server |
-| **Tailwind CSS** | Utility-first styling |
-| **Shadcn/UI** | Component library |
-| **React Router v6** | Client-side routing |
-| **TanStack Query** | Server state management |
-| **React Hook Form** | Form handling |
-| **Zod** | Schema validation |
-| **Recharts** | Data visualization |
-| **Lucide React** | Icon library |
-| **next-themes** | Dark/light mode theming |
+
+| Technology          | Purpose                   |
+| ------------------- | ------------------------- |
+| **React 18**        | UI library                |
+| **TypeScript**      | Type-safe development     |
+| **Vite**            | Build tool and dev server |
+| **Tailwind CSS**    | Utility-first styling     |
+| **Shadcn/UI**       | Component library         |
+| **React Router v6** | Client-side routing       |
+| **TanStack Query**  | Server state management   |
+| **React Hook Form** | Form handling             |
+| **Zod**             | Schema validation         |
+| **Recharts**        | Data visualization        |
+| **Lucide React**    | Icon library              |
+| **next-themes**     | Dark/light mode theming   |
 
 ### Backend (Lovable Cloud)
-| Technology | Purpose |
-|------------|---------|
-| **Supabase** | Backend-as-a-Service |
-| **PostgreSQL** | Database |
-| **Edge Functions** | Serverless API endpoints |
+
+| Technology                   | Purpose                     |
+| ---------------------------- | --------------------------- |
+| **Supabase**                 | Backend-as-a-Service        |
+| **PostgreSQL**               | Database                    |
+| **Edge Functions**           | Serverless API endpoints    |
 | **Row Level Security (RLS)** | Multi-tenant data isolation |
-| **OpenAI API** | AI Copilot capabilities |
+| **OpenAI API**               | AI Copilot capabilities     |
 
 ---
 
 ## Application Architecture
 
 ### Multi-Tenant Structure
+
 ```
 Organization
 ├── Entities (Legal Entities / Business Units)
@@ -61,6 +64,7 @@ Organization
 ```
 
 ### Authentication & Authorization
+
 - **Email/Password Authentication** via Supabase Auth
 - **Role-Based Access Control (RBAC)**:
   - `admin` - Full access
@@ -74,9 +78,11 @@ Organization
 ## Modules
 
 ### 1. Dashboard (`/`)
+
 **Purpose**: Executive overview of financial health
 
 **Features**:
+
 - Key metrics cards (Revenue, Outstanding AR, Pending AP, Cash Position)
 - Revenue trend chart (monthly)
 - AR Aging analysis chart
@@ -84,26 +90,31 @@ Organization
 - Recent activity feed
 
 **Data Sources**:
+
 - Aggregated from invoices, bills, bank accounts, close tasks
 
 ---
 
 ### 2. Accounts Receivable - O2C (`/ar`)
+
 **Purpose**: Manage the Order-to-Cash cycle
 
 **Sub-modules**:
 
 #### Customers
+
 - Create, view, edit customer master data
 - Fields: Name, Email, Phone, Address, Payment Terms, Credit Limit
 
 #### Sales Orders
+
 - Create sales orders with line items
 - Status workflow: `draft` → `pending_approval` → `approved` → `partially_shipped` → `shipped` → `cancelled`
 - Link to customer and revenue accounts
 - Track requested delivery dates
 
 #### Shipments
+
 - Create shipments against approved sales orders
 - Track shipped quantities per line item
 - Carrier and tracking number management
@@ -111,6 +122,7 @@ Organization
 - **Auto-update inventory stock** (decrement on shipment)
 
 #### Invoices
+
 - Create invoices linked to sales orders/shipments
 - Status workflow: `draft` → `sent` → `paid` / `overdue` / `cancelled`
 - Track payment amounts and balance due
@@ -119,33 +131,39 @@ Organization
 ---
 
 ### 3. Procure to Pay (`/ap`)
+
 **Purpose**: Manage the Procure-to-Pay cycle
 
 **Sub-modules**:
 
 #### Vendors
+
 - Create, view, edit vendor master data
 - Fields: Name, Email, Phone, Address, Payment Terms
 
 #### Purchase Orders
+
 - Create POs with line items
 - Status workflow: `draft` → `pending_approval` → `approved` → `partially_received` → `received` → `cancelled`
 - Link to vendor and expense accounts
 - Track expected delivery dates
 
 #### Goods Receipts
+
 - Receive goods against approved POs
 - Track received quantities per line item
 - Auto-update PO received quantities
 - **Auto-update inventory stock** (increment on receipt)
 
 #### Bills
+
 - Create bills linked to POs/Goods Receipts
 - Status workflow: `draft` → `pending` → `paid` / `overdue` / `cancelled`
 - Three-way matching (PO ↔ GR ↔ Bill)
 - Match status tracking
 
 #### Payment Runs
+
 - Batch payment processing
 - Status workflow: `draft` → `pending_approval` → `approved` → `processing` → `completed` / `failed`
 - Payment method selection (ACH, Check, Wire)
@@ -154,67 +172,80 @@ Organization
 ---
 
 ### 4. General Ledger (`/gl`)
+
 **Purpose**: Core accounting and financial reporting
 
 **Features**:
 
 #### Chart of Accounts
+
 - Hierarchical account structure
 - Account types: `asset`, `liability`, `equity`, `revenue`, `expense`
 - Account codes and parent/child relationships
 
 #### Journal Entries
+
 - Manual journal entry creation
 - Status workflow: `draft` → `posted` → `reversed`
 - Balanced debit/credit validation
 - Entry memo and line-level memos
 
 #### Trial Balance
+
 - Real-time account balance calculation
 - Debit/credit totals by account
 
 ---
 
 ### 5. Financial Reports (`/reports`)
+
 **Purpose**: Financial statement generation and analysis
 
 **Features**:
 
 #### Income Statement (P&L)
+
 - Period-based revenue and expense reporting
 - Account-level detail with totals
 - Net income calculation
 - Quick period selection (This Month, Last 3 Months, YTD)
 
 #### Balance Sheet
+
 - Assets, Liabilities, and Equity sections
 - Side-by-side comparison layout
 - Balance validation indicator
 - Current period net income inclusion
 
 #### Cash Flow Statement
+
 - Operating, Investing, Financing activities
 - Net cash flow calculation
 - Beginning and ending cash positions
 
 #### Report Features
+
 - Customizable date range selection
 - PDF export capability
 - Real-time data from posted journal entries
 
 ---
+
 ### 6. Banking (`/banking`)
+
 **Purpose**: Bank account and transaction management
 
 **Features**:
 
 #### Bank Accounts
+
 - Multiple bank accounts per entity
 - Track current balances
 - Link to GL cash accounts
 - Bank details (name, routing, account number)
 
 #### Bank Transactions
+
 - Import and categorize transactions
 - Status workflow: `pending` → `matched` → `reconciled`
 - Auto-match to invoices and bills
@@ -223,11 +254,13 @@ Organization
 ---
 
 ### 7. Period Close (`/close`)
+
 **Purpose**: Month-end and period-end close management
 
 **Features**:
 
 #### Close Tasks
+
 - Configurable close checklist
 - Status workflow: `pending` → `in_progress` → `complete` / `overdue`
 - Task assignment to users
@@ -235,29 +268,34 @@ Organization
 - Completion timestamps
 
 #### Period Management
+
 - Period-based task organization (e.g., "2024-01")
 - Progress tracking and reporting
 
 ---
 
 ### 8. CRM (`/crm`)
+
 **Purpose**: Customer Relationship Management and Sales Pipeline
 
 **Features**:
 
 #### Pipeline Management
+
 - Visual Kanban board for opportunity tracking
 - Funnel view for conversion analysis
 - Drag-and-drop stage transitions
 - Stage workflow: `lead` → `qualified` → `proposal` → `negotiation` → `closed_won` / `closed_lost`
 
 #### Opportunity Management
+
 - Track sales opportunities with expected values
 - Probability-weighted pipeline calculations
 - Expected close date tracking
 - Customer linkage
 
 #### Sales Analytics
+
 - Key Performance Metrics (Win Rate, Avg Deal Size, Sales Cycle, Pipeline Velocity)
 - Revenue & Deals Trend charts
 - Pipeline Distribution (Pie chart)
@@ -266,6 +304,7 @@ Organization
 - Quick Stats overview
 
 #### Sales Forecasting
+
 - AI-powered sales predictions
 - Period-based forecasting
 - Weighted pipeline analysis
@@ -273,9 +312,11 @@ Organization
 ---
 
 ### 9. Agent River (AI Assistant)
+
 **Purpose**: Context-aware AI assistant for natural language queries across all modules
 
 **Capabilities**:
+
 - **Context-Aware**: Automatically adapts to current page/module
 - **Multi-Domain**: Supports CRM, Finance, Inventory, Production, Controlling, Service contexts
 - **Tool-Enabled**: Uses OpenAI function calling for database queries
@@ -296,6 +337,7 @@ Organization
 | Other routes | General | Cross-module queries and assistance |
 
 **Technical Implementation**:
+
 - Edge Function: `unified-agent`
 - Model: GPT-4o-mini with function calling
 - UI Component: `AIChatBar` (sidebar panel)
@@ -333,53 +375,59 @@ Organization
 ## Database Schema
 
 ### Master Data Tables
-| Table | Description |
-|-------|-------------|
-| `organizations` | Tenant/company records |
-| `entities` | Legal entities/business units |
-| `profiles` | User profiles linked to auth |
-| `user_roles` | RBAC role assignments |
-| `customers` | Customer master data |
-| `vendors` | Vendor master data |
-| `accounts` | Chart of accounts |
-| `bank_accounts` | Bank account master data |
+
+| Table           | Description                   |
+| --------------- | ----------------------------- |
+| `organizations` | Tenant/company records        |
+| `entities`      | Legal entities/business units |
+| `profiles`      | User profiles linked to auth  |
+| `user_roles`    | RBAC role assignments         |
+| `customers`     | Customer master data          |
+| `vendors`       | Vendor master data            |
+| `accounts`      | Chart of accounts             |
+| `bank_accounts` | Bank account master data      |
 
 ### Transaction Tables
-| Table | Description |
-|-------|-------------|
-| `sales_orders` | Sales order headers |
-| `sales_order_lines` | Sales order line items |
-| `shipments` | Shipment headers |
-| `shipment_lines` | Shipment line items |
-| `invoices` | AR invoice records |
-| `purchase_orders` | Purchase order headers |
-| `purchase_order_lines` | PO line items |
-| `goods_receipts` | GR headers |
-| `goods_receipt_lines` | GR line items |
-| `bills` | AP bill records |
-| `payment_runs` | Payment batch headers |
-| `payment_run_items` | Payment batch line items |
-| `journal_entries` | GL journal headers |
-| `journal_lines` | GL journal line items |
-| `bank_transactions` | Bank transaction records |
-| `close_tasks` | Period close tasks |
+
+| Table                  | Description              |
+| ---------------------- | ------------------------ |
+| `sales_orders`         | Sales order headers      |
+| `sales_order_lines`    | Sales order line items   |
+| `shipments`            | Shipment headers         |
+| `shipment_lines`       | Shipment line items      |
+| `invoices`             | AR invoice records       |
+| `purchase_orders`      | Purchase order headers   |
+| `purchase_order_lines` | PO line items            |
+| `goods_receipts`       | GR headers               |
+| `goods_receipt_lines`  | GR line items            |
+| `bills`                | AP bill records          |
+| `payment_runs`         | Payment batch headers    |
+| `payment_run_items`    | Payment batch line items |
+| `journal_entries`      | GL journal headers       |
+| `journal_lines`        | GL journal line items    |
+| `bank_transactions`    | Bank transaction records |
+| `close_tasks`          | Period close tasks       |
 
 ### AI/Chat Tables
-| Table | Description |
-|-------|-------------|
+
+| Table           | Description                     |
+| --------------- | ------------------------------- |
 | `chat_messages` | AI copilot conversation history |
-| `ai_audit_logs` | AI action audit trail |
+| `ai_audit_logs` | AI action audit trail           |
 
 ---
 
 ## Security Model
 
 ### Row Level Security (RLS)
+
 All tables are protected by RLS policies that enforce:
+
 - **Organization Isolation**: Users can only access data belonging to their organization
 - **Role-Based Permissions**: Different operations allowed based on user role
 
 ### Key RLS Patterns
+
 ```sql
 -- Standard org-scoped SELECT
 USING (org_id = get_user_org_id())
@@ -396,19 +444,21 @@ USING (EXISTS (
 ```
 
 ### Database Functions
-| Function | Purpose |
-|----------|---------|
-| `get_user_org_id()` | Returns current user's org_id |
-| `get_user_role(user_id)` | Returns user's highest role |
-| `has_role(user_id, role)` | Checks if user has specific role |
-| `handle_new_user()` | Trigger for new user provisioning |
-| `update_updated_at()` | Trigger for timestamp updates |
+
+| Function                  | Purpose                           |
+| ------------------------- | --------------------------------- |
+| `get_user_org_id()`       | Returns current user's org_id     |
+| `get_user_role(user_id)`  | Returns user's highest role       |
+| `has_role(user_id, role)` | Checks if user has specific role  |
+| `handle_new_user()`       | Trigger for new user provisioning |
+| `update_updated_at()`     | Trigger for timestamp updates     |
 
 ---
 
 ## API / Edge Functions
 
 ### `unified-agent`
+
 - **Purpose**: Context-aware AI agent for all modules
 - **Endpoint**: `/functions/v1/unified-agent`
 - **Method**: POST
@@ -416,18 +466,21 @@ USING (EXISTS (
 - **Features**: Multi-context support (CRM, Finance, Inventory, Production), OpenAI function calling
 
 ### `crm-agent`
+
 - **Purpose**: CRM-specific AI agent (legacy)
 - **Endpoint**: `/functions/v1/crm-agent`
 - **Method**: POST
 - **Auth**: Not required (public)
 
 ### `finance-chat`
+
 - **Purpose**: Finance AI chat interface
 - **Endpoint**: `/functions/v1/finance-chat`
 - **Method**: POST
 - **Auth**: Required (Bearer token)
 
 ### `finance-agents`
+
 - **Purpose**: Finance AI agent actions and tools
 - **Endpoint**: `/functions/v1/finance-agents`
 - **Method**: POST
@@ -497,11 +550,11 @@ supabase/
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anon key |
-| `OPENAI_API_KEY` | OpenAI API key (Edge Functions) |
+| Variable                        | Description                     |
+| ------------------------------- | ------------------------------- |
+| `VITE_SUPABASE_URL`             | Supabase project URL            |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anon key               |
+| `OPENAI_API_KEY`                | OpenAI API key (Edge Functions) |
 
 ---
 
@@ -509,25 +562,25 @@ supabase/
 
 ### Implemented Features
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Multi-tenant architecture | ✅ | Organization-based data isolation |
-| Role-based access control | ✅ | Admin, Moderator, User, Viewer roles |
-| Order-to-Cash (O2C) | ✅ | Full sales cycle management |
-| Procure-to-Pay (P2P) | ✅ | Full procurement cycle management |
-| General Ledger | ✅ | Chart of accounts, journal entries |
-| Financial Reports | ✅ | P&L, Balance Sheet, Cash Flow |
-| Banking & Reconciliation | ✅ | Bank accounts, transactions, matching |
-| Period Close Management | ✅ | Close tasks, checklists, tracking |
-| **CRM & Pipeline** | ✅ | Opportunity management, Kanban/Funnel views |
-| **Sales Analytics** | ✅ | Win rates, trends, conversion analysis |
-| **Sales Forecasting** | ✅ | AI-powered sales predictions |
-| **Agent River (AI)** | ✅ | Context-aware AI assistant |
-| Inventory Management | ✅ | Warehouses, stock, transactions |
-| Production Planning | ✅ | BOMs, production orders, MRP |
-| Dark/Light Theme | ✅ | User preference theming |
-| Responsive Design | ✅ | Mobile-friendly UI |
-| Real-time Updates | ✅ | Live data synchronization |
+| Feature                   | Status | Description                                 |
+| ------------------------- | ------ | ------------------------------------------- |
+| Multi-tenant architecture | ✅     | Organization-based data isolation           |
+| Role-based access control | ✅     | Admin, Moderator, User, Viewer roles        |
+| Order-to-Cash (O2C)       | ✅     | Full sales cycle management                 |
+| Procure-to-Pay (P2P)      | ✅     | Full procurement cycle management           |
+| General Ledger            | ✅     | Chart of accounts, journal entries          |
+| Financial Reports         | ✅     | P&L, Balance Sheet, Cash Flow               |
+| Banking & Reconciliation  | ✅     | Bank accounts, transactions, matching       |
+| Period Close Management   | ✅     | Close tasks, checklists, tracking           |
+| **CRM & Pipeline**        | ✅     | Opportunity management, Kanban/Funnel views |
+| **Sales Analytics**       | ✅     | Win rates, trends, conversion analysis      |
+| **Sales Forecasting**     | ✅     | AI-powered sales predictions                |
+| **Agent River (AI)**      | ✅     | Context-aware AI assistant                  |
+| Inventory Management      | ✅     | Warehouses, stock, transactions             |
+| Production Planning       | ✅     | BOMs, production orders, MRP                |
+| Dark/Light Theme          | ✅     | User preference theming                     |
+| Responsive Design         | ✅     | Mobile-friendly UI                          |
+| Real-time Updates         | ✅     | Live data synchronization                   |
 
 ---
 
@@ -536,37 +589,41 @@ supabase/
 ### Financial Management
 
 #### Accounting (Current)
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Journal Entries | ✅ | Create, post, reverse journal entries |
-| Accounts Receivable | ✅ | Invoice management, payment tracking |
-| Accounts Payable | ✅ | Bill management, payment processing |
-| Chart of Accounts | ✅ | Hierarchical account structure |
-| Trial Balance | ✅ | Real-time balance calculation |
+
+| Feature             | Status | Description                           |
+| ------------------- | ------ | ------------------------------------- |
+| Journal Entries     | ✅     | Create, post, reverse journal entries |
+| Accounts Receivable | ✅     | Invoice management, payment tracking  |
+| Accounts Payable    | ✅     | Bill management, payment processing   |
+| Chart of Accounts   | ✅     | Hierarchical account structure        |
+| Trial Balance       | ✅     | Real-time balance calculation         |
 
 #### Financial Reporting (Current)
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Income Statement (P&L) | ✅ | Revenue, expenses, net income |
-| Balance Sheet | ✅ | Assets, liabilities, equity |
-| Cash Flow Statement | ✅ | Operating, investing, financing |
-| Period Selection | ✅ | Custom date range filtering |
-| PDF Export | ✅ | Export reports to PDF |
+
+| Feature                | Status | Description                     |
+| ---------------------- | ------ | ------------------------------- |
+| Income Statement (P&L) | ✅     | Revenue, expenses, net income   |
+| Balance Sheet          | ✅     | Assets, liabilities, equity     |
+| Cash Flow Statement    | ✅     | Operating, investing, financing |
+| Period Selection       | ✅     | Custom date range filtering     |
+| PDF Export             | ✅     | Export reports to PDF           |
 
 #### Controlling (`/controlling`) - ✅ Implemented
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Cost Center Accounting | ✅ | Allocate expenses to cost centers with hierarchy support |
-| Internal Orders | ✅ | Track costs by internal orders (overhead, investment, accrual types) |
-| CO Documents | ✅ | Controlling documents linked to journal entries |
-| Budget Control | ✅ | Budget creation and variance analysis |
-| Cash Flow Forecasting | ✅ | Predict future cash flows with expected vs actual tracking |
-| Fixed Asset Management | ✅ | Asset register, depreciation tracking, disposal management |
-| Project Cost Monitoring | ✅ | Track costs by project with budget lines |
-| Budget Variance Analysis | ✅ | Visual variance charts and reporting |
-| Agent River Integration | ✅ | AI-powered controlling queries and analysis |
+
+| Feature                  | Status | Description                                                          |
+| ------------------------ | ------ | -------------------------------------------------------------------- |
+| Cost Center Accounting   | ✅     | Allocate expenses to cost centers with hierarchy support             |
+| Internal Orders          | ✅     | Track costs by internal orders (overhead, investment, accrual types) |
+| CO Documents             | ✅     | Controlling documents linked to journal entries                      |
+| Budget Control           | ✅     | Budget creation and variance analysis                                |
+| Cash Flow Forecasting    | ✅     | Predict future cash flows with expected vs actual tracking           |
+| Fixed Asset Management   | ✅     | Asset register, depreciation tracking, disposal management           |
+| Project Cost Monitoring  | ✅     | Track costs by project with budget lines                             |
+| Budget Variance Analysis | ✅     | Visual variance charts and reporting                                 |
+| Agent River Integration  | ✅     | AI-powered controlling queries and analysis                          |
 
 #### Advanced Reporting (Planned)
+
 | Feature | Status | Description |
 | Cash Flow Statement | 🔲 | Statement of cash flows |
 | Custom Report Builder | 🔲 | User-defined report templates |
@@ -578,84 +635,92 @@ supabase/
 ### Sales & Customer Management
 
 #### Sales Management (Current)
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Customer Master Data | ✅ | Store customer information |
-| Sales Orders | ✅ | Create and manage sales orders |
-| Shipment Tracking | ✅ | Track deliveries and carriers |
-| Invoice Generation | ✅ | Create invoices from orders |
-| Credit Limit Management | ✅ | Set customer credit limits |
+
+| Feature                 | Status | Description                    |
+| ----------------------- | ------ | ------------------------------ |
+| Customer Master Data    | ✅     | Store customer information     |
+| Sales Orders            | ✅     | Create and manage sales orders |
+| Shipment Tracking       | ✅     | Track deliveries and carriers  |
+| Invoice Generation      | ✅     | Create invoices from orders    |
+| Credit Limit Management | ✅     | Set customer credit limits     |
 
 #### Sales Management (Planned)
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Opportunity Management** | ✅ | Track sales opportunities with pipeline stages (Lead → Qualified → Proposal → Negotiation → Won/Lost) |
-| **Sales Pipeline** | ✅ | Visual Kanban and Funnel pipeline tracking |
-| **Sales Forecasting** | ✅ | AI-powered sales predictions |
-| **Quotation Management** | ✅ | Create, track quotes, and convert to sales orders |
-| **Sales Analytics** | ✅ | Win rates, trends, conversion analysis, performance metrics |
-| Mobile Sales App | 🔲 | On-the-go sales management |
+
+| Feature                    | Status | Description                                                                                           |
+| -------------------------- | ------ | ----------------------------------------------------------------------------------------------------- |
+| **Opportunity Management** | ✅     | Track sales opportunities with pipeline stages (Lead → Qualified → Proposal → Negotiation → Won/Lost) |
+| **Sales Pipeline**         | ✅     | Visual Kanban and Funnel pipeline tracking                                                            |
+| **Sales Forecasting**      | ✅     | AI-powered sales predictions                                                                          |
+| **Quotation Management**   | ✅     | Create, track quotes, and convert to sales orders                                                     |
+| **Sales Analytics**        | ✅     | Win rates, trends, conversion analysis, performance metrics                                           |
+| Mobile Sales App           | 🔲     | On-the-go sales management                                                                            |
 
 #### Service Management (`/service`) - ✅ Implemented
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Service Contracts | ✅ | Manage service agreements with renewals and billing |
-| Warranty Tracking | ✅ | Track product warranties with expiration alerts |
-| Service Call Management | ✅ | Log, track, and respond to service requests with priority handling |
-| Field Service | ✅ | Schedule and manage on-site service visits |
-| Agent River Integration | ✅ | AI-powered service queries and analysis |
+
+| Feature                 | Status | Description                                                        |
+| ----------------------- | ------ | ------------------------------------------------------------------ |
+| Service Contracts       | ✅     | Manage service agreements with renewals and billing                |
+| Warranty Tracking       | ✅     | Track product warranties with expiration alerts                    |
+| Service Call Management | ✅     | Log, track, and respond to service requests with priority handling |
+| Field Service           | ✅     | Schedule and manage on-site service visits                         |
+| Agent River Integration | ✅     | AI-powered service queries and analysis                            |
 
 #### Marketing (Planned)
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Campaign Management | 🔲 | Create marketing campaigns |
-| Lead Management | 🔲 | Track and nurture leads |
-| Campaign Analytics | 🔲 | Measure campaign effectiveness |
-| Email Integration | 🔲 | Email campaign automation |
+
+| Feature             | Status | Description                    |
+| ------------------- | ------ | ------------------------------ |
+| Campaign Management | 🔲     | Create marketing campaigns     |
+| Lead Management     | 🔲     | Track and nurture leads        |
+| Campaign Analytics  | 🔲     | Measure campaign effectiveness |
+| Email Integration   | 🔲     | Email campaign automation      |
 
 ---
 
 ### Purchasing & Inventory Control
 
 #### Procurement (Current)
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Vendor Master Data | ✅ | Store vendor information |
-| Purchase Orders | ✅ | Create and manage POs |
-| Goods Receipts | ✅ | Record incoming goods |
-| Three-Way Matching | ✅ | PO ↔ GR ↔ Bill matching |
-| Payment Runs | ✅ | Batch payment processing |
-| Document Linking | ✅ | Link related documents |
-| **Purchase Requisitions** | ✅ | Internal purchase requests with approval workflow |
+
+| Feature                   | Status | Description                                       |
+| ------------------------- | ------ | ------------------------------------------------- |
+| Vendor Master Data        | ✅     | Store vendor information                          |
+| Purchase Orders           | ✅     | Create and manage POs                             |
+| Goods Receipts            | ✅     | Record incoming goods                             |
+| Three-Way Matching        | ✅     | PO ↔ GR ↔ Bill matching                         |
+| Payment Runs              | ✅     | Batch payment processing                          |
+| Document Linking          | ✅     | Link related documents                            |
+| **Purchase Requisitions** | ✅     | Internal purchase requests with approval workflow |
 
 #### Procurement (Planned)
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Vendor Evaluation | 🔲 | Rate and score vendors |
-| Blanket Purchase Orders | 🔲 | Long-term purchase agreements |
-| Multi-currency Purchasing | 🔲 | Buy in foreign currencies |
+
+| Feature                   | Status | Description                   |
+| ------------------------- | ------ | ----------------------------- |
+| Vendor Evaluation         | 🔲     | Rate and score vendors        |
+| Blanket Purchase Orders   | 🔲     | Long-term purchase agreements |
+| Multi-currency Purchasing | 🔲     | Buy in foreign currencies     |
 
 #### Inventory Management (Current)
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Warehouse Management | ✅ | Multiple warehouse support |
-| Bin Location Management | ✅ | Sub-zone stock management |
-| Inventory Valuation | ✅ | FIFO, LIFO, Average costing |
-| Stock Transfers | ✅ | Inter-warehouse transfers |
-| Cycle Counting | ✅ | Scheduled inventory counts |
-| Reorder Point Planning | ✅ | Automatic replenishment alerts |
-| Serial/Batch Tracking | ✅ | Track items by serial/batch |
-| Product Master Data | ✅ | SKU, costs, tracking options |
-| Inventory Stock Tracking | ✅ | Real-time stock levels by warehouse |
-| Inventory Transactions | ✅ | Full transaction history |
-| **P2P Integration** | ✅ | Auto-update inventory on goods receipt |
-| **O2C Integration** | ✅ | Auto-update inventory on shipment |
+
+| Feature                  | Status | Description                            |
+| ------------------------ | ------ | -------------------------------------- |
+| Warehouse Management     | ✅     | Multiple warehouse support             |
+| Bin Location Management  | ✅     | Sub-zone stock management              |
+| Inventory Valuation      | ✅     | FIFO, LIFO, Average costing            |
+| Stock Transfers          | ✅     | Inter-warehouse transfers              |
+| Cycle Counting           | ✅     | Scheduled inventory counts             |
+| Reorder Point Planning   | ✅     | Automatic replenishment alerts         |
+| Serial/Batch Tracking    | ✅     | Track items by serial/batch            |
+| Product Master Data      | ✅     | SKU, costs, tracking options           |
+| Inventory Stock Tracking | ✅     | Real-time stock levels by warehouse    |
+| Inventory Transactions   | ✅     | Full transaction history               |
+| **P2P Integration**      | ✅     | Auto-update inventory on goods receipt |
+| **O2C Integration**      | ✅     | Auto-update inventory on shipment      |
 
 #### Inventory Management (Planned)
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Consignment Inventory | ✅ | Manage consigned stock with vendor tracking |
-| Inventory Receipts | ✅ | Direct inventory adjustments without PO/shipment |
+
+| Feature               | Status | Description                                      |
+| --------------------- | ------ | ------------------------------------------------ |
+| Consignment Inventory | ✅     | Manage consigned stock with vendor tracking      |
+| Inventory Receipts    | ✅     | Direct inventory adjustments without PO/shipment |
 
 ---
 
@@ -664,30 +729,33 @@ supabase/
 **Purpose**: Manufacturing operations and production planning with MTS/MTO support
 
 #### Current Features
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Bill of Materials (BOM) | ✅ | Multi-level BOM with components and routing operations |
-| Production Orders | ✅ | Manufacturing order management with status workflow |
-| Material Requirements Planning | ✅ | MRP calculations to identify material shortages |
-| Capacity Planning | ✅ | Work center scheduling and utilization tracking |
-| Shop Floor Control | ✅ | Track production progress and operation status |
-| Work Center Management | ✅ | Define production resources with capacity/efficiency |
-| Backflush Processing | ✅ | Automatic material consumption on order completion |
-| AI Copilot Integration | ✅ | Query production data via natural language |
-| **MTS/MTO Planning Strategy** | ✅ | Make-to-Stock vs Make-to-Order production |
-| **Production Goods Receipts** | ✅ | Post finished goods from production orders |
-| **Sales Order Linkage** | ✅ | Link MTO production orders to sales orders |
-| **Stock Type Segmentation** | ✅ | Unrestricted vs Sales Order Stock inventory |
+
+| Feature                        | Status | Description                                            |
+| ------------------------------ | ------ | ------------------------------------------------------ |
+| Bill of Materials (BOM)        | ✅     | Multi-level BOM with components and routing operations |
+| Production Orders              | ✅     | Manufacturing order management with status workflow    |
+| Material Requirements Planning | ✅     | MRP calculations to identify material shortages        |
+| Capacity Planning              | ✅     | Work center scheduling and utilization tracking        |
+| Shop Floor Control             | ✅     | Track production progress and operation status         |
+| Work Center Management         | ✅     | Define production resources with capacity/efficiency   |
+| Backflush Processing           | ✅     | Automatic material consumption on order completion     |
+| AI Copilot Integration         | ✅     | Query production data via natural language             |
+| **MTS/MTO Planning Strategy**  | ✅     | Make-to-Stock vs Make-to-Order production              |
+| **Production Goods Receipts**  | ✅     | Post finished goods from production orders             |
+| **Sales Order Linkage**        | ✅     | Link MTO production orders to sales orders             |
+| **Stock Type Segmentation**    | ✅     | Unrestricted vs Sales Order Stock inventory            |
 
 #### Planning Strategies
 
 **Make-to-Stock (MTS)**
+
 - Production for general inventory replenishment
 - Goods receipts create `unrestricted` stock
 - No sales order linkage required
 - Available for any future customer orders
 
 **Make-to-Order (MTO)**
+
 - Production tied to specific customer orders
 - Goods receipts create `sales_order_stock`
 - Mandatory linkage to sales order and line item
@@ -696,17 +764,20 @@ supabase/
 #### Sub-modules
 
 **Work Centers**
+
 - Define production resources (machines, lines, stations)
 - Set hourly rates, capacity per day, efficiency rates
 - Track utilization and availability
 
 **Bill of Materials**
+
 - Multi-level BOM structure with components
 - Routing operations with work center assignments
 - Setup time and run time per unit
 - Scrap rate calculations
 
 **Production Orders**
+
 - Create orders from BOMs
 - Status workflow: `draft` → `planned` → `released` → `in_progress` → `partially_delivered` → `completed`
 - Auto-generate components and operations from BOM
@@ -715,6 +786,7 @@ supabase/
 - Planning strategy badge display
 
 **Production Goods Receipts**
+
 - Post finished goods against production orders
 - Automatic stock type determination based on planning strategy
 - Updates production order confirmed quantity and status
@@ -722,101 +794,112 @@ supabase/
 - For MTO: Updates sales order delivered quantities
 
 **MRP (Material Requirements Planning)**
+
 - Run MRP to calculate material needs
 - Identify shortages and planned order quantities
 - Configurable planning horizon
 
 **Capacity Planning**
+
 - Generate capacity schedules for work centers
 - Track planned hours vs available hours
 - Identify overloaded work centers
 
 **Shop Floor Control**
+
 - View active production orders
 - Track operation progress (pending → in_progress → completed)
 - Record actual times vs planned
 
 #### Business Rules
-| Rule ID | Description |
-|---------|-------------|
-| BR-PLANNING-001 | Product planning strategy (MTS/MTO) drives production behavior |
-| BR-PROD-001 | MTO orders require sales order linkage; MTS orders must not have linkage |
-| BR-GR-001 | Every goods receipt must be linked to a production order |
-| BR-GR-002 | MTS → unrestricted stock; MTO → sales order stock |
-| BR-GR-003 | Confirmed quantity tracks total goods received |
+
+| Rule ID            | Description                                                                                    |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| BR-PLANNING-001    | Product planning strategy (MTS/MTO) drives production behavior                                 |
+| BR-PROD-001        | MTO orders require sales order linkage; MTS orders must not have linkage                       |
+| BR-GR-001          | Every goods receipt must be linked to a production order                                       |
+| BR-GR-002          | MTS → unrestricted stock; MTO → sales order stock                                              |
+| BR-GR-003          | Confirmed quantity tracks total goods received                                                 |
 | BR-PROD-STATUS-001 | Status transitions: CREATED → RELEASED → IN_PROCESS → PARTIALLY_DELIVERED → DELIVERED → CLOSED |
 
 #### Database Enhancements
-| Table/Field | Description |
-|-------------|-------------|
-| `products.planning_strategy` | MTS or MTO planning strategy |
-| `production_orders.sales_order_id` | Linked sales order for MTO |
-| `production_orders.sales_order_item_id` | Linked sales order line for MTO |
-| `production_orders.confirmed_quantity` | Total goods received |
-| `production_goods_receipts` | Goods receipts from production |
-| `inventory_stock.stock_type` | Unrestricted or Sales Order Stock |
-| `inventory_stock.sales_order_id` | For reserved MTO stock |
+
+| Table/Field                             | Description                       |
+| --------------------------------------- | --------------------------------- |
+| `products.planning_strategy`            | MTS or MTO planning strategy      |
+| `production_orders.sales_order_id`      | Linked sales order for MTO        |
+| `production_orders.sales_order_item_id` | Linked sales order line for MTO   |
+| `production_orders.confirmed_quantity`  | Total goods received              |
+| `production_goods_receipts`             | Goods receipts from production    |
+| `inventory_stock.stock_type`            | Unrestricted or Sales Order Stock |
+| `inventory_stock.sales_order_id`        | For reserved MTO stock            |
 
 #### AI Copilot Tools
-| Tool | Description |
-|------|-------------|
+
+| Tool                            | Description                                    |
+| ------------------------------- | ---------------------------------------------- |
 | `get_production_goods_receipts` | Query production goods receipts with filtering |
-| `get_inventory_by_stock_type` | Get inventory segmented by stock type |
-| `get_mto_production_status` | View MTO orders with sales order details |
+| `get_inventory_by_stock_type`   | Get inventory segmented by stock type          |
+| `get_mto_production_status`     | View MTO orders with sales order details       |
 
 ---
 
 ### Banking & Reconciliation
 
 #### Current Features
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Bank Account Management | ✅ | Multiple accounts per entity |
-| Transaction Recording | ✅ | Manual transaction entry |
-| Invoice/Bill Matching | ✅ | Match transactions to documents |
-| Account Reconciliation | ✅ | Reconcile bank statements |
+
+| Feature                 | Status | Description                     |
+| ----------------------- | ------ | ------------------------------- |
+| Bank Account Management | ✅     | Multiple accounts per entity    |
+| Transaction Recording   | ✅     | Manual transaction entry        |
+| Invoice/Bill Matching   | ✅     | Match transactions to documents |
+| Account Reconciliation  | ✅     | Reconcile bank statements       |
 
 #### Planned Features
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Bank Feed Integration | 🔲 | Automated transaction import |
-| Payment Processing | ✅ | ACH, Check, Wire payments |
-| Auto-Matching Rules | 🔲 | Rule-based transaction matching |
-| Bank Statement Import | 🔲 | Import OFX/QFX/CSV files |
-| Positive Pay | 🔲 | Check fraud prevention |
+
+| Feature               | Status | Description                     |
+| --------------------- | ------ | ------------------------------- |
+| Bank Feed Integration | 🔲     | Automated transaction import    |
+| Payment Processing    | ✅     | ACH, Check, Wire payments       |
+| Auto-Matching Rules   | 🔲     | Rule-based transaction matching |
+| Bank Statement Import | 🔲     | Import OFX/QFX/CSV files        |
+| Positive Pay          | 🔲     | Check fraud prevention          |
 
 ---
 
 ### Additional Planned Features
 
 #### Document Management
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Document Attachments | 🔲 | Attach files to transactions |
-| Document Templates | 🔲 | Customizable print layouts |
-| E-invoicing | 🔲 | Electronic invoice exchange |
-| Digital Signatures | 🔲 | Sign documents electronically |
+
+| Feature              | Status | Description                   |
+| -------------------- | ------ | ----------------------------- |
+| Document Attachments | 🔲     | Attach files to transactions  |
+| Document Templates   | 🔲     | Customizable print layouts    |
+| E-invoicing          | 🔲     | Electronic invoice exchange   |
+| Digital Signatures   | 🔲     | Sign documents electronically |
 
 #### Workflow & Automation
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Approval Workflows | ✅ | Submit, approve, reject for POs, Payment Runs, Journal Entries |
-| Email Notifications | 🔲 | Automated alerts |
-| Scheduled Reports | 🔲 | Auto-generated reports |
-| Recurring Transactions | 🔲 | Automated recurring entries |
+
+| Feature                | Status | Description                                                    |
+| ---------------------- | ------ | -------------------------------------------------------------- |
+| Approval Workflows     | ✅     | Submit, approve, reject for POs, Payment Runs, Journal Entries |
+| Email Notifications    | 🔲     | Automated alerts                                               |
+| Scheduled Reports      | 🔲     | Auto-generated reports                                         |
+| Recurring Transactions | 🔲     | Automated recurring entries                                    |
 
 #### Integrations
-| Feature | Status | Description |
-|---------|--------|-------------|
-| API Access | ✅ | RESTful API via Edge Functions |
-| Webhook Support | 🔲 | Real-time event notifications |
-| Third-party Connectors | 🔲 | External system integrations |
+
+| Feature                | Status | Description                    |
+| ---------------------- | ------ | ------------------------------ |
+| API Access             | ✅     | RESTful API via Edge Functions |
+| Webhook Support        | 🔲     | Real-time event notifications  |
+| Third-party Connectors | 🔲     | External system integrations   |
 
 ---
 
 ## Legend
 
-| Symbol | Meaning |
-|--------|---------|
-| ✅ | Implemented |
-| 🔲 | Planned / Roadmap |
+| Symbol | Meaning           |
+| ------ | ----------------- |
+| ✅     | Implemented       |
+| 🔲     | Planned / Roadmap |
