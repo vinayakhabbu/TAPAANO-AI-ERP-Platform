@@ -1,6 +1,6 @@
-# Finance ERP - Enterprise Resource Planning System
+# TAPAANO AI ERP Platform
 
-A comprehensive, multi-tenant financial management system built with modern web technologies. Features end-to-end financial operations including Order-to-Cash (O2C), Procure-to-Pay (P2P), General Ledger, Banking, CRM, Production, Controlling, and Service Management with an integrated AI assistant called **Agent River**.
+A comprehensive, multi-tenant Enterprise Resource Planning platform built with modern web technologies. Features end-to-end financial operations including Order-to-Cash (O2C), Procure-to-Pay (P2P), General Ledger, Banking, CRM, Production, Controlling, and Service Management with an integrated AI assistant called **Agent River**.
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB.svg)
@@ -10,6 +10,7 @@ A comprehensive, multi-tenant financial management system built with modern web 
 ## Features
 
 ### Core Modules
+
 - **Dashboard** - Executive overview with KPIs, charts, and activity feed
 - **CRM** - Pipeline management, opportunities, customer insights, sales forecasting
 - **Accounts Receivable (O2C)** - Quotations, sales orders, shipments, invoices
@@ -23,24 +24,26 @@ A comprehensive, multi-tenant financial management system built with modern web 
 - **Period Close** - Month-end close task management
 
 ### AI-Powered Features
+
 - **Agent River** - Unified AI assistant with specialized sub-agents for each module
 - Natural language queries across all business data
 - Context-aware responses based on current module
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18, TypeScript, Vite |
-| Styling | Tailwind CSS, shadcn/ui |
-| State | TanStack Query, React Hook Form |
-| Backend | Supabase (PostgreSQL, Auth, Edge Functions) |
-| AI | OpenAI GPT-4o-mini (BYOK - Bring Your Own Key) |
-| Charts | Recharts |
+| Layer    | Technology                                     |
+| -------- | ---------------------------------------------- |
+| Frontend | React 18, TypeScript, Vite                     |
+| Styling  | Tailwind CSS, shadcn/ui                        |
+| State    | TanStack Query, React Hook Form                |
+| Backend  | Supabase (PostgreSQL, Auth, Edge Functions)    |
+| AI       | OpenAI GPT-4o-mini (BYOK - Bring Your Own Key) |
+| Charts   | Recharts                                       |
 
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 18+ and npm
 - A Supabase project (or use Lovable Cloud)
 - OpenAI API key (optional, for AI features)
@@ -48,19 +51,22 @@ A comprehensive, multi-tenant financial management system built with modern web 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
    cd YOUR_REPO
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
-   
+
    Create a `.env` file in the root directory:
+
    ```env
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
@@ -68,12 +74,13 @@ A comprehensive, multi-tenant financial management system built with modern web 
    ```
 
 4. **Start the development server**
+
    ```bash
    npm run dev
    ```
 
 5. **Open your browser**
-   
+
    Navigate to `http://localhost:5173`
 
 ### Database Setup
@@ -81,6 +88,7 @@ A comprehensive, multi-tenant financial management system built with modern web 
 The application requires a Supabase database with the appropriate schema. See `documentation.md` for the complete database structure.
 
 Key tables include:
+
 - `organizations`, `entities`, `profiles` (multi-tenancy)
 - `customers`, `vendors`, `products`, `accounts` (master data)
 - `sales_orders`, `invoices`, `purchase_orders`, `bills` (transactions)
@@ -123,6 +131,7 @@ Your key is stored securely in the database and never exposed in code.
 ## Documentation
 
 See [documentation.md](./documentation.md) for comprehensive documentation including:
+
 - Detailed module descriptions
 - Database schema
 - API endpoints
@@ -148,9 +157,11 @@ npm run lint
 ## Deployment
 
 ### Lovable (Recommended)
+
 Click **Share → Publish** in the Lovable editor.
 
 ### Self-Hosting
+
 1. Build the project: `npm run build`
 2. Deploy the `dist/` folder to any static hosting service
 3. Configure environment variables on your hosting platform
