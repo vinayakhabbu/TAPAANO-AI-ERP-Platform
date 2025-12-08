@@ -2,7 +2,7 @@
 
 A comprehensive, multi-tenant financial management system built with modern web technologies. Features end-to-end financial operations including Order-to-Cash (O2C), Procure-to-Pay (P2P), General Ledger, Banking, CRM, Production, Controlling, and Service Management with an integrated AI assistant called **Agent River**.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E.svg)
@@ -168,7 +168,9 @@ Contributions are welcome! Please read our contributing guidelines before submit
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+Copyright 2025 Vinayak Habbu
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](./LICENSE) file for details.
 
 ## Acknowledgments
 
