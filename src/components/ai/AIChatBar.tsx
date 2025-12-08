@@ -83,6 +83,7 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
             role: m.role,
             content: m.content,
           })),
+          org_id: orgId,
         },
       });
 
