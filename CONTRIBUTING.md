@@ -1,4 +1,4 @@
-# Contributing to Finance ERP
+# Contributing to TAPAANO AI ERP Platform
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributing.
 
@@ -25,12 +25,14 @@ Please be respectful and considerate in all interactions. We aim to maintain a w
 ### Submitting Pull Requests
 
 1. **Fork and Clone**
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/finance-erp.git
    cd finance-erp
    ```
 
 2. **Create a Branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -42,6 +44,7 @@ Please be respectful and considerate in all interactions. We aim to maintain a w
    - Update documentation as needed
 
 4. **Test Your Changes**
+
    ```bash
    npm run lint
    npm run build
@@ -55,11 +58,13 @@ Please be respectful and considerate in all interactions. We aim to maintain a w
 ## Development Setup
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or yarn
 - Git
 
 ### Local Development
+
 ```bash
 npm install
 npm run dev
@@ -77,6 +82,7 @@ npm run dev
 ### Commit Messages
 
 Follow conventional commits:
+
 - `feat:` - New feature
 - `fix:` - Bug fix
 - `docs:` - Documentation changes
