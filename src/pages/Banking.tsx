@@ -31,12 +31,13 @@ import {
   Rss,
 } from "lucide-react";
 import { useBankAccounts, useBankTransactions } from "@/hooks/useBanking";
-import { useAutoMatchTransactions } from "@/hooks/useBankingReconciliation";
+import { useAutoMatchTransactions, useBankFeedConnections } from "@/hooks/useBankingReconciliation";
 import { format } from "date-fns";
 import { MatchingRulesDialog } from "@/components/banking/MatchingRulesDialog";
 import { StatementImportDialog } from "@/components/banking/StatementImportDialog";
 import { BankFeedDialog } from "@/components/banking/BankFeedDialog";
 import { PositivePayDialog } from "@/components/banking/PositivePayDialog";
+import { toast } from "sonner";
 
 const statusConfig = {
   pending: { label: "Unmatched", className: "bg-warning/10 text-warning" },
@@ -45,14 +46,55 @@ const statusConfig = {
 };
 
 const Banking = () => {
+  const [matchingRulesOpen, setMatchingRulesOpen] = useState(false);
+  const [statementImportOpen, setStatementImportOpen] = useState(false);
+  const [bankFeedOpen, setBankFeedOpen] = useState(false);
+  const [positivePayOpen, setPositivePayOpen] = useState(false);
+
   const { data: bankAccounts, isLoading: accountsLoading } = useBankAccounts();
-  const { data: transactions, isLoading: transactionsLoading } = useBankTransactions();
+  const { data: transactions, isLoading: transactionsLoading, refetch: refetchTransactions } = useBankTransactions();
+  const { data: feedConnections } = useBankFeedConnections();
+  const autoMatchMutation = useAutoMatchTransactions();
 
   const totalBalance = bankAccounts?.reduce((sum, a) => sum + Number(a.current_balance), 0) || 0;
   const unmatchedCount = transactions?.filter((t) => t.status === "pending").length || 0;
+  const connectedFeeds = feedConnections?.filter((f) => f.connection_status === "connected").length || 0;
+
+  const handleAutoMatchAll = async () => {
+    try {
+      await autoMatchMutation.mutateAsync();
+      toast.success("Auto-matching completed");
+      refetchTransactions();
+    } catch (error) {
+      toast.error("Failed to auto-match transactions");
+    }
+  };
 
   return (
     <AppLayout title="Banking" subtitle="Bank accounts and transaction reconciliation">
+      {/* Quick Actions Bar */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <Button variant="outline" className="gap-2" onClick={() => setBankFeedOpen(true)}>
+          <Rss className="h-4 w-4" />
+          Bank Feeds
+          {connectedFeeds > 0 && (
+            <Badge variant="secondary" className="ml-1">{connectedFeeds}</Badge>
+          )}
+        </Button>
+        <Button variant="outline" className="gap-2" onClick={() => setStatementImportOpen(true)}>
+          <Upload className="h-4 w-4" />
+          Import Statement
+        </Button>
+        <Button variant="outline" className="gap-2" onClick={() => setMatchingRulesOpen(true)}>
+          <Zap className="h-4 w-4" />
+          Matching Rules
+        </Button>
+        <Button variant="outline" className="gap-2" onClick={() => setPositivePayOpen(true)}>
+          <Shield className="h-4 w-4" />
+          Positive Pay
+        </Button>
+      </div>
+
       {/* Bank Accounts */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {accountsLoading ? (
@@ -94,35 +136,39 @@ const Banking = () => {
       </div>
 
       {/* Summary Row */}
-      <div className="mt-6 flex items-center justify-between rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center gap-8">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-wrap items-center gap-8">
           <div>
             <p className="text-sm text-muted-foreground">Total Cash Balance</p>
             <p className="text-2xl font-bold text-foreground">
               ${totalBalance.toLocaleString()}
             </p>
           </div>
-          <div className="h-10 w-px bg-border" />
+          <div className="h-10 w-px bg-border hidden sm:block" />
           <div>
             <p className="text-sm text-muted-foreground">Unmatched Transactions</p>
             <p className="text-2xl font-bold text-warning">{unmatchedCount}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => refetchTransactions()}>
             <RefreshCw className="h-4 w-4" />
             Sync Transactions
           </Button>
-          <Button className="gap-2">
+          <Button 
+            className="gap-2" 
+            onClick={handleAutoMatchAll}
+            disabled={autoMatchMutation.isPending || unmatchedCount === 0}
+          >
             <Sparkles className="h-4 w-4" />
-            Auto-Match All
+            {autoMatchMutation.isPending ? "Matching..." : "Auto-Match All"}
           </Button>
         </div>
       </div>
 
       {/* Transactions Table */}
       <div className="mt-6 rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-4">
           <div>
             <h3 className="text-lg font-semibold text-foreground">Recent Transactions</h3>
             <p className="text-sm text-muted-foreground">Match and reconcile bank entries</p>
@@ -258,6 +304,12 @@ const Banking = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Dialogs */}
+      <MatchingRulesDialog open={matchingRulesOpen} onOpenChange={setMatchingRulesOpen} />
+      <StatementImportDialog open={statementImportOpen} onOpenChange={setStatementImportOpen} />
+      <BankFeedDialog open={bankFeedOpen} onOpenChange={setBankFeedOpen} />
+      <PositivePayDialog open={positivePayOpen} onOpenChange={setPositivePayOpen} />
     </AppLayout>
   );
 };
