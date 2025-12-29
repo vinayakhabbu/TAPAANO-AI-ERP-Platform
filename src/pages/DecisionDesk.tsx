@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { 
   Scale, 
   Search, 
@@ -15,7 +15,8 @@ import {
   BookOpen,
   Building2,
   User,
-  Calendar
+  Calendar,
+  Download
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDecisionTraces, useDecisionEntities, type DecisionTrace, type DecisionType } from "@/hooks/useDecisionLedger";
+import { useToast } from "@/hooks/use-toast";
 
 const decisionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   po_approval: { label: "PO Approval", icon: ShoppingCart, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
@@ -204,6 +206,8 @@ export default function DecisionDesk() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<DecisionType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<string>("all");
+  const { toast } = useToast();
 
   const { data: decisions, isLoading } = useDecisionTraces({
     decision_type: typeFilter === "all" ? undefined : typeFilter,
@@ -211,24 +215,102 @@ export default function DecisionDesk() {
     limit: 100,
   });
 
-  const filteredDecisions = decisions?.filter((d) => {
+  // Filter by date range
+  const getDateFilteredDecisions = () => {
+    if (!decisions) return [];
+    if (dateRange === "all") return decisions;
+    
+    const now = new Date();
+    let cutoff: Date;
+    
+    switch (dateRange) {
+      case "today":
+        cutoff = new Date(now.setHours(0, 0, 0, 0));
+        break;
+      case "week":
+        cutoff = subDays(now, 7);
+        break;
+      case "month":
+        cutoff = subDays(now, 30);
+        break;
+      case "quarter":
+        cutoff = subDays(now, 90);
+        break;
+      default:
+        return decisions;
+    }
+    
+    return decisions.filter((d) => new Date(d.created_at) >= cutoff);
+  };
+
+  const dateFilteredDecisions = getDateFilteredDecisions();
+
+  const filteredDecisions = dateFilteredDecisions.filter((d) => {
     if (!searchQuery) return true;
     const snapshot = d.input_snapshot as Record<string, unknown>;
     const searchLower = searchQuery.toLowerCase();
     return (
       d.decision_type.toLowerCase().includes(searchLower) ||
+      d.rationale_text?.toLowerCase().includes(searchLower) ||
       Object.values(snapshot).some((v) => 
         String(v).toLowerCase().includes(searchLower)
       )
     );
   });
 
+  // Export to CSV
+  const exportToCSV = () => {
+    if (!filteredDecisions.length) {
+      toast({ title: "No data to export", variant: "destructive" });
+      return;
+    }
+
+    const headers = [
+      "Date",
+      "Decision Type",
+      "Status",
+      "Document Reference",
+      "Amount",
+      "Rationale",
+      "Reason Codes",
+    ];
+
+    const rows = filteredDecisions.map((d) => {
+      const snapshot = d.input_snapshot as Record<string, unknown>;
+      const docRef = snapshot.po_number || snapshot.run_number || snapshot.entry_number || snapshot.requisition_number || "-";
+      const amount = snapshot.total || snapshot.estimated_total || "-";
+      
+      return [
+        format(new Date(d.created_at), "yyyy-MM-dd HH:mm"),
+        decisionTypeConfig[d.decision_type]?.label || d.decision_type,
+        d.approval_status,
+        String(docRef),
+        typeof amount === "number" ? `$${amount.toLocaleString()}` : String(amount),
+        d.rationale_text || "-",
+        d.reason_codes?.join("; ") || "-",
+      ];
+    });
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `decision-audit-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.click();
+
+    toast({ title: "Export complete", description: `Exported ${filteredDecisions.length} decisions` });
+  };
+
   // Stats
   const stats = {
-    total: decisions?.length || 0,
-    approved: decisions?.filter((d) => d.approval_status === "approved").length || 0,
-    rejected: decisions?.filter((d) => d.approval_status === "rejected").length || 0,
-    pending: decisions?.filter((d) => d.approval_status === "pending").length || 0,
+    total: dateFilteredDecisions.length,
+    approved: dateFilteredDecisions.filter((d) => d.approval_status === "approved").length,
+    rejected: dateFilteredDecisions.filter((d) => d.approval_status === "rejected").length,
+    pending: dateFilteredDecisions.filter((d) => d.approval_status === "pending").length,
   };
 
   return (
@@ -331,6 +413,22 @@ export default function DecisionDesk() {
                   <SelectItem value="pending">Pending</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger className="w-[140px]">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Date Range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">Last 7 Days</SelectItem>
+                  <SelectItem value="month">Last 30 Days</SelectItem>
+                  <SelectItem value="quarter">Last 90 Days</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon" onClick={exportToCSV} title="Export to CSV">
+                <Download className="h-4 w-4" />
+              </Button>
             </div>
           </CardHeader>
         </Card>
