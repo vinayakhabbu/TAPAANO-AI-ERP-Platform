@@ -19,7 +19,8 @@ import {
   Download,
   BarChart3,
   Zap,
-  Bot
+  Bot,
+  ShieldAlert
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,7 @@ import { useDecisionTraces, useDecisionEntities, type DecisionTrace, type Decisi
 import { useToast } from "@/hooks/use-toast";
 import { PolicyAnalyticsChart } from "@/components/decisions/PolicyAnalyticsChart";
 import { AutonomousApprover } from "@/components/decisions/AutonomousApprover";
+import { AnomalyDetector } from "@/components/decisions/AnomalyDetector";
 
 const decisionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   po_approval: { label: "PO Approval", icon: ShoppingCart, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
@@ -410,6 +412,10 @@ export default function DecisionDesk() {
               <Bot className="h-4 w-4" />
               Autonomous Approver
             </TabsTrigger>
+            <TabsTrigger value="anomalies" className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4" />
+              Anomaly Detection
+            </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Policy Analytics
@@ -521,6 +527,10 @@ export default function DecisionDesk() {
 
           <TabsContent value="autonomous">
             <AutonomousApprover />
+          </TabsContent>
+
+          <TabsContent value="anomalies">
+            <AnomalyDetector />
           </TabsContent>
 
           <TabsContent value="analytics">
