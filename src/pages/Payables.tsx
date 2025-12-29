@@ -667,7 +667,7 @@ const Payables = () => {
                             onSubmitForApproval={() => paymentRunApproval.mutate({ id: run.id, action: "submit_for_approval" })}
                             onApprove={() => paymentRunApproval.mutate({ id: run.id, action: "approve" })}
                             onReject={() => paymentRunApproval.mutate({ id: run.id, action: "reject" })}
-                            onProcess={() => processPaymentRun.mutate(run.id)}
+                            onProcess={() => processPaymentRun.mutate({ id: run.id })}
                             isLoading={paymentRunApproval.isPending || processPaymentRun.isPending}
                           />
                         </TableCell>
