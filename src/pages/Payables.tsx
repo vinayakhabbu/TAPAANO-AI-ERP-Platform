@@ -759,6 +759,8 @@ const Payables = () => {
           setReqRationaleDialog((prev) => ({ ...prev, open: false }));
         }}
         isLoading={requisitionApproval.isPending}
+        decisionType={reqRationaleDialog.action === "approve" ? "requisition_approval" : "requisition_rejection"}
+        sourceType="purchase_requisition"
       />
     </AppLayout>
   );

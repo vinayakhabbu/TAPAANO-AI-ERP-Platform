@@ -81,6 +81,7 @@ export function ApprovalActions({
     actionLabel: string;
     actionVariant: "default" | "destructive";
     onConfirm: (rationale: string) => void;
+    decisionType?: string;
   }>({
     open: false,
     title: "",
@@ -88,6 +89,7 @@ export function ApprovalActions({
     actionLabel: "",
     actionVariant: "default",
     onConfirm: () => {},
+    decisionType: undefined,
   });
 
   const handleSimpleAction = (
@@ -112,7 +114,8 @@ export function ApprovalActions({
     description: string,
     actionLabel: string,
     onConfirm: (rationale: string) => void,
-    actionVariant: "default" | "destructive" = "default"
+    actionVariant: "default" | "destructive" = "default",
+    decisionType?: string
   ) => {
     setRationaleDialog({
       open: true,
@@ -121,6 +124,7 @@ export function ApprovalActions({
       actionLabel,
       actionVariant,
       onConfirm,
+      decisionType,
     });
   };
 
@@ -322,6 +326,8 @@ export function ApprovalActions({
           setRationaleDialog((prev) => ({ ...prev, open: false }));
         }}
         isLoading={isLoading}
+        decisionType={rationaleDialog.decisionType as any}
+        sourceType={documentType}
       />
     </>
   );

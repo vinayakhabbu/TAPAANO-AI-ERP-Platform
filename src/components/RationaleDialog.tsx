@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, History, CheckCircle, XCircle, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useFindPrecedents, DecisionType } from "@/hooks/useDecisionLedger";
+import { formatDistanceToNow } from "date-fns";
 
 interface RationaleDialogProps {
   open: boolean;
@@ -23,6 +27,9 @@ interface RationaleDialogProps {
   reasonCodes?: string[];
   onConfirm: (rationale: string, selectedReasons: string[]) => void;
   isLoading?: boolean;
+  // For precedents lookup
+  decisionType?: DecisionType;
+  sourceType?: string;
 }
 
 const defaultReasonCodes: Record<string, string[]> = {
@@ -42,6 +49,58 @@ const defaultReasonCodes: Record<string, string[]> = {
   ],
 };
 
+function PrecedentCard({ precedent }: { precedent: any }) {
+  const isApproved = precedent.approval_status === "approved";
+  const snapshot = precedent.input_snapshot || {};
+  
+  return (
+    <div className="rounded-md border border-border/50 bg-muted/30 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isApproved ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-500" />
+          )}
+          <span className="text-sm font-medium capitalize">
+            {precedent.approval_status}
+          </span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {formatDistanceToNow(new Date(precedent.created_at), { addSuffix: true })}
+        </span>
+      </div>
+      
+      {precedent.reason_codes?.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {precedent.reason_codes.slice(0, 3).map((code: string, i: number) => (
+            <Badge key={i} variant="secondary" className="text-xs">
+              {code}
+            </Badge>
+          ))}
+          {precedent.reason_codes.length > 3 && (
+            <Badge variant="secondary" className="text-xs">
+              +{precedent.reason_codes.length - 3}
+            </Badge>
+          )}
+        </div>
+      )}
+      
+      {precedent.rationale_text && (
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {precedent.rationale_text}
+        </p>
+      )}
+      
+      {snapshot.total && (
+        <p className="text-xs text-muted-foreground">
+          Amount: ${Number(snapshot.total).toLocaleString()}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function RationaleDialog({
   open,
   onOpenChange,
@@ -52,11 +111,23 @@ export function RationaleDialog({
   reasonCodes,
   onConfirm,
   isLoading = false,
+  decisionType,
+  sourceType,
 }: RationaleDialogProps) {
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [rationaleText, setRationaleText] = useState("");
+  const [precedentsOpen, setPrecedentsOpen] = useState(false);
 
   const codes = reasonCodes || (actionVariant === "destructive" ? defaultReasonCodes.reject : defaultReasonCodes.approve);
+
+  // Fetch precedents if decision context is provided
+  const { data: precedents = [], isLoading: loadingPrecedents } = useFindPrecedents({
+    decision_type: decisionType || "po_approval",
+    source_type: sourceType || "purchase_order",
+    limit: 5,
+  });
+
+  const showPrecedents = decisionType && sourceType && precedents.length > 0;
 
   const toggleReason = (reason: string) => {
     setSelectedReasons((prev) =>
@@ -82,12 +153,13 @@ export function RationaleDialog({
   const handleClose = () => {
     setSelectedReasons([]);
     setRationaleText("");
+    setPrecedentsOpen(false);
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -97,6 +169,32 @@ export function RationaleDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Precedents Panel */}
+          {showPrecedents && (
+            <Collapsible open={precedentsOpen} onOpenChange={setPrecedentsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full justify-between">
+                  <span className="flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Similar past decisions ({precedents.length})
+                  </span>
+                  <Badge variant="secondary" className="ml-2">
+                    {precedentsOpen ? "Hide" : "Show"}
+                  </Badge>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <ScrollArea className="h-[180px] pr-4">
+                  <div className="space-y-2">
+                    {precedents.map((p) => (
+                      <PrecedentCard key={p.id} precedent={p} />
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
           {/* Reason Codes */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Quick reasons (optional)</Label>
