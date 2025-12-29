@@ -42,6 +42,7 @@ import {
 import {
   usePurchaseRequisitions,
   usePurchaseRequisitionApproval,
+  usePurchaseRequisitionLines,
 } from "@/hooks/usePurchaseRequisitions";
 import {
   usePurchaseOrderApproval,
@@ -128,6 +129,49 @@ const Payables = () => {
     requisitionId: string;
     action: "approve" | "reject";
   }>({ open: false, requisitionId: "", action: "approve" });
+
+  // Fetch lines for the selected requisition (for policy warnings)
+  const { data: selectedReqLines = [] } = usePurchaseRequisitionLines(
+    reqRationaleDialog.open ? reqRationaleDialog.requisitionId : null
+  );
+  const selectedReqTotal = selectedReqLines.reduce(
+    (sum, line) => sum + (line.quantity * line.estimated_unit_cost), 
+    0
+  );
+
+  // Policy threshold constants (in production, these would come from org settings)
+  const APPROVAL_LIMIT = 10000;
+  const HIGH_VALUE_THRESHOLD = 5000;
+
+  // Generate policy warnings based on requisition details
+  const getRequisitionPolicyWarnings = () => {
+    const warnings: Array<{ level: "info" | "warning" | "error"; title: string; message: string }> = [];
+    const amount = selectedReqTotal;
+
+    if (amount > APPROVAL_LIMIT) {
+      warnings.push({
+        level: "error",
+        title: "Exceeds Approval Limit",
+        message: `This requisition ($${amount.toLocaleString()}) exceeds your approval limit of $${APPROVAL_LIMIT.toLocaleString()}. Manager approval may be required.`,
+      });
+    } else if (amount > HIGH_VALUE_THRESHOLD) {
+      warnings.push({
+        level: "warning",
+        title: "High Value Transaction",
+        message: `This requisition ($${amount.toLocaleString()}) is above the $${HIGH_VALUE_THRESHOLD.toLocaleString()} threshold. Please verify documentation.`,
+      });
+    }
+
+    if (reqRationaleDialog.action === "approve" && amount > 0) {
+      warnings.push({
+        level: "info",
+        title: "Budget Impact",
+        message: "Approving will commit these funds against the department budget.",
+      });
+    }
+
+    return warnings;
+  };
 
   const formatDate = (dateStr: string) => {
     try {
@@ -323,7 +367,11 @@ const Payables = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setReqRationaleDialog({ open: true, requisitionId: req.id, action: "approve" })}
+                                  onClick={() => setReqRationaleDialog({ 
+                                    open: true, 
+                                    requisitionId: req.id, 
+                                    action: "approve"
+                                  })}
                                   disabled={requisitionApproval.isPending}
                                 >
                                   Approve
@@ -331,7 +379,11 @@ const Payables = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setReqRationaleDialog({ open: true, requisitionId: req.id, action: "reject" })}
+                                  onClick={() => setReqRationaleDialog({ 
+                                    open: true, 
+                                    requisitionId: req.id, 
+                                    action: "reject"
+                                  })}
                                   disabled={requisitionApproval.isPending}
                                 >
                                   Reject
@@ -761,6 +813,7 @@ const Payables = () => {
         isLoading={requisitionApproval.isPending}
         decisionType={reqRationaleDialog.action === "approve" ? "requisition_approval" : "requisition_rejection"}
         sourceType="purchase_requisition"
+        policyWarnings={getRequisitionPolicyWarnings()}
       />
     </AppLayout>
   );
