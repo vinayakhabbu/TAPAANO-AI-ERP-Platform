@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { captureDecisionTrace, type DecisionType } from "@/hooks/useDecisionLedger";
 
 export interface PurchaseRequisition {
   id: string;
@@ -165,6 +166,7 @@ interface ApprovalAction {
   id: string;
   action: "submit" | "approve" | "reject";
   rejection_reason?: string;
+  rationale?: string;
 }
 
 export const usePurchaseRequisitionApproval = () => {
@@ -172,18 +174,39 @@ export const usePurchaseRequisitionApproval = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, action, rejection_reason }: ApprovalAction) => {
+    mutationFn: async ({ id, action, rejection_reason, rationale }: ApprovalAction) => {
+      // Fetch current requisition state for decision trace
+      const { data: currentReq } = await supabase
+        .from("purchase_requisitions")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      // Also get lines for total calculation
+      const { data: lines } = await supabase
+        .from("purchase_requisition_lines")
+        .select("*")
+        .eq("requisition_id", id);
+
+      const estimatedTotal = lines?.reduce((sum, line) => sum + (line.quantity * line.estimated_unit_cost), 0) || 0;
+
       let updateData: Partial<PurchaseRequisition> = {};
+      let newStatus: string;
+      let decisionType: DecisionType;
 
       switch (action) {
         case "submit":
           updateData = { status: "pending_approval" };
+          newStatus = "pending_approval";
+          decisionType = "requisition_approval";
           break;
         case "approve":
           updateData = {
             status: "approved",
             approved_at: new Date().toISOString(),
           };
+          newStatus = "approved";
+          decisionType = "requisition_approval";
           break;
         case "reject":
           updateData = {
@@ -191,7 +214,11 @@ export const usePurchaseRequisitionApproval = () => {
             rejected_at: new Date().toISOString(),
             rejection_reason,
           };
+          newStatus = "rejected";
+          decisionType = "requisition_rejection";
           break;
+        default:
+          throw new Error("Invalid action");
       }
 
       const { data, error } = await supabase
@@ -202,10 +229,41 @@ export const usePurchaseRequisitionApproval = () => {
         .single();
 
       if (error) throw error;
+
+      // Capture decision trace
+      if (currentReq) {
+        await captureDecisionTrace(currentReq.org_id, {
+          decision_type: decisionType,
+          source_type: "purchase_requisition",
+          source_id: id,
+          approval_status: action === "submit" ? "pending" : action === "approve" ? "approved" : "rejected",
+          input_snapshot: {
+            requisition_number: currentReq.requisition_number,
+            department: currentReq.department,
+            priority: currentReq.priority,
+            estimated_total: estimatedTotal,
+            line_count: lines?.length || 0,
+            previous_status: currentReq.status,
+          },
+          commit_writes: [{
+            entity: "purchase_requisition",
+            id,
+            field: "status",
+            before: currentReq.status,
+            after: newStatus,
+          }],
+          rationale_text: rationale || rejection_reason,
+          entities: [
+            { entity_type: "purchase_requisition", entity_id: id, entity_label: currentReq.requisition_number },
+          ],
+        });
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["purchase_requisitions"] });
+      queryClient.invalidateQueries({ queryKey: ["decision-traces"] });
       const actionText = variables.action === "submit" ? "submitted for approval" : variables.action === "approve" ? "approved" : "rejected";
       toast({
         title: "Requisition Updated",
