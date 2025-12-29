@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.agent-river]
 verify_jwt = false
+
+[functions.autonomous-approver]
+verify_jwt = false
+
+[functions.anomaly-detector]
+verify_jwt = false
