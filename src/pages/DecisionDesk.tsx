@@ -16,7 +16,8 @@ import {
   Building2,
   User,
   Calendar,
-  Download
+  Download,
+  BarChart3
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,8 +27,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDecisionTraces, useDecisionEntities, type DecisionTrace, type DecisionType } from "@/hooks/useDecisionLedger";
 import { useToast } from "@/hooks/use-toast";
+import { PolicyAnalyticsChart } from "@/components/decisions/PolicyAnalyticsChart";
 
 const decisionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   po_approval: { label: "PO Approval", icon: ShoppingCart, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
@@ -367,8 +370,22 @@ export default function DecisionDesk() {
           </Card>
         </div>
 
-        {/* Filters */}
-        <Card>
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="decisions" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="decisions" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Decision Log
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Policy Analytics
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="decisions" className="space-y-4">
+            {/* Filters */}
+            <Card>
           <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
@@ -467,6 +484,12 @@ export default function DecisionDesk() {
             </Card>
           )}
         </div>
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <PolicyAnalyticsChart decisions={decisions || []} />
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );

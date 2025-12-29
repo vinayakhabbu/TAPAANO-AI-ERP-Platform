@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Json } from "@/integrations/supabase/types";
+import type { PolicyEvaluation } from "@/lib/policyRules";
 
 // Decision types for the ERP
 export type DecisionType = 
@@ -21,12 +22,20 @@ export type DecisionType =
   | "credit_override"
   | "discount_override";
 
+// Precedent reference structure
+export interface PrecedentReference {
+  decision_id: string;
+  similarity: number;
+  note?: string;
+}
+
 export interface DecisionTraceInput {
   decision_type: DecisionType;
   source_type: string;
   source_id: string;
   input_snapshot: Record<string, unknown>;
-  policy_evaluation?: Record<string, unknown>;
+  policy_evaluation?: PolicyEvaluation;
+  precedents_referenced?: PrecedentReference[];
   reason_codes?: string[];
   rationale_text?: string;
   commit_writes?: Array<{
