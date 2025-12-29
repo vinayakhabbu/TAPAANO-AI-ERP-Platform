@@ -15,6 +15,9 @@ export type DecisionType =
   | "bill_status_change"
   | "requisition_approval"
   | "requisition_rejection"
+  | "requisition_submit"
+  | "invoice_sent"
+  | "invoice_void"
   | "credit_override"
   | "discount_override";
 
