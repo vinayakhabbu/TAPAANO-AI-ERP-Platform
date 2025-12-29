@@ -26,6 +26,7 @@ You have access to specialized sub-agents that you can delegate tasks to:
 7. **production_agent**: BOMs, production orders, work centers, MRP, capacity planning
 8. **controlling_agent**: Cost centers, internal orders, budget variance, CO documents, fixed assets
 9. **service_agent**: Service contracts, warranties, service calls, field visits
+10. **approvals_agent**: Approve/reject purchase orders, payment runs, purchase requisitions via natural language
 
 When a user asks a question:
 1. Analyze which agent(s) can best answer the question
@@ -37,6 +38,7 @@ Route queries appropriately:
 - Purchase requisitions, POs, goods receipts, vendor bills, payment runs → p2p_agent
 - General AR/AP summaries, GL, key metrics → finance_agent
 - Bank accounts, transactions, reconciliation, matching, positive pay → banking_agent
+- Approval requests like "approve PO-001" or "reject payment run" → approvals_agent
 
 You can call multiple agents in parallel for complex queries that span modules.
 Always provide actionable, data-driven insights. Format numbers clearly.`;
@@ -144,6 +146,26 @@ const SUB_AGENTS = {
       { type: "function", function: { name: "get_service_calls", description: "Get service calls", parameters: { type: "object", properties: { status: { type: "string", enum: ["open", "in_progress", "pending_parts", "completed"] }, priority: { type: "string", enum: ["low", "medium", "high", "critical"] } }, required: [] } } },
       { type: "function", function: { name: "get_field_visits", description: "Get field service visits", parameters: { type: "object", properties: { status: { type: "string", enum: ["scheduled", "in_progress", "completed", "cancelled"] } }, required: [] } } },
       { type: "function", function: { name: "get_service_stats", description: "Get service management KPIs", parameters: { type: "object", properties: {}, required: [] } } },
+    ]
+  },
+  approvals_agent: {
+    description: "Handles approval actions: approve/reject purchase orders, payment runs, purchase requisitions via natural language commands",
+    prompt: `You are an approvals specialist. You can approve or reject purchase orders, payment runs, and purchase requisitions. 
+When asked to approve or reject, first find the document by number/ID, then execute the action.
+Always confirm what action you're taking and provide a summary of the document.
+For bulk approvals, process each one and report results.`,
+    tools: [
+      { type: "function", function: { name: "find_purchase_order", description: "Find a purchase order by number or ID", parameters: { type: "object", properties: { po_number: { type: "string" }, id: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "approve_purchase_order", description: "Approve a purchase order", parameters: { type: "object", properties: { id: { type: "string", description: "PO ID" }, rationale: { type: "string", description: "Reason for approval" } }, required: ["id"] } } },
+      { type: "function", function: { name: "reject_purchase_order", description: "Reject a purchase order", parameters: { type: "object", properties: { id: { type: "string", description: "PO ID" }, rationale: { type: "string", description: "Reason for rejection" } }, required: ["id", "rationale"] } } },
+      { type: "function", function: { name: "find_payment_run", description: "Find a payment run by number or ID", parameters: { type: "object", properties: { run_number: { type: "string" }, id: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "approve_payment_run", description: "Approve a payment run", parameters: { type: "object", properties: { id: { type: "string", description: "Payment run ID" }, rationale: { type: "string", description: "Reason for approval" } }, required: ["id"] } } },
+      { type: "function", function: { name: "reject_payment_run", description: "Reject a payment run", parameters: { type: "object", properties: { id: { type: "string", description: "Payment run ID" }, rationale: { type: "string", description: "Reason for rejection" } }, required: ["id", "rationale"] } } },
+      { type: "function", function: { name: "find_purchase_requisition", description: "Find a purchase requisition by number or ID", parameters: { type: "object", properties: { pr_number: { type: "string" }, id: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "approve_purchase_requisition", description: "Approve a purchase requisition", parameters: { type: "object", properties: { id: { type: "string", description: "PR ID" }, rationale: { type: "string", description: "Reason for approval" } }, required: ["id"] } } },
+      { type: "function", function: { name: "reject_purchase_requisition", description: "Reject a purchase requisition", parameters: { type: "object", properties: { id: { type: "string", description: "PR ID" }, rationale: { type: "string", description: "Reason for rejection" } }, required: ["id", "rationale"] } } },
+      { type: "function", function: { name: "get_pending_approvals", description: "Get all pending approvals across POs, payment runs, and PRs", parameters: { type: "object", properties: { type: { type: "string", enum: ["all", "purchase_order", "payment_run", "purchase_requisition"] } }, required: [] } } },
+      { type: "function", function: { name: "bulk_approve", description: "Approve multiple documents at once", parameters: { type: "object", properties: { type: { type: "string", enum: ["purchase_order", "payment_run", "purchase_requisition"] }, ids: { type: "array", items: { type: "string" } }, rationale: { type: "string" } }, required: ["type", "ids"] } } },
     ]
   }
 };
@@ -271,6 +293,20 @@ const ORCHESTRATOR_TOOLS = [
         type: "object",
         properties: {
           task: { type: "string", description: "The specific task or question for the Service agent" }
+        },
+        required: ["task"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "call_approvals_agent",
+      description: "Delegate approval actions: approve/reject purchase orders, payment runs, purchase requisitions. Use for commands like 'approve PO-001' or 'reject all pending payment runs'",
+      parameters: {
+        type: "object",
+        properties: {
+          task: { type: "string", description: "The specific approval action for the Approvals agent" }
         },
         required: ["task"]
       }
@@ -876,6 +912,361 @@ async function executeSubAgentTool(toolName: string, args: any, supabase: any): 
         });
       }
 
+      // Approvals Agent Tools
+      case 'find_purchase_order': {
+        let query = supabase.from('purchase_orders').select('*, vendors(name)');
+        if (args.po_number) query = query.eq('po_number', args.po_number);
+        if (args.id) query = query.eq('id', args.id);
+        const { data } = await query.limit(1).single();
+        if (!data) return JSON.stringify({ error: 'Purchase order not found' });
+        return JSON.stringify({
+          id: data.id,
+          po_number: data.po_number,
+          vendor: data.vendors?.name,
+          total: data.total,
+          status: data.status,
+          created_at: data.created_at
+        });
+      }
+
+      case 'approve_purchase_order': {
+        if (!args.id) return JSON.stringify({ error: 'PO ID is required' });
+        
+        const { data: po } = await supabase.from('purchase_orders').select('*, vendors(name)').eq('id', args.id).single();
+        if (!po) return JSON.stringify({ error: 'Purchase order not found' });
+        if (po.status !== 'pending_approval') return JSON.stringify({ error: `Cannot approve PO in status: ${po.status}. Must be pending_approval.` });
+        
+        const { error } = await supabase.from('purchase_orders').update({ 
+          status: 'approved', 
+          approved_at: new Date().toISOString() 
+        }).eq('id', args.id);
+        
+        if (error) return JSON.stringify({ error: error.message });
+        
+        // Log decision trace
+        await supabase.from('decision_traces').insert({
+          org_id: po.org_id,
+          decision_type: 'po_approval',
+          source_type: 'purchase_order',
+          source_id: args.id,
+          approval_status: 'approved',
+          approval_channel: 'chat',
+          input_snapshot: { po_number: po.po_number, vendor: po.vendors?.name, total: po.total },
+          rationale_text: args.rationale || 'Approved via Agent River chat'
+        });
+        
+        return JSON.stringify({ 
+          success: true, 
+          message: `Approved PO ${po.po_number} for ${po.vendors?.name} ($${po.total.toLocaleString()})`,
+          po_number: po.po_number
+        });
+      }
+
+      case 'reject_purchase_order': {
+        if (!args.id) return JSON.stringify({ error: 'PO ID is required' });
+        if (!args.rationale) return JSON.stringify({ error: 'Rationale is required for rejection' });
+        
+        const { data: po } = await supabase.from('purchase_orders').select('*, vendors(name)').eq('id', args.id).single();
+        if (!po) return JSON.stringify({ error: 'Purchase order not found' });
+        if (po.status !== 'pending_approval') return JSON.stringify({ error: `Cannot reject PO in status: ${po.status}. Must be pending_approval.` });
+        
+        const { error } = await supabase.from('purchase_orders').update({ status: 'draft' }).eq('id', args.id);
+        if (error) return JSON.stringify({ error: error.message });
+        
+        await supabase.from('decision_traces').insert({
+          org_id: po.org_id,
+          decision_type: 'po_rejection',
+          source_type: 'purchase_order',
+          source_id: args.id,
+          approval_status: 'rejected',
+          approval_channel: 'chat',
+          input_snapshot: { po_number: po.po_number, vendor: po.vendors?.name, total: po.total },
+          rationale_text: args.rationale
+        });
+        
+        return JSON.stringify({ 
+          success: true, 
+          message: `Rejected PO ${po.po_number}. Reason: ${args.rationale}`,
+          po_number: po.po_number
+        });
+      }
+
+      case 'find_payment_run': {
+        let query = supabase.from('payment_runs').select('*');
+        if (args.run_number) query = query.eq('run_number', args.run_number);
+        if (args.id) query = query.eq('id', args.id);
+        const { data } = await query.limit(1).single();
+        if (!data) return JSON.stringify({ error: 'Payment run not found' });
+        return JSON.stringify({
+          id: data.id,
+          run_number: data.run_number,
+          total_amount: data.total_amount,
+          payment_method: data.payment_method,
+          status: data.status,
+          created_at: data.created_at
+        });
+      }
+
+      case 'approve_payment_run': {
+        if (!args.id) return JSON.stringify({ error: 'Payment run ID is required' });
+        
+        const { data: run } = await supabase.from('payment_runs').select('*').eq('id', args.id).single();
+        if (!run) return JSON.stringify({ error: 'Payment run not found' });
+        if (run.status !== 'pending_approval') return JSON.stringify({ error: `Cannot approve run in status: ${run.status}. Must be pending_approval.` });
+        
+        const { error } = await supabase.from('payment_runs').update({ 
+          status: 'approved', 
+          approved_at: new Date().toISOString() 
+        }).eq('id', args.id);
+        
+        if (error) return JSON.stringify({ error: error.message });
+        
+        await supabase.from('decision_traces').insert({
+          org_id: run.org_id,
+          decision_type: 'payment_approval',
+          source_type: 'payment_run',
+          source_id: args.id,
+          approval_status: 'approved',
+          approval_channel: 'chat',
+          input_snapshot: { run_number: run.run_number, total_amount: run.total_amount, payment_method: run.payment_method },
+          rationale_text: args.rationale || 'Approved via Agent River chat'
+        });
+        
+        return JSON.stringify({ 
+          success: true, 
+          message: `Approved payment run ${run.run_number} for $${run.total_amount.toLocaleString()}`,
+          run_number: run.run_number
+        });
+      }
+
+      case 'reject_payment_run': {
+        if (!args.id) return JSON.stringify({ error: 'Payment run ID is required' });
+        if (!args.rationale) return JSON.stringify({ error: 'Rationale is required for rejection' });
+        
+        const { data: run } = await supabase.from('payment_runs').select('*').eq('id', args.id).single();
+        if (!run) return JSON.stringify({ error: 'Payment run not found' });
+        if (run.status !== 'pending_approval') return JSON.stringify({ error: `Cannot reject run in status: ${run.status}. Must be pending_approval.` });
+        
+        const { error } = await supabase.from('payment_runs').update({ status: 'draft' }).eq('id', args.id);
+        if (error) return JSON.stringify({ error: error.message });
+        
+        await supabase.from('decision_traces').insert({
+          org_id: run.org_id,
+          decision_type: 'payment_rejection',
+          source_type: 'payment_run',
+          source_id: args.id,
+          approval_status: 'rejected',
+          approval_channel: 'chat',
+          input_snapshot: { run_number: run.run_number, total_amount: run.total_amount },
+          rationale_text: args.rationale
+        });
+        
+        return JSON.stringify({ 
+          success: true, 
+          message: `Rejected payment run ${run.run_number}. Reason: ${args.rationale}`,
+          run_number: run.run_number
+        });
+      }
+
+      case 'find_purchase_requisition': {
+        let query = supabase.from('purchase_requisitions').select('*');
+        if (args.pr_number) query = query.eq('pr_number', args.pr_number);
+        if (args.id) query = query.eq('id', args.id);
+        const { data } = await query.limit(1).single();
+        if (!data) return JSON.stringify({ error: 'Purchase requisition not found' });
+        return JSON.stringify({
+          id: data.id,
+          pr_number: data.pr_number,
+          total_amount: data.total_amount,
+          status: data.status,
+          created_at: data.created_at
+        });
+      }
+
+      case 'approve_purchase_requisition': {
+        if (!args.id) return JSON.stringify({ error: 'PR ID is required' });
+        
+        const { data: pr } = await supabase.from('purchase_requisitions').select('*').eq('id', args.id).single();
+        if (!pr) return JSON.stringify({ error: 'Purchase requisition not found' });
+        if (pr.status !== 'pending_approval') return JSON.stringify({ error: `Cannot approve PR in status: ${pr.status}. Must be pending_approval.` });
+        
+        const { error } = await supabase.from('purchase_requisitions').update({ 
+          status: 'approved', 
+          approved_at: new Date().toISOString() 
+        }).eq('id', args.id);
+        
+        if (error) return JSON.stringify({ error: error.message });
+        
+        await supabase.from('decision_traces').insert({
+          org_id: pr.org_id,
+          decision_type: 'pr_approval',
+          source_type: 'purchase_requisition',
+          source_id: args.id,
+          approval_status: 'approved',
+          approval_channel: 'chat',
+          input_snapshot: { pr_number: pr.pr_number, total_amount: pr.total_amount },
+          rationale_text: args.rationale || 'Approved via Agent River chat'
+        });
+        
+        return JSON.stringify({ 
+          success: true, 
+          message: `Approved PR ${pr.pr_number} ($${pr.total_amount?.toLocaleString() || 0})`,
+          pr_number: pr.pr_number
+        });
+      }
+
+      case 'reject_purchase_requisition': {
+        if (!args.id) return JSON.stringify({ error: 'PR ID is required' });
+        if (!args.rationale) return JSON.stringify({ error: 'Rationale is required for rejection' });
+        
+        const { data: pr } = await supabase.from('purchase_requisitions').select('*').eq('id', args.id).single();
+        if (!pr) return JSON.stringify({ error: 'Purchase requisition not found' });
+        if (pr.status !== 'pending_approval') return JSON.stringify({ error: `Cannot reject PR in status: ${pr.status}. Must be pending_approval.` });
+        
+        const { error } = await supabase.from('purchase_requisitions').update({ status: 'draft' }).eq('id', args.id);
+        if (error) return JSON.stringify({ error: error.message });
+        
+        await supabase.from('decision_traces').insert({
+          org_id: pr.org_id,
+          decision_type: 'pr_rejection',
+          source_type: 'purchase_requisition',
+          source_id: args.id,
+          approval_status: 'rejected',
+          approval_channel: 'chat',
+          input_snapshot: { pr_number: pr.pr_number, total_amount: pr.total_amount },
+          rationale_text: args.rationale
+        });
+        
+        return JSON.stringify({ 
+          success: true, 
+          message: `Rejected PR ${pr.pr_number}. Reason: ${args.rationale}`,
+          pr_number: pr.pr_number
+        });
+      }
+
+      case 'get_pending_approvals': {
+        const type = args.type || 'all';
+        const result: any = {};
+        
+        if (type === 'all' || type === 'purchase_order') {
+          const { data: pos } = await supabase.from('purchase_orders').select('id, po_number, total, vendors(name), created_at').eq('status', 'pending_approval');
+          result.purchase_orders = pos?.map((po: any) => ({
+            id: po.id, po_number: po.po_number, vendor: po.vendors?.name, total: po.total, created_at: po.created_at
+          })) || [];
+        }
+        
+        if (type === 'all' || type === 'payment_run') {
+          const { data: runs } = await supabase.from('payment_runs').select('id, run_number, total_amount, payment_method, created_at').eq('status', 'pending_approval');
+          result.payment_runs = runs?.map((r: any) => ({
+            id: r.id, run_number: r.run_number, total_amount: r.total_amount, payment_method: r.payment_method, created_at: r.created_at
+          })) || [];
+        }
+        
+        if (type === 'all' || type === 'purchase_requisition') {
+          const { data: prs } = await supabase.from('purchase_requisitions').select('id, pr_number, total_amount, created_at').eq('status', 'pending_approval');
+          result.purchase_requisitions = prs?.map((pr: any) => ({
+            id: pr.id, pr_number: pr.pr_number, total_amount: pr.total_amount, created_at: pr.created_at
+          })) || [];
+        }
+        
+        return JSON.stringify(result);
+      }
+
+      case 'bulk_approve': {
+        if (!args.type || !args.ids || !args.ids.length) {
+          return JSON.stringify({ error: 'Type and IDs array are required' });
+        }
+        
+        const results: any[] = [];
+        
+        for (const id of args.ids) {
+          let success = false;
+          let message = '';
+          
+          switch (args.type) {
+            case 'purchase_order': {
+              const { data: po } = await supabase.from('purchase_orders').select('*, vendors(name)').eq('id', id).single();
+              if (!po) { message = `PO ${id} not found`; break; }
+              if (po.status !== 'pending_approval') { message = `PO ${po.po_number} not pending approval`; break; }
+              
+              const { error } = await supabase.from('purchase_orders').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', id);
+              if (error) { message = error.message; break; }
+              
+              await supabase.from('decision_traces').insert({
+                org_id: po.org_id,
+                decision_type: 'po_approval',
+                source_type: 'purchase_order',
+                source_id: id,
+                approval_status: 'approved',
+                approval_channel: 'chat_bulk',
+                input_snapshot: { po_number: po.po_number, vendor: po.vendors?.name, total: po.total },
+                rationale_text: args.rationale || 'Bulk approved via Agent River chat'
+              });
+              
+              success = true;
+              message = `Approved PO ${po.po_number}`;
+              break;
+            }
+            case 'payment_run': {
+              const { data: run } = await supabase.from('payment_runs').select('*').eq('id', id).single();
+              if (!run) { message = `Payment run ${id} not found`; break; }
+              if (run.status !== 'pending_approval') { message = `Run ${run.run_number} not pending approval`; break; }
+              
+              const { error } = await supabase.from('payment_runs').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', id);
+              if (error) { message = error.message; break; }
+              
+              await supabase.from('decision_traces').insert({
+                org_id: run.org_id,
+                decision_type: 'payment_approval',
+                source_type: 'payment_run',
+                source_id: id,
+                approval_status: 'approved',
+                approval_channel: 'chat_bulk',
+                input_snapshot: { run_number: run.run_number, total_amount: run.total_amount },
+                rationale_text: args.rationale || 'Bulk approved via Agent River chat'
+              });
+              
+              success = true;
+              message = `Approved payment run ${run.run_number}`;
+              break;
+            }
+            case 'purchase_requisition': {
+              const { data: pr } = await supabase.from('purchase_requisitions').select('*').eq('id', id).single();
+              if (!pr) { message = `PR ${id} not found`; break; }
+              if (pr.status !== 'pending_approval') { message = `PR ${pr.pr_number} not pending approval`; break; }
+              
+              const { error } = await supabase.from('purchase_requisitions').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', id);
+              if (error) { message = error.message; break; }
+              
+              await supabase.from('decision_traces').insert({
+                org_id: pr.org_id,
+                decision_type: 'pr_approval',
+                source_type: 'purchase_requisition',
+                source_id: id,
+                approval_status: 'approved',
+                approval_channel: 'chat_bulk',
+                input_snapshot: { pr_number: pr.pr_number, total_amount: pr.total_amount },
+                rationale_text: args.rationale || 'Bulk approved via Agent River chat'
+              });
+              
+              success = true;
+              message = `Approved PR ${pr.pr_number}`;
+              break;
+            }
+          }
+          
+          results.push({ id, success, message });
+        }
+        
+        const successCount = results.filter(r => r.success).length;
+        return JSON.stringify({
+          total: args.ids.length,
+          approved: successCount,
+          failed: args.ids.length - successCount,
+          details: results
+        });
+      }
+
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -978,6 +1369,7 @@ async function executeOrchestratorTool(toolName: string, args: any, supabase: an
     'call_production_agent': 'production_agent',
     'call_controlling_agent': 'controlling_agent',
     'call_service_agent': 'service_agent',
+    'call_approvals_agent': 'approvals_agent',
   };
 
   const agentName = agentMap[toolName];

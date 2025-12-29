@@ -1395,6 +1395,50 @@ export type Database = {
           },
         ]
       }
+      confidence_adjustments: {
+        Row: {
+          adjustment_factor: number
+          created_at: string
+          decision_type: string
+          id: string
+          last_calculated_at: string
+          org_id: string
+          override_count: number
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          adjustment_factor?: number
+          created_at?: string
+          decision_type: string
+          id?: string
+          last_calculated_at?: string
+          org_id: string
+          override_count?: number
+          source_type: string
+          updated_at?: string
+        }
+        Update: {
+          adjustment_factor?: number
+          created_at?: string
+          decision_type?: string
+          id?: string
+          last_calculated_at?: string
+          org_id?: string
+          override_count?: number
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "confidence_adjustments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consignment_transactions: {
         Row: {
           created_at: string
@@ -1734,6 +1778,72 @@ export type Database = {
           {
             foreignKeyName: "decision_entities_decision_id_fkey"
             columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "decision_traces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decision_overrides: {
+        Row: {
+          created_at: string
+          decision_type: string
+          id: string
+          learned: boolean
+          learned_at: string | null
+          org_id: string
+          original_confidence: number | null
+          original_decision_id: string
+          overridden_at: string
+          overridden_by: string | null
+          override_reason: string
+          override_type: string
+          source_id: string | null
+          source_type: string
+        }
+        Insert: {
+          created_at?: string
+          decision_type: string
+          id?: string
+          learned?: boolean
+          learned_at?: string | null
+          org_id: string
+          original_confidence?: number | null
+          original_decision_id: string
+          overridden_at?: string
+          overridden_by?: string | null
+          override_reason: string
+          override_type: string
+          source_id?: string | null
+          source_type: string
+        }
+        Update: {
+          created_at?: string
+          decision_type?: string
+          id?: string
+          learned?: boolean
+          learned_at?: string | null
+          org_id?: string
+          original_confidence?: number | null
+          original_decision_id?: string
+          overridden_at?: string
+          overridden_by?: string | null
+          override_reason?: string
+          override_type?: string
+          source_id?: string | null
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_overrides_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_overrides_original_decision_id_fkey"
+            columns: ["original_decision_id"]
             isOneToOne: false
             referencedRelation: "decision_traces"
             referencedColumns: ["id"]
