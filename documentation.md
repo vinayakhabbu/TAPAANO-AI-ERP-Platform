@@ -482,7 +482,56 @@ AI-powered auto-approval for low-risk decisions that match policy and have stron
 - `src/lib/policyRules.ts` - Policy evaluation engine
 - `src/lib/autoApproval.ts` - Auto-approval engine with confidence scoring
 - `src/components/decisions/PolicyAnalyticsChart.tsx` - Analytics dashboard
+- `src/components/decisions/AutonomousApprover.tsx` - Phase 3 autonomous batch processing
+- `supabase/functions/autonomous-approver/` - Backend for autonomous processing
 - Hooks: `useDecisionLedger.ts`, `useApprovals.ts`, `usePurchaseRequisitions.ts`
+
+#### Autonomous Approver (Phase 3 Full Autonomy)
+
+AI-powered batch processor that autonomously handles pending approvals without human intervention.
+
+**Features**:
+- **Preview Mode**: See all pending items with confidence scores before execution
+- **Execute Mode**: Batch auto-approve all eligible items
+- **Auto-Refresh**: Optionally monitor for new pending items every 30 seconds
+- **Factor Breakdown**: Visual display of policy, precedent, amount, and risk factors
+
+**Processing Logic**:
+1. Fetches all pending approvals (POs, Payment Runs, Requisitions)
+2. Evaluates each against policy rules and precedent history
+3. Calculates confidence score for each candidate
+4. In execute mode: auto-approves eligible items and records decision traces
+5. Routes non-eligible items for human review
+
+**API Endpoint**: `POST /functions/v1/autonomous-approver`
+```json
+{
+  "org_id": "uuid",
+  "mode": "preview" | "execute",
+  "types": ["purchase_order", "payment_run", "purchase_requisition"]
+}
+```
+
+**Response**:
+```json
+{
+  "processed": 5,
+  "autoApproved": 2,
+  "routed": 3,
+  "errors": 0,
+  "candidates": [
+    {
+      "id": "uuid",
+      "type": "purchase_order",
+      "identifier": "PO-001",
+      "amount": 2500,
+      "confidence": 85,
+      "canAutoApprove": true,
+      "reason": "Auto-approved: 85% confidence, 3 strong precedents"
+    }
+  ]
+}
+```
 
 ---
 

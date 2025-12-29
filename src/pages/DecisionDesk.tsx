@@ -33,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDecisionTraces, useDecisionEntities, type DecisionTrace, type DecisionType } from "@/hooks/useDecisionLedger";
 import { useToast } from "@/hooks/use-toast";
 import { PolicyAnalyticsChart } from "@/components/decisions/PolicyAnalyticsChart";
+import { AutonomousApprover } from "@/components/decisions/AutonomousApprover";
 
 const decisionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   po_approval: { label: "PO Approval", icon: ShoppingCart, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
@@ -405,6 +406,10 @@ export default function DecisionDesk() {
               <FileText className="h-4 w-4" />
               Decision Log
             </TabsTrigger>
+            <TabsTrigger value="autonomous" className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              Autonomous Approver
+            </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Policy Analytics
@@ -512,6 +517,10 @@ export default function DecisionDesk() {
             </Card>
           )}
         </div>
+          </TabsContent>
+
+          <TabsContent value="autonomous">
+            <AutonomousApprover />
           </TabsContent>
 
           <TabsContent value="analytics">
