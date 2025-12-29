@@ -1702,6 +1702,112 @@ export type Database = {
           },
         ]
       }
+      decision_entities: {
+        Row: {
+          created_at: string
+          decision_id: string
+          entity_id: string
+          entity_label: string | null
+          entity_snapshot: Json | null
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          decision_id: string
+          entity_id: string
+          entity_label?: string | null
+          entity_snapshot?: Json | null
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          decision_id?: string
+          entity_id?: string
+          entity_label?: string | null
+          entity_snapshot?: Json | null
+          entity_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_entities_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "decision_traces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decision_traces: {
+        Row: {
+          agent_run_id: string | null
+          approval_channel: string | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          commit_writes: Json | null
+          created_at: string
+          decision_type: string
+          id: string
+          input_snapshot: Json
+          org_id: string
+          policy_evaluation: Json | null
+          rationale_text: string | null
+          reason_codes: string[] | null
+          source_id: string | null
+          source_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_run_id?: string | null
+          approval_channel?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          commit_writes?: Json | null
+          created_at?: string
+          decision_type: string
+          id?: string
+          input_snapshot?: Json
+          org_id: string
+          policy_evaluation?: Json | null
+          rationale_text?: string | null
+          reason_codes?: string[] | null
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_run_id?: string | null
+          approval_channel?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          commit_writes?: Json | null
+          created_at?: string
+          decision_type?: string
+          id?: string
+          input_snapshot?: Json
+          org_id?: string
+          policy_evaluation?: Json | null
+          rationale_text?: string | null
+          reason_codes?: string[] | null
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_traces_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entities: {
         Row: {
           created_at: string
@@ -3099,6 +3205,48 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      precedent_references: {
+        Row: {
+          created_at: string
+          decision_id: string
+          id: string
+          match_reason: string | null
+          precedent_decision_id: string
+          similarity_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          decision_id: string
+          id?: string
+          match_reason?: string | null
+          precedent_decision_id: string
+          similarity_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          decision_id?: string
+          id?: string
+          match_reason?: string | null
+          precedent_decision_id?: string
+          similarity_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "precedent_references_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "decision_traces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "precedent_references_precedent_decision_id_fkey"
+            columns: ["precedent_decision_id"]
+            isOneToOne: false
+            referencedRelation: "decision_traces"
             referencedColumns: ["id"]
           },
         ]
