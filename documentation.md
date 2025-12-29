@@ -372,6 +372,82 @@ Organization
 
 ---
 
+### 10. Decision Desk (`/decisions`)
+
+**Purpose**: Audit trail and analytics for all approval decisions, exceptions, and policy overrides
+
+**Features**:
+
+#### Decision Ledger
+
+- Captures every meaningful action with full context
+- Records: decision type, input snapshot, policy evaluation, approval status, rationale, and what changed
+- Linked entities for cross-referencing
+
+#### Decision Types Tracked
+
+| Decision Type | Description |
+|---------------|-------------|
+| `po_approval` / `po_rejection` | Purchase order approvals |
+| `payment_approval` / `payment_rejection` | Payment run approvals |
+| `payment_processing` | Payment execution |
+| `journal_post` / `journal_reverse` | Journal entry posting/reversal |
+| `bill_status_change` | Bill status updates |
+| `requisition_approval` / `requisition_rejection` | Purchase requisition approvals |
+
+#### Policy Evaluation Engine
+
+- **Structured Rule Capture**: Each decision records which policy rules were checked with pass/fail/warning results
+- **Threshold Tracking**: Rules include thresholds and actual values (e.g., PO limit $10K, actual $15K → warning)
+- **Exception Routes**: When rules fail, captures required approver role and allowed reason codes
+
+**Policy Rules Implemented**:
+| Rule | Threshold | Result |
+|------|-----------|--------|
+| `po_amount_limit` | $10,000 | Warning if exceeded |
+| `po_high_value` | $50,000 | Fail - requires executive approval |
+| `payment_amount_limit` | $25,000 | Warning if exceeded |
+| `wire_transfer_limit` | $100,000 | Fail - requires dual approval |
+| `req_amount_limit` | $5,000 | Warning - exceeds auto-approval |
+| `memo_required` | 5+ chars | Warning if missing |
+
+#### Precedent Reference Tracking
+
+- Automatically finds similar past decisions when making new ones
+- Records precedent references with similarity scores
+- Enables "What did we do last time?" queries
+
+#### Policy Analytics Dashboard
+
+- **Rule Compliance Chart**: Pass/fail/warning breakdown by rule
+- **Override Rate Analysis**: Which decision types override policies most often
+- **Trend Visualization**: Approvals, rejections, and overrides over time (14-day chart)
+- **Top Overridden Rules**: Identifies rules most frequently bypassed
+
+#### Decision Card UI
+
+- Collapsible decision cards with full details
+- State at decision time (input snapshot)
+- What changed (before → after diffs)
+- Rationale capture
+- Linked entities
+- Approval metadata (who, when, via what channel)
+
+#### Export & Search
+
+- CSV export of filtered decisions
+- Search across decision types, rationales, document numbers
+- Filter by type, status, date range
+
+**Technical Implementation**:
+- `decision_traces` table stores all decision records
+- `decision_entities` table links related entities
+- `src/lib/policyRules.ts` - Policy evaluation engine
+- `src/components/decisions/PolicyAnalyticsChart.tsx` - Analytics dashboard
+- Hooks: `useDecisionLedger.ts`, `useApprovals.ts`, `usePurchaseRequisitions.ts`
+
+---
+
 ## Database Schema
 
 ### Master Data Tables
@@ -414,6 +490,13 @@ Organization
 | --------------- | ------------------------------- |
 | `chat_messages` | AI copilot conversation history |
 | `ai_audit_logs` | AI action audit trail           |
+
+### Decision Ledger Tables
+
+| Table               | Description                                      |
+| ------------------- | ------------------------------------------------ |
+| `decision_traces`   | Decision audit records with policy evaluations   |
+| `decision_entities` | Linked entities for each decision trace          |
 
 ---
 
@@ -581,6 +664,7 @@ supabase/
 | Dark/Light Theme          | ✅     | User preference theming                     |
 | Responsive Design         | ✅     | Mobile-friendly UI                          |
 | Real-time Updates         | ✅     | Live data synchronization                   |
+| **Decision Desk**         | ✅     | Audit trail with policy analytics           |
 
 ---
 
@@ -622,13 +706,24 @@ supabase/
 | Budget Variance Analysis | ✅     | Visual variance charts and reporting                                 |
 | Agent River Integration  | ✅     | AI-powered controlling queries and analysis                          |
 
+#### Decision Desk (`/decisions`) - ✅ Implemented
+
+| Feature                    | Status | Description                                                    |
+| -------------------------- | ------ | -------------------------------------------------------------- |
+| Decision Ledger            | ✅     | Audit trail for all approval decisions                         |
+| Policy Evaluation Capture  | ✅     | Store rules checked with pass/fail/warning results             |
+| Precedent Reference        | ✅     | Log which past decisions influenced new ones                   |
+| Policy Analytics Dashboard | ✅     | "Policy vs Reality" charts and override analysis               |
+| Decision Card UI           | ✅     | Collapsible cards with snapshots, diffs, rationale             |
+| CSV Export                 | ✅     | Export filtered decisions                                      |
+
 #### Advanced Reporting (Planned)
 
 | Feature | Status | Description |
 | Cash Flow Statement | 🔲 | Statement of cash flows |
 | Custom Report Builder | 🔲 | User-defined report templates |
 | Real-time Dashboards | ✅ | Key metrics visualization |
-| Audit Trail Reports | 🔲 | Complete transaction history |
+| Audit Trail Reports | ✅ | Complete transaction history (via Decision Desk) |
 
 ---
 
