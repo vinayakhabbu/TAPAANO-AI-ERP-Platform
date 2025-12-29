@@ -8,12 +8,15 @@ import {
   evaluateJournalEntryPolicy,
   type PolicyEvaluation 
 } from "@/lib/policyRules";
+import { evaluateAutoApproval, type AutoApprovalResult } from "@/lib/autoApproval";
 
 type ApprovalAction = "approve" | "reject" | "submit_for_approval";
 
 interface ApprovalResult {
   success: boolean;
   error?: string;
+  autoApproved?: boolean;
+  autoApprovalResult?: AutoApprovalResult;
 }
 
 // Helper to get org_id from current user's profile
@@ -62,7 +65,7 @@ export const usePurchaseOrderApproval = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, action, rationale }: { id: string; action: ApprovalAction; rationale?: string }): Promise<ApprovalResult> => {
+    mutationFn: async ({ id, action, rationale, tryAutoApprove = false }: { id: string; action: ApprovalAction; rationale?: string; tryAutoApprove?: boolean }): Promise<ApprovalResult> => {
       // First, fetch current PO state for the decision trace
       const { data: currentPO } = await supabase
         .from("purchase_orders")
@@ -70,10 +73,44 @@ export const usePurchaseOrderApproval = () => {
         .eq("id", id)
         .single();
 
+      const orgId = await getOrgId();
+      
+      // Evaluate policies first
+      const policyEvaluation = evaluatePurchaseOrderPolicy(
+        currentPO?.total || 0,
+        currentPO?.vendors?.name,
+        currentPO?.status
+      );
+
+      // Find precedents
+      const precedentsReferenced = orgId ? await findPrecedents(
+        orgId,
+        "po_approval",
+        "purchase_order"
+      ) : [];
+
+      // Phase 2: Evaluate auto-approval if submitting for approval
+      let autoApprovalResult: AutoApprovalResult | undefined;
+      let effectiveAction = action;
+
+      if (action === "submit_for_approval" && tryAutoApprove) {
+        autoApprovalResult = evaluateAutoApproval(
+          "po_approval",
+          policyEvaluation,
+          precedentsReferenced,
+          currentPO?.total || 0
+        );
+
+        // If auto-approval is possible, upgrade to direct approval
+        if (autoApprovalResult.canAutoApprove) {
+          effectiveAction = "approve";
+        }
+      }
+
       let newStatus: string;
       let decisionType: DecisionType;
       
-      switch (action) {
+      switch (effectiveAction) {
         case "submit_for_approval":
           newStatus = "pending_approval";
           decisionType = "po_approval";
@@ -92,7 +129,7 @@ export const usePurchaseOrderApproval = () => {
 
       const updateData: Record<string, unknown> = { status: newStatus };
       
-      if (action === "approve") {
+      if (effectiveAction === "approve") {
         const { data: { user } } = await supabase.auth.getUser();
         updateData.approved_by = user?.id;
         updateData.approved_at = new Date().toISOString();
@@ -105,33 +142,25 @@ export const usePurchaseOrderApproval = () => {
 
       if (error) throw error;
 
-      // Capture decision trace with policy evaluation
-      const orgId = await getOrgId();
+      // Capture decision trace with policy evaluation and auto-approval info
       if (orgId && currentPO) {
-        // Evaluate policies
-        const policyEvaluation = evaluatePurchaseOrderPolicy(
-          currentPO.total || 0,
-          currentPO.vendors?.name,
-          currentPO.status
-        );
-
-        // Find precedents
-        const precedentsReferenced = await findPrecedents(
-          orgId,
-          decisionType,
-          "purchase_order"
-        );
-
         await captureDecisionTrace(orgId, {
           decision_type: decisionType,
           source_type: "purchase_order",
           source_id: id,
-          approval_status: action === "submit_for_approval" ? "pending" : action === "approve" ? "approved" : "rejected",
+          approval_status: effectiveAction === "submit_for_approval" ? "pending" : effectiveAction === "approve" ? "approved" : "rejected",
+          approval_channel: autoApprovalResult?.canAutoApprove ? "auto" : "human",
           input_snapshot: {
             po_number: currentPO.po_number,
             vendor_name: currentPO.vendors?.name,
             total: currentPO.total,
             previous_status: currentPO.status,
+            auto_approval: autoApprovalResult ? {
+              attempted: true,
+              result: autoApprovalResult.canAutoApprove ? "approved" : "routed",
+              confidence: autoApprovalResult.confidence,
+              factors: autoApprovalResult.factors,
+            } : undefined,
           },
           policy_evaluation: policyEvaluation,
           precedents_referenced: precedentsReferenced,
@@ -142,7 +171,9 @@ export const usePurchaseOrderApproval = () => {
             before: currentPO.status,
             after: newStatus,
           }],
-          rationale_text: rationale,
+          rationale_text: autoApprovalResult?.canAutoApprove 
+            ? `Auto-approved: ${autoApprovalResult.reason}` 
+            : rationale,
           entities: [
             { entity_type: "purchase_order", entity_id: id, entity_label: currentPO.po_number },
             ...(currentPO.vendor_id ? [{ entity_type: "vendor", entity_id: currentPO.vendor_id, entity_label: currentPO.vendors?.name }] : []),
@@ -150,17 +181,29 @@ export const usePurchaseOrderApproval = () => {
         });
       }
 
-      return { success: true };
+      return { 
+        success: true, 
+        autoApproved: autoApprovalResult?.canAutoApprove,
+        autoApprovalResult 
+      };
     },
-    onSuccess: (_, { action }) => {
+    onSuccess: (result, { action }) => {
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
       queryClient.invalidateQueries({ queryKey: ["decision-traces"] });
-      const messages = {
-        submit_for_approval: "Purchase order submitted for approval",
-        approve: "Purchase order approved",
-        reject: "Purchase order rejected",
-      };
-      toast({ title: "Success", description: messages[action] });
+      
+      if (result.autoApproved) {
+        toast({ 
+          title: "Auto-Approved", 
+          description: `Purchase order auto-approved (${result.autoApprovalResult?.confidence}% confidence)` 
+        });
+      } else {
+        const messages = {
+          submit_for_approval: "Purchase order submitted for approval",
+          approve: "Purchase order approved",
+          reject: "Purchase order rejected",
+        };
+        toast({ title: "Success", description: messages[action] });
+      }
     },
     onError: (error) => {
       toast({ 

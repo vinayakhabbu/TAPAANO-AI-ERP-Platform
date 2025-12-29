@@ -38,6 +38,7 @@ export interface DecisionTraceInput {
   precedents_referenced?: PrecedentReference[];
   reason_codes?: string[];
   rationale_text?: string;
+  approval_channel?: "auto" | "human" | "escalated";
   commit_writes?: Array<{
     entity: string;
     id: string;
@@ -261,6 +262,7 @@ export const captureDecisionTrace = async (
     input_snapshot: input.input_snapshot,
     policy_evaluation: input.policy_evaluation || {},
     approval_status: input.approval_status,
+    approval_channel: input.approval_channel || "human",
     approved_by: input.approval_status !== "pending" ? user?.id : null,
     approved_at: input.approval_status !== "pending" ? new Date().toISOString() : null,
     reason_codes: input.reason_codes || [],
