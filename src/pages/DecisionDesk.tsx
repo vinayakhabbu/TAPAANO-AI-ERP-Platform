@@ -36,8 +36,11 @@ const decisionTypeConfig: Record<string, { label: string; icon: React.ElementTyp
   journal_post: { label: "Journal Posted", icon: BookOpen, color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300" },
   journal_reverse: { label: "Journal Reversed", icon: BookOpen, color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300" },
   bill_status_change: { label: "Bill Status", icon: FileText, color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300" },
+  requisition_submit: { label: "Requisition Submitted", icon: FileText, color: "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-300" },
   requisition_approval: { label: "Requisition Approved", icon: FileText, color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300" },
   requisition_rejection: { label: "Requisition Rejected", icon: FileText, color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300" },
+  invoice_sent: { label: "Invoice Sent", icon: FileText, color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300" },
+  invoice_void: { label: "Invoice Voided", icon: FileText, color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300" },
 };
 
 const statusConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -310,6 +313,11 @@ export default function DecisionDesk() {
                   <SelectItem value="journal_post">Journal Post</SelectItem>
                   <SelectItem value="journal_reverse">Journal Reverse</SelectItem>
                   <SelectItem value="bill_status_change">Bill Status</SelectItem>
+                  <SelectItem value="requisition_submit">Requisition Submit</SelectItem>
+                  <SelectItem value="requisition_approval">Requisition Approval</SelectItem>
+                  <SelectItem value="requisition_rejection">Requisition Rejection</SelectItem>
+                  <SelectItem value="invoice_sent">Invoice Sent</SelectItem>
+                  <SelectItem value="invoice_void">Invoice Void</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
