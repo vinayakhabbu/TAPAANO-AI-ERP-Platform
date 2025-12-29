@@ -417,18 +417,55 @@ Organization
 - Records precedent references with similarity scores
 - Enables "What did we do last time?" queries
 
+#### Auto-Approval Engine (Phase 2 Agentic)
+
+AI-powered auto-approval for low-risk decisions that match policy and have strong precedent support.
+
+**How It Works**:
+1. When submitting for approval, system evaluates if auto-approval is possible
+2. Calculates confidence score based on:
+   - Policy evaluation (35% weight)
+   - Precedent strength (30% weight) 
+   - Amount within limits (20% weight)
+   - Risk level (15% weight)
+3. Auto-approves if confidence ≥75% AND:
+   - All policies pass
+   - Amount within auto-approval limit
+   - At least 2 strong precedents (≥70% similarity)
+   - Risk level is "low"
+
+**Auto-Approval Thresholds by Decision Type**:
+| Decision Type | Max Auto-Approval Amount | Min Precedents | Min Similarity |
+|---------------|--------------------------|----------------|----------------|
+| PO Approval | $5,000 | 2 | 75% |
+| Payment Approval | $10,000 | 3 | 80% |
+| Requisition Approval | $3,000 | 2 | 70% |
+| Journal Post | No limit | 3 | 85% |
+
+**Approval Channels**:
+- `auto` - System auto-approved based on policy + precedent
+- `human` - Routed for human review
+- `escalated` - High-risk, requires senior approval
+
+**Decision Desk Tracking**:
+- Auto-approved decisions tagged with ⚡ "Auto" badge
+- Separate stat card shows auto-approval count and rate
+- Full audit trail captures auto-approval confidence and factors
+
 #### Policy Analytics Dashboard
 
 - **Rule Compliance Chart**: Pass/fail/warning breakdown by rule
 - **Override Rate Analysis**: Which decision types override policies most often
 - **Trend Visualization**: Approvals, rejections, and overrides over time (14-day chart)
 - **Top Overridden Rules**: Identifies rules most frequently bypassed
+- **Auto-Approval Rate**: Percentage of decisions handled automatically
 
 #### Decision Card UI
 
 - Collapsible decision cards with full details
 - State at decision time (input snapshot)
 - What changed (before → after diffs)
+- Auto-approval indicator and confidence score
 - Rationale capture
 - Linked entities
 - Approval metadata (who, when, via what channel)
@@ -440,9 +477,10 @@ Organization
 - Filter by type, status, date range
 
 **Technical Implementation**:
-- `decision_traces` table stores all decision records
+- `decision_traces` table stores all decision records with `approval_channel`
 - `decision_entities` table links related entities
 - `src/lib/policyRules.ts` - Policy evaluation engine
+- `src/lib/autoApproval.ts` - Auto-approval engine with confidence scoring
 - `src/components/decisions/PolicyAnalyticsChart.tsx` - Analytics dashboard
 - Hooks: `useDecisionLedger.ts`, `useApprovals.ts`, `usePurchaseRequisitions.ts`
 

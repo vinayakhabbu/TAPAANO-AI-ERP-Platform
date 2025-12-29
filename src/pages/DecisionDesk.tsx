@@ -17,7 +17,9 @@ import {
   User,
   Calendar,
   Download,
-  BarChart3
+  BarChart3,
+  Zap,
+  Bot
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,6 +95,12 @@ function DecisionCard({ decision }: { decision: DecisionTrace }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {decision.approval_channel === "auto" && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Auto
+                  </Badge>
+                )}
                 {inputSnapshot?.po_number && (
                   <Badge variant="outline">{String(inputSnapshot.po_number)}</Badge>
                 )}
@@ -104,6 +112,9 @@ function DecisionCard({ decision }: { decision: DecisionTrace }) {
                 )}
                 {inputSnapshot?.bill_number && (
                   <Badge variant="outline">{String(inputSnapshot.bill_number)}</Badge>
+                )}
+                {inputSnapshot?.requisition_number && (
+                  <Badge variant="outline">{String(inputSnapshot.requisition_number)}</Badge>
                 )}
               </div>
             </div>
@@ -309,11 +320,16 @@ export default function DecisionDesk() {
   };
 
   // Stats
+  const autoApprovedCount = dateFilteredDecisions.filter((d) => d.approval_channel === "auto").length;
   const stats = {
     total: dateFilteredDecisions.length,
     approved: dateFilteredDecisions.filter((d) => d.approval_status === "approved").length,
     rejected: dateFilteredDecisions.filter((d) => d.approval_status === "rejected").length,
     pending: dateFilteredDecisions.filter((d) => d.approval_status === "pending").length,
+    autoApproved: autoApprovedCount,
+    autoApprovalRate: dateFilteredDecisions.length > 0 
+      ? Math.round((autoApprovedCount / dateFilteredDecisions.length) * 100) 
+      : 0,
   };
 
   return (
@@ -323,7 +339,7 @@ export default function DecisionDesk() {
     >
       <div className="space-y-6">
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -365,6 +381,18 @@ export default function DecisionDesk() {
                   <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
                 </div>
                 <Clock className="h-8 w-8 text-amber-600" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Auto-Approved</p>
+                  <p className="text-2xl font-bold text-blue-600">{stats.autoApproved}</p>
+                  <p className="text-xs text-blue-600">{stats.autoApprovalRate}% automation</p>
+                </div>
+                <Bot className="h-8 w-8 text-blue-600" />
               </div>
             </CardContent>
           </Card>
