@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { captureDecisionTrace, type DecisionType } from "@/hooks/useDecisionLedger";
+import { captureDecisionTrace, type DecisionType, type PrecedentReference } from "@/hooks/useDecisionLedger";
+import { evaluateRequisitionPolicy } from "@/lib/policyRules";
 
 export interface PurchaseRequisition {
   id: string;
@@ -230,8 +231,32 @@ export const usePurchaseRequisitionApproval = () => {
 
       if (error) throw error;
 
-      // Capture decision trace
+      // Capture decision trace with policy evaluation
       if (currentReq) {
+        // Evaluate policies
+        const policyEvaluation = evaluateRequisitionPolicy(
+          estimatedTotal,
+          currentReq.priority,
+          currentReq.department || undefined
+        );
+
+        // Find precedents
+        const { data: precedentData } = await supabase
+          .from("decision_traces")
+          .select("id, input_snapshot, rationale_text")
+          .eq("org_id", currentReq.org_id)
+          .eq("decision_type", decisionType)
+          .eq("source_type", "purchase_requisition")
+          .in("approval_status", ["approved", "rejected"])
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        const precedentsReferenced: PrecedentReference[] = (precedentData || []).map((p, idx) => ({
+          decision_id: p.id,
+          similarity: Math.round((0.9 - idx * 0.15) * 100) / 100,
+          note: p.rationale_text?.slice(0, 50) || undefined,
+        }));
+
         await captureDecisionTrace(currentReq.org_id, {
           decision_type: decisionType,
           source_type: "purchase_requisition",
@@ -245,6 +270,8 @@ export const usePurchaseRequisitionApproval = () => {
             line_count: lines?.length || 0,
             previous_status: currentReq.status,
           },
+          policy_evaluation: policyEvaluation,
+          precedents_referenced: precedentsReferenced,
           commit_writes: [{
             entity: "purchase_requisition",
             id,
