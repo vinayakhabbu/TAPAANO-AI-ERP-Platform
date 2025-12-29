@@ -533,6 +533,133 @@ AI-powered batch processor that autonomously handles pending approvals without h
 }
 ```
 
+#### Natural Language Approvals (Agent River Integration)
+
+Approve or reject documents using natural language commands through Agent River.
+
+**Capabilities**:
+- Find pending approvals by type
+- Approve/reject individual POs, Payment Runs, and Requisitions
+- Bulk approve multiple documents at once
+- Get approval status summaries
+
+**Example Commands**:
+- "Show me all pending purchase orders"
+- "Approve PO-001"
+- "Reject payment run PR-005 because budget exceeded"
+- "Bulk approve all requisitions under $1,000"
+
+**Technical Implementation**:
+- `approvals_agent` in `agent-river` edge function
+- Tools: `find_pending_approvals`, `approve_document`, `reject_document`, `bulk_approve`
+
+#### Learn from Overrides
+
+System learns from human overrides to improve future auto-approval accuracy.
+
+**How It Works**:
+1. When a human overrides an auto-approved or auto-rejected decision, it's recorded in `decision_overrides`
+2. System tracks override patterns by decision type and source
+3. Confidence adjustments are calculated based on override frequency
+4. Future auto-approval confidence scores are adjusted accordingly
+
+**Override Types**:
+| Type | Description |
+|------|-------------|
+| `approval_to_rejection` | Human rejected an auto-approved item |
+| `rejection_to_approval` | Human approved an auto-rejected item |
+| `confidence_override` | Human adjusted confidence threshold |
+
+**Confidence Adjustment Formula**:
+- Base adjustment starts at 1.0 (neutral)
+- Each override reduces confidence by calculated factor
+- More overrides = lower future confidence for similar decisions
+- Adjustments are recalculated periodically
+
+**Database Tables**:
+| Table | Description |
+|-------|-------------|
+| `decision_overrides` | Records each human override with reason |
+| `confidence_adjustments` | Stores learned adjustments per decision type |
+
+#### Scheduled Processing
+
+Autonomous approver runs on a schedule to process pending items automatically.
+
+**Schedule Configuration**:
+- **Frequency**: Hourly (via `pg_cron`)
+- **Scope**: All pending POs, Payment Runs, and Requisitions
+- **Mode**: Execute (auto-approves eligible items)
+
+**Technical Implementation**:
+- Uses PostgreSQL `pg_cron` and `pg_net` extensions
+- Cron job: `autonomous-approver-hourly`
+- Calls `autonomous-approver` edge function with `mode: "execute"`
+
+**Cron Schedule**:
+```sql
+SELECT cron.schedule(
+  'autonomous-approver-hourly',
+  '0 * * * *',  -- Every hour at minute 0
+  $$ SELECT net.http_post(...) $$
+);
+```
+
+#### Anomaly Detection
+
+AI-powered detection of unusual patterns in approval decisions.
+
+**Anomaly Types Detected**:
+| Anomaly | Description | Threshold |
+|---------|-------------|-----------|
+| `large_po` | Unusually large purchase order | > $50,000 |
+| `rapid_approval` | Suspiciously fast approval | < 1 minute |
+| `unusual_vendor` | First-time or rarely-used vendor | < 3 historical POs |
+| `budget_exceeded` | Approval exceeds budget | > 100% of budget |
+| `off_hours_approval` | Approval outside business hours | Before 6am or after 10pm |
+| `stalled_approval` | Pending too long without action | > 7 days |
+| `high_override_rate` | Frequent human overrides | > 30% override rate |
+
+**Severity Levels**:
+- 🔴 **Critical**: Requires immediate attention
+- 🟡 **Warning**: Should be reviewed
+- 🔵 **Info**: For awareness only
+
+**API Endpoint**: `POST /functions/v1/anomaly-detector`
+```json
+{
+  "org_id": "uuid",
+  "lookback_days": 30
+}
+```
+
+**Response**:
+```json
+{
+  "anomalies": [
+    {
+      "id": "uuid",
+      "type": "large_po",
+      "severity": "warning",
+      "title": "Large Purchase Order",
+      "description": "PO-001 for $75,000 exceeds normal threshold",
+      "source_type": "purchase_order",
+      "source_id": "uuid",
+      "detected_at": "2024-01-15T10:30:00Z",
+      "metadata": { "amount": 75000, "threshold": 50000 }
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "critical": 1,
+    "warning": 3,
+    "info": 1
+  }
+}
+```
+
+**UI Component**: `AnomalyDetector.tsx` in Decision Desk "Anomaly Detection" tab
+
 ---
 
 ## Database Schema
@@ -580,10 +707,12 @@ AI-powered batch processor that autonomously handles pending approvals without h
 
 ### Decision Ledger Tables
 
-| Table               | Description                                      |
-| ------------------- | ------------------------------------------------ |
-| `decision_traces`   | Decision audit records with policy evaluations   |
-| `decision_entities` | Linked entities for each decision trace          |
+| Table                    | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| `decision_traces`        | Decision audit records with policy evaluations   |
+| `decision_entities`      | Linked entities for each decision trace          |
+| `decision_overrides`     | Human overrides of AI decisions for learning     |
+| `confidence_adjustments` | Learned confidence adjustments per decision type |
 
 ---
 
@@ -656,6 +785,37 @@ USING (EXISTS (
 - **Method**: POST
 - **Auth**: Not required (public)
 
+### `agent-river`
+
+- **Purpose**: Orchestrating AI agent with multi-domain routing
+- **Endpoint**: `/functions/v1/agent-river`
+- **Method**: POST
+- **Auth**: Not required (public)
+- **Features**: Routes to specialized agents (CRM, Finance, Inventory, Approvals, etc.)
+
+### `autonomous-approver`
+
+- **Purpose**: Batch autonomous approval processing
+- **Endpoint**: `/functions/v1/autonomous-approver`
+- **Method**: POST
+- **Auth**: Not required (public)
+- **Features**: Preview/execute modes, confidence scoring, policy evaluation
+
+### `anomaly-detector`
+
+- **Purpose**: Detect unusual patterns in approval decisions
+- **Endpoint**: `/functions/v1/anomaly-detector`
+- **Method**: POST
+- **Auth**: Not required (public)
+- **Features**: Multiple anomaly types, severity levels, lookback period
+
+### `global-search`
+
+- **Purpose**: Cross-module search functionality
+- **Endpoint**: `/functions/v1/global-search`
+- **Method**: POST
+- **Auth**: Not required (public)
+
 ---
 
 ## File Structure
@@ -669,6 +829,10 @@ src/
 │   │   └── SalesAnalytics.tsx
 │   ├── crm/                # CRM-specific components
 │   ├── dashboard/          # Dashboard widgets
+│   ├── decisions/          # Decision Desk components
+│   │   ├── AnomalyDetector.tsx      # Anomaly detection UI
+│   │   ├── AutonomousApprover.tsx   # Batch approval UI
+│   │   └── PolicyAnalyticsChart.tsx # Policy analytics
 │   ├── forecasting/        # Forecasting components
 │   ├── forms/              # Data entry forms
 │   ├── layout/             # App layout components
@@ -680,6 +844,8 @@ src/
 │   ├── useAuth.tsx         # Authentication hook
 │   ├── useBanking.ts       # Banking data hook
 │   ├── useCRMAgent.ts      # CRM AI agent hook
+│   ├── useDecisionLedger.ts    # Decision audit trail
+│   ├── useDecisionOverrides.ts # Override learning
 │   ├── useGeneralLedger.ts # GL data hook
 │   ├── useOpportunities.ts # CRM opportunities hook
 │   ├── usePayables.ts      # AP data hook
@@ -690,12 +856,15 @@ src/
 ├── integrations/
 │   └── supabase/           # Supabase client & types
 ├── lib/
+│   ├── autoApproval.ts     # Auto-approval engine
 │   ├── pdfExport.ts        # PDF generation utilities
+│   ├── policyRules.ts      # Policy evaluation engine
 │   └── utils.ts            # Utility functions
 ├── pages/
 │   ├── Auth.tsx            # Login/signup page
 │   ├── Banking.tsx         # Banking module
 │   ├── CRM.tsx             # CRM module
+│   ├── DecisionDesk.tsx    # Decision audit & analytics
 │   ├── FinancialReports.tsx # Reports module
 │   ├── GeneralLedger.tsx   # GL module
 │   ├── Index.tsx           # Dashboard
@@ -710,9 +879,13 @@ src/
 supabase/
 ├── config.toml             # Supabase configuration
 └── functions/
+    ├── agent-river/        # Orchestrating AI agent
+    ├── anomaly-detector/   # Anomaly detection
+    ├── autonomous-approver/ # Batch autonomous approvals
     ├── crm-agent/          # CRM AI agent
     ├── finance-agents/     # Finance AI agents
     ├── finance-chat/       # Chat edge function
+    ├── global-search/      # Cross-module search
     └── unified-agent/      # Context-aware unified AI agent
 ```
 
@@ -803,6 +976,12 @@ supabase/
 | Policy Analytics Dashboard | ✅     | "Policy vs Reality" charts and override analysis               |
 | Decision Card UI           | ✅     | Collapsible cards with snapshots, diffs, rationale             |
 | CSV Export                 | ✅     | Export filtered decisions                                      |
+| Auto-Approval Engine       | ✅     | AI-powered auto-approval for low-risk decisions                |
+| Autonomous Approver        | ✅     | Batch autonomous processing without human intervention         |
+| Natural Language Approvals | ✅     | Approve/reject via Agent River natural language commands       |
+| Learn from Overrides       | ✅     | System learns from human overrides to improve accuracy         |
+| Scheduled Processing       | ✅     | Hourly autonomous processing via pg_cron                       |
+| Anomaly Detection          | ✅     | AI-powered detection of unusual approval patterns              |
 
 #### Advanced Reporting (Planned)
 
