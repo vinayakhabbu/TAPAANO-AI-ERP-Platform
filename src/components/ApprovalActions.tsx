@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { RationaleDialog } from "@/components/RationaleDialog";
 
 type DocumentType = "purchase_order" | "payment_run" | "journal_entry" | "bill";
 
@@ -36,11 +37,11 @@ interface ApprovalActionsProps {
   documentId: string;
   currentStatus: string;
   onSubmitForApproval?: () => void;
-  onApprove?: () => void;
-  onReject?: () => void;
-  onPost?: () => void;
-  onReverse?: () => void;
-  onProcess?: () => void;
+  onApprove?: (rationale?: string) => void;
+  onReject?: (rationale?: string) => void;
+  onPost?: (rationale?: string) => void;
+  onReverse?: (rationale?: string) => void;
+  onProcess?: (rationale?: string) => void;
   isLoading?: boolean;
 }
 
@@ -56,6 +57,7 @@ export function ApprovalActions({
   onProcess,
   isLoading = false,
 }: ApprovalActionsProps) {
+  // Simple confirm dialog for non-rationale actions
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     action: string;
@@ -71,7 +73,24 @@ export function ApprovalActions({
     onConfirm: () => {},
   });
 
-  const handleAction = (
+  // Rationale dialog for approve/reject/post/reverse actions
+  const [rationaleDialog, setRationaleDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    actionLabel: string;
+    actionVariant: "default" | "destructive";
+    onConfirm: (rationale: string) => void;
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    actionLabel: "",
+    actionVariant: "default",
+    onConfirm: () => {},
+  });
+
+  const handleSimpleAction = (
     action: string,
     title: string,
     description: string,
@@ -88,6 +107,23 @@ export function ApprovalActions({
     });
   };
 
+  const handleRationaleAction = (
+    title: string,
+    description: string,
+    actionLabel: string,
+    onConfirm: (rationale: string) => void,
+    actionVariant: "default" | "destructive" = "default"
+  ) => {
+    setRationaleDialog({
+      open: true,
+      title,
+      description,
+      actionLabel,
+      actionVariant,
+      onConfirm,
+    });
+  };
+
   const getAvailableActions = () => {
     const actions: Array<{
       label: string;
@@ -98,13 +134,13 @@ export function ApprovalActions({
     }> = [];
 
     if (documentType === "purchase_order" || documentType === "payment_run") {
-      // Submit for approval (only from draft)
+      // Submit for approval (only from draft) - simple confirm
       if (currentStatus === "draft" && onSubmitForApproval) {
         actions.push({
           label: "Submit for Approval",
           icon: Send,
           onClick: () =>
-            handleAction(
+            handleSimpleAction(
               "submit",
               "Submit for Approval",
               "Are you sure you want to submit this document for approval?",
@@ -114,33 +150,33 @@ export function ApprovalActions({
         });
       }
 
-      // Approve (only from pending_approval)
+      // Approve (only from pending_approval) - with rationale
       if (currentStatus === "pending_approval" && onApprove) {
         actions.push({
           label: "Approve",
           icon: CheckCircle2,
           onClick: () =>
-            handleAction(
-              "approve",
+            handleRationaleAction(
               "Approve Document",
-              "Are you sure you want to approve this document?",
-              onApprove
+              "Provide a reason for approving this document. This will be recorded in the decision ledger.",
+              "Approve",
+              (rationale) => onApprove(rationale)
             ),
           show: true,
         });
       }
 
-      // Reject (only from pending_approval)
+      // Reject (only from pending_approval) - with rationale
       if (currentStatus === "pending_approval" && onReject) {
         actions.push({
           label: "Reject",
           icon: XCircle,
           onClick: () =>
-            handleAction(
-              "reject",
+            handleRationaleAction(
               "Reject Document",
-              "Are you sure you want to reject this document? It will be returned to draft status.",
-              onReject,
+              "Provide a reason for rejecting this document. It will be returned to draft status.",
+              "Reject",
+              (rationale) => onReject(rationale),
               "destructive"
             ),
           variant: "destructive",
@@ -148,17 +184,17 @@ export function ApprovalActions({
         });
       }
 
-      // Process payment run (only from approved)
+      // Process payment run (only from approved) - with rationale
       if (documentType === "payment_run" && currentStatus === "approved" && onProcess) {
         actions.push({
           label: "Process Payment",
           icon: Play,
           onClick: () =>
-            handleAction(
-              "process",
+            handleRationaleAction(
               "Process Payment Run",
-              "Are you sure you want to process this payment run? This will execute the payments.",
-              onProcess
+              "This will execute the payments. Add any notes for the audit trail.",
+              "Process",
+              (rationale) => onProcess(rationale)
             ),
           show: true,
         });
@@ -166,33 +202,33 @@ export function ApprovalActions({
     }
 
     if (documentType === "journal_entry") {
-      // Post journal entry (only from draft)
+      // Post journal entry (only from draft) - with rationale
       if (currentStatus === "draft" && onPost) {
         actions.push({
           label: "Post Entry",
           icon: FileCheck,
           onClick: () =>
-            handleAction(
-              "post",
+            handleRationaleAction(
               "Post Journal Entry",
-              "Are you sure you want to post this journal entry? This will update account balances.",
-              onPost
+              "This will update account balances. Add any notes for the audit trail.",
+              "Post",
+              (rationale) => onPost(rationale)
             ),
           show: true,
         });
       }
 
-      // Reverse journal entry (only from posted)
+      // Reverse journal entry (only from posted) - with rationale
       if (currentStatus === "posted" && onReverse) {
         actions.push({
           label: "Reverse Entry",
           icon: RotateCcw,
           onClick: () =>
-            handleAction(
-              "reverse",
+            handleRationaleAction(
               "Reverse Journal Entry",
-              "Are you sure you want to reverse this journal entry?",
-              onReverse,
+              "Provide a reason for reversing this entry. This will be recorded in the decision ledger.",
+              "Reverse",
+              (rationale) => onReverse(rationale),
               "destructive"
             ),
           variant: "destructive",
@@ -245,6 +281,7 @@ export function ApprovalActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Simple confirmation dialog */}
       <AlertDialog
         open={confirmDialog.open}
         onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
@@ -271,6 +308,21 @@ export function ApprovalActions({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rationale capture dialog */}
+      <RationaleDialog
+        open={rationaleDialog.open}
+        onOpenChange={(open) => setRationaleDialog((prev) => ({ ...prev, open }))}
+        title={rationaleDialog.title}
+        description={rationaleDialog.description}
+        actionLabel={rationaleDialog.actionLabel}
+        actionVariant={rationaleDialog.actionVariant}
+        onConfirm={(rationale) => {
+          rationaleDialog.onConfirm(rationale);
+          setRationaleDialog((prev) => ({ ...prev, open: false }));
+        }}
+        isLoading={isLoading}
+      />
     </>
   );
 }

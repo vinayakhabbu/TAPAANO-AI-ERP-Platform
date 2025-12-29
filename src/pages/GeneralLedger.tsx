@@ -361,8 +361,8 @@ const GeneralLedger = () => {
                         documentType="journal_entry"
                         documentId={entry.id}
                         currentStatus={entry.status}
-                        onPost={() => journalApproval.mutate({ id: entry.id, action: "post" })}
-                        onReverse={() => journalApproval.mutate({ id: entry.id, action: "reverse" })}
+                        onPost={(rationale) => journalApproval.mutate({ id: entry.id, action: "post", rationale })}
+                        onReverse={(rationale) => journalApproval.mutate({ id: entry.id, action: "reverse", rationale })}
                         isLoading={journalApproval.isPending}
                       />
                     </TableCell>
