@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, History, CheckCircle, XCircle, Clock } from "lucide-react";
+import { MessageSquare, History, CheckCircle, XCircle, Clock, AlertTriangle, Info } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,8 +14,15 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useFindPrecedents, DecisionType } from "@/hooks/useDecisionLedger";
 import { formatDistanceToNow } from "date-fns";
+
+export interface PolicyWarning {
+  level: "info" | "warning" | "error";
+  title: string;
+  message: string;
+}
 
 interface RationaleDialogProps {
   open: boolean;
@@ -30,6 +37,8 @@ interface RationaleDialogProps {
   // For precedents lookup
   decisionType?: DecisionType;
   sourceType?: string;
+  // Policy warnings
+  policyWarnings?: PolicyWarning[];
 }
 
 const defaultReasonCodes: Record<string, string[]> = {
@@ -113,10 +122,33 @@ export function RationaleDialog({
   isLoading = false,
   decisionType,
   sourceType,
+  policyWarnings = [],
 }: RationaleDialogProps) {
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [rationaleText, setRationaleText] = useState("");
   const [precedentsOpen, setPrecedentsOpen] = useState(false);
+
+  const getWarningIcon = (level: PolicyWarning["level"]) => {
+    switch (level) {
+      case "error":
+        return <XCircle className="h-4 w-4" />;
+      case "warning":
+        return <AlertTriangle className="h-4 w-4" />;
+      default:
+        return <Info className="h-4 w-4" />;
+    }
+  };
+
+  const getWarningVariant = (level: PolicyWarning["level"]) => {
+    switch (level) {
+      case "error":
+        return "destructive";
+      case "warning":
+        return "default";
+      default:
+        return "default";
+    }
+  };
 
   const codes = reasonCodes || (actionVariant === "destructive" ? defaultReasonCodes.reject : defaultReasonCodes.approve);
 
@@ -169,6 +201,25 @@ export function RationaleDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Policy Warnings */}
+          {policyWarnings.length > 0 && (
+            <div className="space-y-2">
+              {policyWarnings.map((warning, idx) => (
+                <Alert key={idx} variant={getWarningVariant(warning.level)} className={
+                  warning.level === "warning" 
+                    ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30" 
+                    : warning.level === "info"
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                    : ""
+                }>
+                  {getWarningIcon(warning.level)}
+                  <AlertTitle className="text-sm font-medium">{warning.title}</AlertTitle>
+                  <AlertDescription className="text-xs">{warning.message}</AlertDescription>
+                </Alert>
+              ))}
+            </div>
+          )}
+
           {/* Precedents Panel */}
           {showPrecedents && (
             <Collapsible open={precedentsOpen} onOpenChange={setPrecedentsOpen}>
