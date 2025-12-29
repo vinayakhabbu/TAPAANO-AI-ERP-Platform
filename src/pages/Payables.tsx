@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ import {
   useProcessPaymentRun,
 } from "@/hooks/useApprovals";
 import { ApprovalActions } from "@/components/ApprovalActions";
+import { RationaleDialog } from "@/components/RationaleDialog";
 import { format } from "date-fns";
 import { PurchaseOrderForm } from "@/components/forms/PurchaseOrderForm";
 import { GoodsReceiptForm } from "@/components/forms/GoodsReceiptForm";
@@ -119,6 +121,13 @@ const Payables = () => {
   const paymentRunApproval = usePaymentRunApproval();
   const processPaymentRun = useProcessPaymentRun();
   const requisitionApproval = usePurchaseRequisitionApproval();
+
+  // Requisition rationale dialog state
+  const [reqRationaleDialog, setReqRationaleDialog] = useState<{
+    open: boolean;
+    requisitionId: string;
+    action: "approve" | "reject";
+  }>({ open: false, requisitionId: "", action: "approve" });
 
   const formatDate = (dateStr: string) => {
     try {
@@ -314,7 +323,7 @@ const Payables = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => requisitionApproval.mutate({ id: req.id, action: "approve" })}
+                                  onClick={() => setReqRationaleDialog({ open: true, requisitionId: req.id, action: "approve" })}
                                   disabled={requisitionApproval.isPending}
                                 >
                                   Approve
@@ -322,7 +331,7 @@ const Payables = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => requisitionApproval.mutate({ id: req.id, action: "reject", rejection_reason: "Rejected" })}
+                                  onClick={() => setReqRationaleDialog({ open: true, requisitionId: req.id, action: "reject" })}
                                   disabled={requisitionApproval.isPending}
                                 >
                                   Reject
@@ -727,6 +736,30 @@ const Payables = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Requisition Rationale Dialog */}
+      <RationaleDialog
+        open={reqRationaleDialog.open}
+        onOpenChange={(open) => setReqRationaleDialog((prev) => ({ ...prev, open }))}
+        title={reqRationaleDialog.action === "approve" ? "Approve Requisition" : "Reject Requisition"}
+        description={
+          reqRationaleDialog.action === "approve"
+            ? "Provide a reason for approving this requisition. This will be recorded in the decision ledger."
+            : "Provide a reason for rejecting this requisition. It will be returned to the requester."
+        }
+        actionLabel={reqRationaleDialog.action === "approve" ? "Approve" : "Reject"}
+        actionVariant={reqRationaleDialog.action === "approve" ? "default" : "destructive"}
+        onConfirm={(rationale) => {
+          requisitionApproval.mutate({
+            id: reqRationaleDialog.requisitionId,
+            action: reqRationaleDialog.action,
+            rationale,
+            rejection_reason: reqRationaleDialog.action === "reject" ? rationale : undefined,
+          });
+          setReqRationaleDialog((prev) => ({ ...prev, open: false }));
+        }}
+        isLoading={requisitionApproval.isPending}
+      />
     </AppLayout>
   );
 };
