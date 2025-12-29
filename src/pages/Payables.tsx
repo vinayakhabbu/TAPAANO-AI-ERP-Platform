@@ -409,8 +409,8 @@ const Payables = () => {
                             documentId={po.id}
                             currentStatus={po.status}
                             onSubmitForApproval={() => poApproval.mutate({ id: po.id, action: "submit_for_approval" })}
-                            onApprove={() => poApproval.mutate({ id: po.id, action: "approve" })}
-                            onReject={() => poApproval.mutate({ id: po.id, action: "reject" })}
+                            onApprove={(rationale) => poApproval.mutate({ id: po.id, action: "approve", rationale })}
+                            onReject={(rationale) => poApproval.mutate({ id: po.id, action: "reject", rationale })}
                             isLoading={poApproval.isPending}
                           />
                         </TableCell>
@@ -665,9 +665,9 @@ const Payables = () => {
                             documentId={run.id}
                             currentStatus={run.status}
                             onSubmitForApproval={() => paymentRunApproval.mutate({ id: run.id, action: "submit_for_approval" })}
-                            onApprove={() => paymentRunApproval.mutate({ id: run.id, action: "approve" })}
-                            onReject={() => paymentRunApproval.mutate({ id: run.id, action: "reject" })}
-                            onProcess={() => processPaymentRun.mutate({ id: run.id })}
+                            onApprove={(rationale) => paymentRunApproval.mutate({ id: run.id, action: "approve", rationale })}
+                            onReject={(rationale) => paymentRunApproval.mutate({ id: run.id, action: "reject", rationale })}
+                            onProcess={(rationale) => processPaymentRun.mutate({ id: run.id, rationale })}
                             isLoading={paymentRunApproval.isPending || processPaymentRun.isPending}
                           />
                         </TableCell>
