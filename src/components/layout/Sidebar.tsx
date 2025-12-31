@@ -3,6 +3,7 @@ import { NavLink } from "@/components/NavLink";
 import { LayoutDashboard, BookOpen, Receipt, FileText, Building2, CalendarCheck, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight, BarChart3, Package, Factory, Target, PieChart, Wrench, Scale, Coins, Calculator, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
 const navCategories = [{
   label: "Overview",
   items: [{
@@ -42,7 +43,10 @@ const navCategories = [{
     icon: Factory,
     label: "Production",
     href: "/production"
-  }, {
+  }]
+}, {
+  label: "HR & Payroll",
+  items: [{
     icon: Users,
     label: "HR & Payroll",
     href: "/hr"
@@ -86,6 +90,7 @@ const navCategories = [{
     href: "/decisions"
   }]
 }];
+
 const bottomNavItems = [{
   icon: Settings,
   label: "Settings",
@@ -95,24 +100,29 @@ const bottomNavItems = [{
   label: "Help",
   href: "/help"
 }];
+
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
+
 export function Sidebar({
   collapsed,
   onToggle
 }: SidebarProps) {
-  return <aside className={cn("fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300", collapsed ? "w-16" : "w-64")}>
+  return (
+    <aside className={cn("fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300", collapsed ? "w-16" : "w-64")}>
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
           <Sparkles className="h-5 w-5 text-primary-foreground" />
         </div>
-        {!collapsed && <div className="overflow-hidden">
-            <h1 className="text-lg font-semibold text-foreground">TAPAANO </h1>
+        {!collapsed && (
+          <div className="overflow-hidden">
+            <h1 className="text-lg font-semibold text-foreground">TAPAANO</h1>
             <p className="text-xs text-muted-foreground">AI ERP Platform</p>
-          </div>}
+          </div>
+        )}
       </div>
 
       {/* Toggle Button */}
@@ -122,39 +132,51 @@ export function Sidebar({
 
       {/* Main Navigation */}
       <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-4">
-        {navCategories.map(category => <div key={category.label}>
-            {!collapsed && <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {navCategories.map(category => (
+          <div key={category.label}>
+            {!collapsed && (
+              <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {category.label}
-              </p>}
+              </p>
+            )}
             <div className="space-y-1">
-              {category.items.map(item => <Tooltip key={item.href} delayDuration={0}>
+              {category.items.map(item => (
+                <Tooltip key={item.href} delayDuration={0}>
                   <TooltipTrigger asChild>
                     <NavLink to={item.href} className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200", "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", collapsed && "justify-center px-2")} activeClassName="bg-sidebar-accent text-primary">
                       <item.icon className="h-5 w-5 shrink-0" />
                       {!collapsed && <span>{item.label}</span>}
                     </NavLink>
                   </TooltipTrigger>
-                  {collapsed && <TooltipContent side="right" className="font-medium">
+                  {collapsed && (
+                    <TooltipContent side="right" className="font-medium">
                       {item.label}
-                    </TooltipContent>}
-                </Tooltip>)}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              ))}
             </div>
-          </div>)}
+          </div>
+        ))}
       </nav>
 
       {/* Bottom Navigation */}
       <div className="border-t border-sidebar-border px-2 py-4">
-        {bottomNavItems.map(item => <Tooltip key={item.href} delayDuration={0}>
+        {bottomNavItems.map(item => (
+          <Tooltip key={item.href} delayDuration={0}>
             <TooltipTrigger asChild>
               <NavLink to={item.href} className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200", "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", collapsed && "justify-center px-2")} activeClassName="bg-sidebar-accent text-primary">
                 <item.icon className="h-5 w-5 shrink-0" />
                 {!collapsed && <span>{item.label}</span>}
               </NavLink>
             </TooltipTrigger>
-            {collapsed && <TooltipContent side="right" className="font-medium">
+            {collapsed && (
+              <TooltipContent side="right" className="font-medium">
                 {item.label}
-              </TooltipContent>}
-          </Tooltip>)}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        ))}
       </div>
 
       {/* User/Org */}
@@ -163,11 +185,14 @@ export function Sidebar({
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
             AC
           </div>
-          {!collapsed && <div className="flex-1 overflow-hidden">
+          {!collapsed && (
+            <div className="flex-1 overflow-hidden">
               <p className="truncate text-sm font-medium text-foreground">Acme Corp</p>
               <p className="truncate text-xs text-muted-foreground">Controller</p>
-            </div>}
+            </div>
+          )}
         </div>
       </div>
-    </aside>;
+    </aside>
+  );
 }
