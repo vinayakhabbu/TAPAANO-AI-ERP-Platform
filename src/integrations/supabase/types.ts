@@ -1858,12 +1858,14 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           commit_writes: Json | null
+          context_embedding: string | null
           created_at: string
           decision_type: string
           id: string
           input_snapshot: Json
           org_id: string
           policy_evaluation: Json | null
+          precedents_referenced: Json | null
           rationale_text: string | null
           reason_codes: string[] | null
           source_id: string | null
@@ -1877,12 +1879,14 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           commit_writes?: Json | null
+          context_embedding?: string | null
           created_at?: string
           decision_type: string
           id?: string
           input_snapshot?: Json
           org_id: string
           policy_evaluation?: Json | null
+          precedents_referenced?: Json | null
           rationale_text?: string | null
           reason_codes?: string[] | null
           source_id?: string | null
@@ -1896,12 +1900,14 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           commit_writes?: Json | null
+          context_embedding?: string | null
           created_at?: string
           decision_type?: string
           id?: string
           input_snapshot?: Json
           org_id?: string
           policy_evaluation?: Json | null
+          precedents_referenced?: Json | null
           rationale_text?: string | null
           reason_codes?: string[] | null
           source_id?: string | null
@@ -5222,6 +5228,24 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: string
       }
+      find_similar_precedents: {
+        Args: {
+          p_decision_type?: string
+          p_embedding: string
+          p_limit?: number
+          p_org_id: string
+          p_threshold?: number
+        }
+        Returns: {
+          approval_status: string
+          created_at: string
+          decision_id: string
+          decision_type: string
+          input_snapshot: Json
+          rationale_text: string
+          similarity: number
+        }[]
+      }
       get_user_org_id: { Args: never; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
@@ -5240,6 +5264,24 @@ export type Database = {
           p_warehouse_id: string
         }
         Returns: string
+      }
+      search_precedents_by_text: {
+        Args: {
+          p_decision_type?: string
+          p_limit?: number
+          p_org_id: string
+          p_search_text: string
+        }
+        Returns: {
+          approval_status: string
+          created_at: string
+          decision_id: string
+          decision_type: string
+          input_snapshot: Json
+          rationale_text: string
+          reason_codes: string[]
+          relevance: number
+        }[]
       }
     }
     Enums: {
