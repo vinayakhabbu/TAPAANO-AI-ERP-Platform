@@ -23,7 +23,9 @@ import {
   ShieldAlert,
   History,
   GitBranch,
-  TrendingUp
+  TrendingUp,
+  Network,
+  Play
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +42,9 @@ import { PolicyAnalyticsChart } from "@/components/decisions/PolicyAnalyticsChar
 import { AutonomousApprover } from "@/components/decisions/AutonomousApprover";
 import { AnomalyDetector } from "@/components/decisions/AnomalyDetector";
 import { PrecedentExplorer } from "@/components/decisions/PrecedentExplorer";
+import { AgentRunPlayback } from "@/components/decisions/AgentRunPlayback";
+import { EntityGraph } from "@/components/decisions/EntityGraph";
+import { PrecedentCheckbox } from "@/components/decisions/PrecedentCheckbox";
 
 const decisionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   po_approval: { label: "PO Approval", icon: ShoppingCart, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
@@ -251,19 +256,27 @@ function DecisionCard({ decision }: { decision: DecisionTrace }) {
               </div>
             )}
 
-            {/* Approval Info */}
-            {decision.approved_at && (
-              <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {format(new Date(decision.approved_at), "MMM d, yyyy 'at' h:mm a")}
+            {/* Approval Info + Precedent Toggle */}
+            <div className="flex items-center justify-between pt-2 border-t">
+              {decision.approved_at && (
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {format(new Date(decision.approved_at), "MMM d, yyyy 'at' h:mm a")}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    via {decision.approval_channel}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <User className="h-3 w-3" />
-                  via {decision.approval_channel}
-                </div>
-              </div>
-            )}
+              )}
+              <PrecedentCheckbox
+                decisionId={decision.id}
+                isPrecedent={(decision as any).is_precedent || false}
+                precedentScope={(decision as any).precedent_scope}
+                precedentNotes={(decision as any).precedent_notes}
+              />
+            </div>
           </CardContent>
         </CollapsibleContent>
       </Card>
@@ -464,6 +477,14 @@ export default function DecisionDesk() {
               <History className="h-4 w-4" />
               Precedent Explorer
             </TabsTrigger>
+            <TabsTrigger value="agent-runs" className="flex items-center gap-2">
+              <Play className="h-4 w-4" />
+              Agent Runs
+            </TabsTrigger>
+            <TabsTrigger value="graph" className="flex items-center gap-2">
+              <Network className="h-4 w-4" />
+              Entity Graph
+            </TabsTrigger>
             <TabsTrigger value="autonomous" className="flex items-center gap-2">
               <Bot className="h-4 w-4" />
               Autonomous Approver
@@ -492,6 +513,42 @@ export default function DecisionDesk() {
               </CardHeader>
               <CardContent>
                 <PrecedentExplorer />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Agent Runs Tab */}
+          <TabsContent value="agent-runs">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Play className="h-5 w-5" />
+                  Agent Execution Timeline
+                </CardTitle>
+                <CardDescription>
+                  View step-by-step playback of autonomous agent runs
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AgentRunPlayback />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Entity Graph Tab */}
+          <TabsContent value="graph">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Network className="h-5 w-5" />
+                  Entity Relationship Graph
+                </CardTitle>
+                <CardDescription>
+                  Visualize relationships between decisions and entities
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EntityGraph />
               </CardContent>
             </Card>
           </TabsContent>
