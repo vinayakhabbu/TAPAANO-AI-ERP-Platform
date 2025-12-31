@@ -20,7 +20,8 @@ import {
   BarChart3,
   Zap,
   Bot,
-  ShieldAlert
+  ShieldAlert,
+  History
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PolicyAnalyticsChart } from "@/components/decisions/PolicyAnalyticsChart";
 import { AutonomousApprover } from "@/components/decisions/AutonomousApprover";
 import { AnomalyDetector } from "@/components/decisions/AnomalyDetector";
+import { PrecedentExplorer } from "@/components/decisions/PrecedentExplorer";
 
 const decisionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   po_approval: { label: "PO Approval", icon: ShoppingCart, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
@@ -403,10 +405,14 @@ export default function DecisionDesk() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="decisions" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="decisions" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Decision Log
+            </TabsTrigger>
+            <TabsTrigger value="precedents" className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Precedent Explorer
             </TabsTrigger>
             <TabsTrigger value="autonomous" className="flex items-center gap-2">
               <Bot className="h-4 w-4" />
@@ -421,6 +427,24 @@ export default function DecisionDesk() {
               Policy Analytics
             </TabsTrigger>
           </TabsList>
+
+          {/* Precedent Explorer Tab */}
+          <TabsContent value="precedents">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Find Similar Cases
+                </CardTitle>
+                <CardDescription>
+                  Search for precedents to understand how similar decisions were handled in the past
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PrecedentExplorer />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="decisions" className="space-y-4">
             {/* Filters */}
