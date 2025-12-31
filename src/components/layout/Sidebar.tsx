@@ -1,117 +1,113 @@
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { NavLink } from "@/components/NavLink";
-import { LayoutDashboard, BookOpen, Receipt, FileText, Building2, CalendarCheck, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight, BarChart3, Package, Factory, Target, PieChart, Wrench, Scale, Coins, Calculator, Users } from "lucide-react";
+import {
+  LayoutDashboard,
+  BookOpen,
+  Receipt,
+  FileText,
+  Building2,
+  CalendarCheck,
+  Settings,
+  HelpCircle,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3,
+  Package,
+  Factory,
+  Target,
+  PieChart,
+  Wrench,
+  Scale,
+  Coins,
+  Calculator,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const navCategories = [{
-  label: "Overview",
-  items: [{
-    icon: LayoutDashboard,
-    label: "Dashboard",
-    href: "/"
-  }]
-}, {
-  label: "Sales",
-  items: [{
-    icon: Target,
-    label: "CRM",
-    href: "/crm"
-  }, {
-    icon: Receipt,
-    label: "Order to Cash",
-    href: "/ar"
-  }, {
-    icon: Wrench,
-    label: "Service Management",
-    href: "/service"
-  }]
-}, {
-  label: "Purchasing",
-  items: [{
-    icon: FileText,
-    label: "Procure to Pay",
-    href: "/ap"
-  }]
-}, {
-  label: "Operations",
-  items: [{
-    icon: Package,
-    label: "Inventory",
-    href: "/inventory"
-  }, {
-    icon: Factory,
-    label: "Production",
-    href: "/production"
-  }]
-}, {
-  label: "HR & Payroll",
-  items: [{
-    icon: Users,
+const navCategories = [
+  {
+    label: "Overview",
+    items: [{ icon: LayoutDashboard, label: "Dashboard", href: "/" }],
+  },
+  {
+    label: "Sales",
+    items: [
+      { icon: Target, label: "CRM", href: "/crm" },
+      { icon: Receipt, label: "Order to Cash", href: "/ar" },
+      { icon: Wrench, label: "Service Management", href: "/service" },
+    ],
+  },
+  {
+    label: "Purchasing",
+    items: [{ icon: FileText, label: "Procure to Pay", href: "/ap" }],
+  },
+  {
+    label: "Operations",
+    items: [
+      { icon: Package, label: "Inventory", href: "/inventory" },
+      { icon: Factory, label: "Production", href: "/production" },
+    ],
+  },
+  {
     label: "HR & Payroll",
-    href: "/hr"
-  }]
-}, {
-  label: "Accounting",
-  items: [{
-    icon: BookOpen,
-    label: "General Ledger",
-    href: "/gl"
-  }, {
-    icon: Building2,
-    label: "Banking",
-    href: "/banking"
-  }, {
-    icon: Coins,
-    label: "Multi-Currency",
-    href: "/currency"
-  }, {
-    icon: Calculator,
-    label: "Tax Management",
-    href: "/tax"
-  }, {
-    icon: PieChart,
-    label: "Controlling",
-    href: "/controlling"
-  }]
-}, {
-  label: "Reports & Close",
-  items: [{
-    icon: BarChart3,
-    label: "Financial Reports",
-    href: "/reports"
-  }, {
-    icon: CalendarCheck,
-    label: "Period Close",
-    href: "/close"
-  }, {
-    icon: Scale,
-    label: "Decision Desk",
-    href: "/decisions"
-  }]
-}];
+    items: [{ icon: Users, label: "HR & Payroll", href: "/hr" }],
+  },
+  {
+    label: "Accounting",
+    items: [
+      { icon: BookOpen, label: "General Ledger", href: "/gl" },
+      { icon: Building2, label: "Banking", href: "/banking" },
+      { icon: Coins, label: "Multi-Currency", href: "/currency" },
+      { icon: Calculator, label: "Tax Management", href: "/tax" },
+      { icon: PieChart, label: "Controlling", href: "/controlling" },
+    ],
+  },
+  {
+    label: "Reports & Close",
+    items: [
+      { icon: BarChart3, label: "Financial Reports", href: "/reports" },
+      { icon: CalendarCheck, label: "Period Close", href: "/close" },
+      { icon: Scale, label: "Decision Desk", href: "/decisions" },
+    ],
+  },
+];
 
-const bottomNavItems = [{
-  icon: Settings,
-  label: "Settings",
-  href: "/settings"
-}, {
-  icon: HelpCircle,
-  label: "Help",
-  href: "/help"
-}];
+const bottomNavItems = [
+  { icon: Settings, label: "Settings", href: "/settings" },
+  { icon: HelpCircle, label: "Help", href: "/help" },
+];
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
-export function Sidebar({
-  collapsed,
-  onToggle
-}: SidebarProps) {
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const navRef = useRef<HTMLElement>(null);
+  const SCROLL_KEY = "sidebar-nav-scroll-top";
+
+  useEffect(() => {
+    const saved = localStorage.getItem(SCROLL_KEY);
+    if (saved && navRef.current) {
+      navRef.current.scrollTop = Number(saved);
+    }
+  }, []);
+
+  const handleNavScroll = () => {
+    if (!navRef.current) return;
+    localStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
+  };
+
   return (
-    <aside className={cn("fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300", collapsed ? "w-16" : "w-64")}>
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
+        collapsed ? "w-16" : "w-64"
+      )}
+    >
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
@@ -126,13 +122,26 @@ export function Sidebar({
       </div>
 
       {/* Toggle Button */}
-      <Button variant="ghost" size="icon" onClick={onToggle} className="absolute -right-3 top-20 z-50 h-6 w-6 rounded-full border border-border bg-background shadow-md hover:bg-accent">
-        {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggle}
+        className="absolute -right-3 top-20 z-50 h-6 w-6 rounded-full border border-border bg-background shadow-md hover:bg-accent"
+      >
+        {collapsed ? (
+          <ChevronRight className="h-3 w-3" />
+        ) : (
+          <ChevronLeft className="h-3 w-3" />
+        )}
       </Button>
 
       {/* Main Navigation */}
-      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-4">
-        {navCategories.map(category => (
+      <nav
+        ref={navRef}
+        onScroll={handleNavScroll}
+        className="flex-1 space-y-4 overflow-y-auto px-2 py-4"
+      >
+        {navCategories.map((category) => (
           <div key={category.label}>
             {!collapsed && (
               <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -140,10 +149,18 @@ export function Sidebar({
               </p>
             )}
             <div className="space-y-1">
-              {category.items.map(item => (
+              {category.items.map((item) => (
                 <Tooltip key={item.href} delayDuration={0}>
                   <TooltipTrigger asChild>
-                    <NavLink to={item.href} className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200", "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", collapsed && "justify-center px-2")} activeClassName="bg-sidebar-accent text-primary">
+                    <NavLink
+                      to={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200",
+                        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        collapsed && "justify-center px-2"
+                      )}
+                      activeClassName="bg-sidebar-accent text-primary"
+                    >
                       <item.icon className="h-5 w-5 shrink-0" />
                       {!collapsed && <span>{item.label}</span>}
                     </NavLink>
@@ -162,10 +179,18 @@ export function Sidebar({
 
       {/* Bottom Navigation */}
       <div className="border-t border-sidebar-border px-2 py-4">
-        {bottomNavItems.map(item => (
+        {bottomNavItems.map((item) => (
           <Tooltip key={item.href} delayDuration={0}>
             <TooltipTrigger asChild>
-              <NavLink to={item.href} className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200", "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", collapsed && "justify-center px-2")} activeClassName="bg-sidebar-accent text-primary">
+              <NavLink
+                to={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all duration-200",
+                  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  collapsed && "justify-center px-2"
+                )}
+                activeClassName="bg-sidebar-accent text-primary"
+              >
                 <item.icon className="h-5 w-5 shrink-0" />
                 {!collapsed && <span>{item.label}</span>}
               </NavLink>
