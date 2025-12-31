@@ -74,7 +74,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
           aiPanelCollapsed ? "mr-14" : "mr-80"
         )}
       >
-        <Header title={title} subtitle={subtitle || getSubtitleForRoute(location.pathname)} />
+        <Header subtitle={subtitle || getSubtitleForRoute(location.pathname)} />
         <main className="min-h-[calc(100vh-4rem)] p-6">
           {children}
         </main>
