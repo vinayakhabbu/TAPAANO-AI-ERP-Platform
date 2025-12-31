@@ -20,18 +20,113 @@ interface AIChatBarProps {
   onToggle: () => void;
 }
 
-const SUGGESTED_PROMPTS = [
+const ROUTE_PROMPTS: Record<string, string[]> = {
+  "/": [
+    "Give me an overview of the business",
+    "What needs my attention today?",
+    "Show key metrics summary",
+  ],
+  "/crm": [
+    "Show pipeline summary",
+    "List top opportunities",
+    "Which deals are closing this month?",
+    "Show customer activity report",
+  ],
+  "/receivables": [
+    "Show AR aging summary",
+    "List overdue invoices",
+    "Who owes us the most?",
+    "Generate collection priority list",
+  ],
+  "/payables": [
+    "Show AP aging summary",
+    "What bills are due this week?",
+    "List pending vendor payments",
+  ],
+  "/banking": [
+    "Show bank account balances",
+    "Reconciliation status update",
+    "Any unmatched transactions?",
+  ],
+  "/inventory": [
+    "Show low stock alerts",
+    "What's our inventory turnover?",
+    "List items below reorder point",
+  ],
+  "/production": [
+    "Show production order status",
+    "Any capacity bottlenecks?",
+    "Work center utilization report",
+  ],
+  "/general-ledger": [
+    "Show trial balance",
+    "Any unbalanced entries?",
+    "List recent journal entries",
+  ],
+  "/controlling": [
+    "Show budget vs actual",
+    "Cost center performance",
+    "Which departments are over budget?",
+  ],
+  "/period-close": [
+    "What tasks are pending?",
+    "Show close progress",
+    "Any blocking issues?",
+  ],
+  "/financial-reports": [
+    "Generate P&L summary",
+    "Show balance sheet highlights",
+    "Cash flow overview",
+  ],
+  "/hr": [
+    "How many employees do we have?",
+    "Show headcount by department",
+    "Run payroll analysis",
+    "What's our total payroll cost?",
+    "List upcoming pay periods",
+  ],
+  "/tax": [
+    "Show tax liability summary",
+    "Any overdue tax filings?",
+    "List pending tax returns",
+    "Tax rate analysis by jurisdiction",
+  ],
+  "/currency": [
+    "What's our FX exposure?",
+    "Show currency gains/losses",
+    "List unrealized FX positions",
+    "Update exchange rates",
+  ],
+  "/service": [
+    "Open service calls",
+    "Show SLA compliance",
+    "Warranty claims summary",
+  ],
+  "/decisions": [
+    "Pending approvals summary",
+    "Show recent agent decisions",
+    "Policy compliance report",
+  ],
+};
+
+const DEFAULT_PROMPTS = [
   "Give me an overview of the business",
   "What needs my attention today?",
-  "Show pipeline and AR summary",
-  "How many employees do we have?",
-  "What's our payroll cost by department?",
-  "Show tax liability summary",
-  "Any overdue tax filings?",
-  "What's our FX exposure?",
-  "Show currency gains/losses",
-  "Run next payroll analysis",
+  "Show key metrics",
 ];
+
+const getPromptsForRoute = (pathname: string): string[] => {
+  // Exact match first
+  if (ROUTE_PROMPTS[pathname]) {
+    return ROUTE_PROMPTS[pathname];
+  }
+  // Check for partial match (e.g., /crm/customers matches /crm)
+  const baseRoute = "/" + pathname.split("/")[1];
+  if (ROUTE_PROMPTS[baseRoute]) {
+    return ROUTE_PROMPTS[baseRoute];
+  }
+  return DEFAULT_PROMPTS;
+};
 
 export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
   const { orgId } = useAuth();
@@ -231,7 +326,7 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
             <div className="px-4 pb-2">
               <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider">Try asking</p>
               <div className="flex flex-wrap gap-1.5">
-                {SUGGESTED_PROMPTS.map((prompt) => (
+                {getPromptsForRoute(location.pathname).map((prompt) => (
                   <button
                     key={prompt}
                     onClick={() => handlePromptClick(prompt)}
