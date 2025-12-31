@@ -97,29 +97,43 @@ export default function Production() {
         </div>
 
         <Tabs defaultValue="orders" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="orders" className="flex items-center gap-2">
-              <Factory className="h-4 w-4" /> Orders
-            </TabsTrigger>
-            <TabsTrigger value="receipts" className="flex items-center gap-2">
-              <PackageCheck className="h-4 w-4" /> Receipts
-            </TabsTrigger>
-            <TabsTrigger value="bom" className="flex items-center gap-2">
-              <Package className="h-4 w-4" /> BOM
-            </TabsTrigger>
-            <TabsTrigger value="workcenters" className="flex items-center gap-2">
-              <Cog className="h-4 w-4" /> Work Centers
-            </TabsTrigger>
-            <TabsTrigger value="mrp" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" /> MRP
-            </TabsTrigger>
-            <TabsTrigger value="capacity" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" /> Capacity
-            </TabsTrigger>
-            <TabsTrigger value="shopfloor" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" /> Shop Floor
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+            <TabsList className="inline-flex h-10 w-auto bg-muted/50">
+              <TabsTrigger value="orders" className="flex items-center gap-2 whitespace-nowrap">
+                <Factory className="h-4 w-4" />
+                <span className="hidden sm:inline">Orders</span>
+                <span className="sm:hidden">Ord</span>
+              </TabsTrigger>
+              <TabsTrigger value="receipts" className="flex items-center gap-2 whitespace-nowrap">
+                <PackageCheck className="h-4 w-4" />
+                <span className="hidden sm:inline">Receipts</span>
+                <span className="sm:hidden">Rcpt</span>
+              </TabsTrigger>
+              <TabsTrigger value="bom" className="flex items-center gap-2 whitespace-nowrap">
+                <Package className="h-4 w-4" />
+                <span>BOM</span>
+              </TabsTrigger>
+              <TabsTrigger value="workcenters" className="flex items-center gap-2 whitespace-nowrap">
+                <Cog className="h-4 w-4" />
+                <span className="hidden sm:inline">Work Centers</span>
+                <span className="sm:hidden">WC</span>
+              </TabsTrigger>
+              <TabsTrigger value="mrp" className="flex items-center gap-2 whitespace-nowrap">
+                <Calculator className="h-4 w-4" />
+                <span>MRP</span>
+              </TabsTrigger>
+              <TabsTrigger value="capacity" className="flex items-center gap-2 whitespace-nowrap">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Capacity</span>
+                <span className="sm:hidden">Cap</span>
+              </TabsTrigger>
+              <TabsTrigger value="shopfloor" className="flex items-center gap-2 whitespace-nowrap">
+                <Calendar className="h-4 w-4" />
+                <span className="hidden sm:inline">Shop Floor</span>
+                <span className="sm:hidden">Floor</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Production Orders */}
           <TabsContent value="orders">

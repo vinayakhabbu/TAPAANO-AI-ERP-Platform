@@ -158,28 +158,35 @@ const CRM = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="pipeline" className="mt-6">
-        <TabsList className="bg-muted/50">
-          <TabsTrigger value="pipeline" className="gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Pipeline
-          </TabsTrigger>
-          <TabsTrigger value="opportunities" className="gap-2">
-            <Target className="h-4 w-4" />
-            Opportunities
-          </TabsTrigger>
-          <TabsTrigger value="customers" className="gap-2">
-            <Users className="h-4 w-4" />
-            Customers
-          </TabsTrigger>
-          <TabsTrigger value="forecasting" className="gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Forecasting
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Analytics
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <TabsList className="inline-flex h-10 w-auto bg-muted/50">
+            <TabsTrigger value="pipeline" className="gap-2 whitespace-nowrap">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Pipeline</span>
+              <span className="sm:hidden">Pipe</span>
+            </TabsTrigger>
+            <TabsTrigger value="opportunities" className="gap-2 whitespace-nowrap">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">Opportunities</span>
+              <span className="sm:hidden">Opps</span>
+            </TabsTrigger>
+            <TabsTrigger value="customers" className="gap-2 whitespace-nowrap">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Customers</span>
+              <span className="sm:hidden">Custs</span>
+            </TabsTrigger>
+            <TabsTrigger value="forecasting" className="gap-2 whitespace-nowrap">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Forecasting</span>
+              <span className="sm:hidden">Fcast</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2 whitespace-nowrap">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Analytics</span>
+              <span className="sm:hidden">Stats</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Pipeline Tab */}
         <TabsContent value="pipeline">
