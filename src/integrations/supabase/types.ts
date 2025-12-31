@@ -88,6 +88,112 @@ export type Database = {
           },
         ]
       }
+      agent_run_steps: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          input_data: Json | null
+          output_data: Json | null
+          run_id: string
+          started_at: string | null
+          step_name: string
+          step_number: number
+          step_status: string
+          step_type: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          run_id: string
+          started_at?: string | null
+          step_name: string
+          step_number: number
+          step_status?: string
+          step_type: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          run_id?: string
+          started_at?: string | null
+          step_name?: string
+          step_number?: number
+          step_status?: string
+          step_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_run_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          org_id: string
+          result_summary: string | null
+          run_status: string
+          run_type: string
+          started_at: string
+          trigger_context: Json | null
+          trigger_source: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          org_id: string
+          result_summary?: string | null
+          run_status?: string
+          run_type: string
+          started_at?: string
+          trigger_context?: Json | null
+          trigger_source?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          org_id?: string
+          result_summary?: string | null
+          run_status?: string
+          run_type?: string
+          started_at?: string
+          trigger_context?: Json | null
+          trigger_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_audit_logs: {
         Row: {
           agent_name: string
@@ -1863,8 +1969,11 @@ export type Database = {
           decision_type: string
           id: string
           input_snapshot: Json
+          is_precedent: boolean | null
           org_id: string
           policy_evaluation: Json | null
+          precedent_notes: string | null
+          precedent_scope: string | null
           precedents_referenced: Json | null
           rationale_text: string | null
           reason_codes: string[] | null
@@ -1884,8 +1993,11 @@ export type Database = {
           decision_type: string
           id?: string
           input_snapshot?: Json
+          is_precedent?: boolean | null
           org_id: string
           policy_evaluation?: Json | null
+          precedent_notes?: string | null
+          precedent_scope?: string | null
           precedents_referenced?: Json | null
           rationale_text?: string | null
           reason_codes?: string[] | null
@@ -1905,8 +2017,11 @@ export type Database = {
           decision_type?: string
           id?: string
           input_snapshot?: Json
+          is_precedent?: boolean | null
           org_id?: string
           policy_evaluation?: Json | null
+          precedent_notes?: string | null
+          precedent_scope?: string | null
           precedents_referenced?: Json | null
           rationale_text?: string | null
           reason_codes?: string[] | null
