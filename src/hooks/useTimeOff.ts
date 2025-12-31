@@ -174,27 +174,3 @@ export const useRejectTimeOffRequest = () => {
     onError: (e: Error) => toast.error(e.message),
   });
 };
-
-export const useRejectTimeOffRequest = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) => {
-      const { data, error } = await supabase
-        .from("time_off_requests")
-        .update({
-          status: "rejected",
-          rejection_reason: reason,
-        })
-        .eq("id", requestId)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["time-off-requests"] });
-      toast.success("Time off request rejected");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-};

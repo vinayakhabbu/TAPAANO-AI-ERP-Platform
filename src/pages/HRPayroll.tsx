@@ -4,7 +4,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, Building2, Briefcase, DollarSign, Calendar, Play, FileText } from "lucide-react";
+import { 
+  Users, Building2, Briefcase, DollarSign, Calendar, Play, FileText, 
+  Clock, Receipt, FolderOpen, BarChart3, Phone, CheckCircle, XCircle
+} from "lucide-react";
 import { 
   useEmployees, 
   useDepartments, 
@@ -12,12 +15,25 @@ import {
   usePayrollPeriods, 
   usePayrollRuns,
   useCreatePayrollRun,
+  usePostPayrollToGL,
   PAY_FREQUENCIES 
 } from "@/hooks/useHRPayroll";
+import { useTimeOffRequests, useApproveTimeOffRequest, useRejectTimeOffRequest } from "@/hooks/useTimeOff";
+import { useEmergencyContacts } from "@/hooks/useEmergencyContacts";
+import { usePayslips, useGeneratePayslips } from "@/hooks/usePayslips";
+import { useAttendanceRecords } from "@/hooks/useAttendance";
+import { useExpenseClaims, useApproveExpenseClaim, useRejectExpenseClaim, useMarkExpenseAsPaid } from "@/hooks/useExpenseClaims";
+import { useEmployeeDocuments } from "@/hooks/useEmployeeDocuments";
 import { EmployeeForm } from "@/components/forms/EmployeeForm";
 import { DepartmentForm } from "@/components/forms/DepartmentForm";
 import { PositionForm } from "@/components/forms/PositionForm";
 import { PayrollPeriodForm } from "@/components/forms/PayrollPeriodForm";
+import { TimeOffRequestForm } from "@/components/forms/TimeOffRequestForm";
+import { EmergencyContactForm } from "@/components/forms/EmergencyContactForm";
+import { ExpenseClaimForm } from "@/components/forms/ExpenseClaimForm";
+import { AttendanceForm } from "@/components/forms/AttendanceForm";
+import { EmployeeDocumentForm } from "@/components/forms/EmployeeDocumentForm";
+import { HRAnalyticsDashboard } from "@/components/hr/HRAnalyticsDashboard";
 import { format } from "date-fns";
 
 export default function HRPayroll() {
@@ -26,10 +42,26 @@ export default function HRPayroll() {
   const { data: positions = [], isLoading: loadingPositions } = usePositions();
   const { data: payrollPeriods = [], isLoading: loadingPeriods } = usePayrollPeriods();
   const { data: payrollRuns = [], isLoading: loadingRuns } = usePayrollRuns();
+  const { data: timeOffRequests = [], isLoading: loadingTimeOff } = useTimeOffRequests();
+  const { data: emergencyContacts = [], isLoading: loadingContacts } = useEmergencyContacts();
+  const { data: payslips = [], isLoading: loadingPayslips } = usePayslips();
+  const { data: attendanceRecords = [], isLoading: loadingAttendance } = useAttendanceRecords();
+  const { data: expenseClaims = [], isLoading: loadingExpenses } = useExpenseClaims();
+  const { data: documents = [], isLoading: loadingDocuments } = useEmployeeDocuments();
+  
   const createPayrollRun = useCreatePayrollRun();
+  const postToGL = usePostPayrollToGL();
+  const generatePayslips = useGeneratePayslips();
+  const approveTimeOff = useApproveTimeOffRequest();
+  const rejectTimeOff = useRejectTimeOffRequest();
+  const approveExpense = useApproveExpenseClaim();
+  const rejectExpense = useRejectExpenseClaim();
+  const markPaid = useMarkExpenseAsPaid();
 
   const activeEmployees = employees.filter(e => e.employment_status === "active").length;
   const totalPayroll = employees.reduce((sum, e) => sum + (e.base_salary || 0), 0);
+  const pendingTimeOff = timeOffRequests.filter(r => r.status === "pending").length;
+  const pendingExpenses = expenseClaims.filter(c => c.status === "submitted").length;
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -43,6 +75,13 @@ export default function HRPayroll() {
       posted: "default",
       closed: "secondary",
       open: "default",
+      rejected: "destructive",
+      submitted: "secondary",
+      paid: "default",
+      present: "default",
+      absent: "destructive",
+      late: "secondary",
+      remote: "outline",
     };
     return <Badge variant={variants[status] || "outline"}>{status.replace("_", " ")}</Badge>;
   };
@@ -68,26 +107,6 @@ export default function HRPayroll() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Departments</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{departments.length}</div>
-              <p className="text-xs text-muted-foreground">organizational units</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Positions</CardTitle>
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{positions.length}</div>
-              <p className="text-xs text-muted-foreground">job roles defined</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Monthly Payroll</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -96,11 +115,31 @@ export default function HRPayroll() {
               <p className="text-xs text-muted-foreground">base salaries</p>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Pending Time Off</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingTimeOff}</div>
+              <p className="text-xs text-muted-foreground">awaiting approval</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Pending Expenses</CardTitle>
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingExpenses}</div>
+              <p className="text-xs text-muted-foreground">claims to review</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="employees" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="employees" className="gap-2">
               <Users className="h-4 w-4" /> Employees
             </TabsTrigger>
@@ -110,11 +149,32 @@ export default function HRPayroll() {
             <TabsTrigger value="positions" className="gap-2">
               <Briefcase className="h-4 w-4" /> Positions
             </TabsTrigger>
+            <TabsTrigger value="timeoff" className="gap-2">
+              <Calendar className="h-4 w-4" /> Time Off
+            </TabsTrigger>
+            <TabsTrigger value="attendance" className="gap-2">
+              <Clock className="h-4 w-4" /> Attendance
+            </TabsTrigger>
             <TabsTrigger value="periods" className="gap-2">
               <Calendar className="h-4 w-4" /> Pay Periods
             </TabsTrigger>
             <TabsTrigger value="runs" className="gap-2">
               <FileText className="h-4 w-4" /> Payroll Runs
+            </TabsTrigger>
+            <TabsTrigger value="payslips" className="gap-2">
+              <FileText className="h-4 w-4" /> Payslips
+            </TabsTrigger>
+            <TabsTrigger value="expenses" className="gap-2">
+              <Receipt className="h-4 w-4" /> Expenses
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="gap-2">
+              <FolderOpen className="h-4 w-4" /> Documents
+            </TabsTrigger>
+            <TabsTrigger value="contacts" className="gap-2">
+              <Phone className="h-4 w-4" /> Emergency
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="h-4 w-4" /> Analytics
             </TabsTrigger>
           </TabsList>
 
@@ -269,6 +329,127 @@ export default function HRPayroll() {
             </Card>
           </TabsContent>
 
+          {/* Time Off Tab */}
+          <TabsContent value="timeoff">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Time Off Requests</CardTitle>
+                  <CardDescription>Manage leave requests and approvals</CardDescription>
+                </div>
+                <TimeOffRequestForm />
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Start</TableHead>
+                      <TableHead>End</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingTimeOff ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell>
+                      </TableRow>
+                    ) : timeOffRequests.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">No requests found</TableCell>
+                      </TableRow>
+                    ) : (
+                      timeOffRequests.map((req) => (
+                        <TableRow key={req.id}>
+                          <TableCell>{req.employee ? `${req.employee.first_name} ${req.employee.last_name}` : "-"}</TableCell>
+                          <TableCell>{req.time_off_type?.name || "-"}</TableCell>
+                          <TableCell>{format(new Date(req.start_date), "MMM d, yyyy")}</TableCell>
+                          <TableCell>{format(new Date(req.end_date), "MMM d, yyyy")}</TableCell>
+                          <TableCell>{req.days_requested}</TableCell>
+                          <TableCell>{getStatusBadge(req.status)}</TableCell>
+                          <TableCell>
+                            {req.status === "pending" && (
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => approveTimeOff.mutate({ requestId: req.id, approverId: req.employee_id })}
+                                >
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => rejectTimeOff.mutate({ requestId: req.id, reason: "Request denied" })}
+                                >
+                                  <XCircle className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Attendance Tab */}
+          <TabsContent value="attendance">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Attendance Records</CardTitle>
+                  <CardDescription>Track employee attendance and hours</CardDescription>
+                </div>
+                <AttendanceForm />
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Clock In</TableHead>
+                      <TableHead>Clock Out</TableHead>
+                      <TableHead>Hours</TableHead>
+                      <TableHead>Overtime</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingAttendance ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell>
+                      </TableRow>
+                    ) : attendanceRecords.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">No records found</TableCell>
+                      </TableRow>
+                    ) : (
+                      attendanceRecords.map((rec) => (
+                        <TableRow key={rec.id}>
+                          <TableCell>{rec.employee ? `${rec.employee.first_name} ${rec.employee.last_name}` : "-"}</TableCell>
+                          <TableCell>{format(new Date(rec.attendance_date), "MMM d, yyyy")}</TableCell>
+                          <TableCell>{rec.clock_in ? format(new Date(rec.clock_in), "h:mm a") : "-"}</TableCell>
+                          <TableCell>{rec.clock_out ? format(new Date(rec.clock_out), "h:mm a") : "-"}</TableCell>
+                          <TableCell>{rec.total_hours || "-"}</TableCell>
+                          <TableCell>{rec.overtime_hours > 0 ? rec.overtime_hours : "-"}</TableCell>
+                          <TableCell>{getStatusBadge(rec.status)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Pay Periods Tab */}
           <TabsContent value="periods">
             <Card>
@@ -346,9 +527,9 @@ export default function HRPayroll() {
                       <TableHead>Run Date</TableHead>
                       <TableHead>Employees</TableHead>
                       <TableHead className="text-right">Gross Pay</TableHead>
-                      <TableHead className="text-right">Deductions</TableHead>
                       <TableHead className="text-right">Net Pay</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -368,9 +549,32 @@ export default function HRPayroll() {
                           <TableCell>{format(new Date(run.run_date), "MMM d, yyyy")}</TableCell>
                           <TableCell>{run.employee_count}</TableCell>
                           <TableCell className="text-right">${run.total_gross.toLocaleString()}</TableCell>
-                          <TableCell className="text-right text-destructive">${run.total_deductions.toLocaleString()}</TableCell>
                           <TableCell className="text-right font-medium">${run.total_net.toLocaleString()}</TableCell>
                           <TableCell>{getStatusBadge(run.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              {run.status === "draft" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => postToGL.mutate(run.id)}
+                                  disabled={postToGL.isPending}
+                                >
+                                  Post to GL
+                                </Button>
+                              )}
+                              {run.status === "posted" && !payslips.some(p => p.payroll_run_id === run.id) && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => generatePayslips.mutate(run.id)}
+                                  disabled={generatePayslips.isPending}
+                                >
+                                  Generate Payslips
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -378,6 +582,237 @@ export default function HRPayroll() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Payslips Tab */}
+          <TabsContent value="payslips">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payslips</CardTitle>
+                <CardDescription>Employee pay statements</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Payslip #</TableHead>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Pay Date</TableHead>
+                      <TableHead className="text-right">Gross</TableHead>
+                      <TableHead className="text-right">Deductions</TableHead>
+                      <TableHead className="text-right">Net</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingPayslips ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell>
+                      </TableRow>
+                    ) : payslips.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">No payslips found</TableCell>
+                      </TableRow>
+                    ) : (
+                      payslips.map((slip) => (
+                        <TableRow key={slip.id}>
+                          <TableCell className="font-medium">{slip.payslip_number}</TableCell>
+                          <TableCell>{slip.employee ? `${slip.employee.first_name} ${slip.employee.last_name}` : "-"}</TableCell>
+                          <TableCell>{format(new Date(slip.period_start), "MMM d")} - {format(new Date(slip.period_end), "MMM d, yyyy")}</TableCell>
+                          <TableCell>{format(new Date(slip.pay_date), "MMM d, yyyy")}</TableCell>
+                          <TableCell className="text-right">${slip.gross_pay.toLocaleString()}</TableCell>
+                          <TableCell className="text-right text-destructive">${slip.total_deductions.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-medium">${slip.net_pay.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Expenses Tab */}
+          <TabsContent value="expenses">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Expense Claims</CardTitle>
+                  <CardDescription>Employee expense reimbursements</CardDescription>
+                </div>
+                <ExpenseClaimForm />
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Claim #</TableHead>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingExpenses ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell>
+                      </TableRow>
+                    ) : expenseClaims.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">No expense claims found</TableCell>
+                      </TableRow>
+                    ) : (
+                      expenseClaims.map((claim) => (
+                        <TableRow key={claim.id}>
+                          <TableCell className="font-medium">{claim.claim_number}</TableCell>
+                          <TableCell>{claim.employee ? `${claim.employee.first_name} ${claim.employee.last_name}` : "-"}</TableCell>
+                          <TableCell className="capitalize">{claim.category}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{claim.description}</TableCell>
+                          <TableCell className="text-right">${claim.amount.toLocaleString()}</TableCell>
+                          <TableCell>{getStatusBadge(claim.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              {claim.status === "submitted" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => approveExpense.mutate({ claimId: claim.id, approverId: claim.employee_id })}
+                                  >
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => rejectExpense.mutate({ claimId: claim.id, reason: "Claim rejected" })}
+                                  >
+                                    <XCircle className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </>
+                              )}
+                              {claim.status === "approved" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => markPaid.mutate(claim.id)}
+                                >
+                                  Mark Paid
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Documents Tab */}
+          <TabsContent value="documents">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Employee Documents</CardTitle>
+                  <CardDescription>Contracts, IDs, certifications, and more</CardDescription>
+                </div>
+                <EmployeeDocumentForm />
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Document Name</TableHead>
+                      <TableHead>Expiry Date</TableHead>
+                      <TableHead>Added</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingDocuments ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground">Loading...</TableCell>
+                      </TableRow>
+                    ) : documents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground">No documents found</TableCell>
+                      </TableRow>
+                    ) : (
+                      documents.map((doc) => (
+                        <TableRow key={doc.id}>
+                          <TableCell>{doc.employee ? `${doc.employee.first_name} ${doc.employee.last_name}` : "-"}</TableCell>
+                          <TableCell className="capitalize">{doc.document_type.replace("_", " ")}</TableCell>
+                          <TableCell>{doc.document_name}</TableCell>
+                          <TableCell>{doc.expiry_date ? format(new Date(doc.expiry_date), "MMM d, yyyy") : "-"}</TableCell>
+                          <TableCell>{format(new Date(doc.created_at), "MMM d, yyyy")}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Emergency Contacts Tab */}
+          <TabsContent value="contacts">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Emergency Contacts</CardTitle>
+                  <CardDescription>Employee emergency contact information</CardDescription>
+                </div>
+                <EmergencyContactForm />
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Contact Name</TableHead>
+                      <TableHead>Relationship</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Primary</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingContacts ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground">Loading...</TableCell>
+                      </TableRow>
+                    ) : emergencyContacts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground">No contacts found</TableCell>
+                      </TableRow>
+                    ) : (
+                      emergencyContacts.map((contact) => {
+                        const employee = employees.find(e => e.id === contact.employee_id);
+                        return (
+                          <TableRow key={contact.id}>
+                            <TableCell>{employee ? `${employee.first_name} ${employee.last_name}` : "-"}</TableCell>
+                            <TableCell>{contact.contact_name}</TableCell>
+                            <TableCell>{contact.relationship}</TableCell>
+                            <TableCell>{contact.phone_primary}</TableCell>
+                            <TableCell>{contact.is_primary ? <Badge>Primary</Badge> : "-"}</TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics">
+            <HRAnalyticsDashboard />
           </TabsContent>
         </Tabs>
       </div>
