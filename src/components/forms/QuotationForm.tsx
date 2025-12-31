@@ -22,6 +22,8 @@ import { useReceivables } from "@/hooks/useReceivables";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { CURRENCIES, useLatestRates } from "@/hooks/useCurrency";
+import { useTaxCodesWithRates } from "@/hooks/useTransactionDefaults";
 
 interface QuotationFormProps {
   open: boolean;
@@ -48,6 +50,11 @@ export function QuotationForm({ open, onOpenChange }: QuotationFormProps) {
     },
   });
 
+  const { data: taxCodes = [] } = useTaxCodesWithRates();
+  const salesTaxCodes = taxCodes.filter(tc => tc.tax_type === "sales" || tc.tax_type === "vat_output");
+  
+  const { data: latestRates = [] } = useLatestRates();
+
   const [formData, setFormData] = useState({
     customer_id: "",
     entity_id: "",
@@ -55,11 +62,25 @@ export function QuotationForm({ open, onOpenChange }: QuotationFormProps) {
     quote_date: new Date().toISOString().split("T")[0],
     valid_until: "",
     notes: "",
+    tax_code_id: "",
+    currency: "USD",
   });
 
   const [lines, setLines] = useState<LineItem[]>([
     { description: "", quantity: 1, unit_price: 0 },
   ]);
+
+  const getExchangeRate = () => {
+    if (formData.currency === "USD") return 1;
+    const rate = latestRates.find(r => r.from_currency === formData.currency && r.to_currency === "USD");
+    return rate?.rate || 1;
+  };
+
+  const getTaxRate = () => {
+    if (!formData.tax_code_id) return 0;
+    const taxCode = taxCodes.find(tc => tc.id === formData.tax_code_id);
+    return taxCode?.currentRate || 0;
+  };
 
   const addLine = () => {
     setLines([...lines, { description: "", quantity: 1, unit_price: 0 }]);
@@ -82,8 +103,9 @@ export function QuotationForm({ open, onOpenChange }: QuotationFormProps) {
       (sum, line) => sum + line.quantity * line.unit_price,
       0
     );
-    const tax = subtotal * 0.1; // 10% tax
-    return { subtotal, tax, total: subtotal + tax };
+    const taxRate = getTaxRate();
+    const tax = subtotal * (taxRate / 100);
+    return { subtotal, tax, total: subtotal + tax, taxRate };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,6 +133,8 @@ export function QuotationForm({ open, onOpenChange }: QuotationFormProps) {
         quote_date: new Date().toISOString().split("T")[0],
         valid_until: "",
         notes: "",
+        tax_code_id: "",
+        currency: "USD",
       });
       setLines([{ description: "", quantity: 1, unit_price: 0 }]);
     } catch (error) {
@@ -122,7 +146,9 @@ export function QuotationForm({ open, onOpenChange }: QuotationFormProps) {
     }
   };
 
-  const { subtotal, tax, total } = calculateTotals();
+  const { subtotal, tax, total, taxRate } = calculateTotals();
+  const exchangeRate = getExchangeRate();
+  const functionalTotal = total * exchangeRate;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -179,6 +205,24 @@ export function QuotationForm({ open, onOpenChange }: QuotationFormProps) {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select
+                value={formData.currency}
+                onValueChange={(v) => setFormData({ ...formData, currency: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.code} - {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Quote Date</Label>
               <Input
                 type="date"
@@ -198,6 +242,24 @@ export function QuotationForm({ open, onOpenChange }: QuotationFormProps) {
                   setFormData({ ...formData, valid_until: e.target.value })
                 }
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Tax Code</Label>
+              <Select
+                value={formData.tax_code_id}
+                onValueChange={(v) => setFormData({ ...formData, tax_code_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select tax code" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salesTaxCodes.map((tc) => (
+                    <SelectItem key={tc.id} value={tc.id}>
+                      {tc.code} ({tc.currentRate}%)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -238,7 +300,7 @@ export function QuotationForm({ open, onOpenChange }: QuotationFormProps) {
                     required
                   />
                   <div className="w-24 text-right pt-2 text-sm">
-                    ${(line.quantity * line.unit_price).toFixed(2)}
+                    {formData.currency} {(line.quantity * line.unit_price).toFixed(2)}
                   </div>
                   <Button
                     type="button"
@@ -264,9 +326,14 @@ export function QuotationForm({ open, onOpenChange }: QuotationFormProps) {
           </div>
 
           <div className="border-t pt-4 space-y-1 text-right">
-            <div>Subtotal: ${subtotal.toFixed(2)}</div>
-            <div>Tax (10%): ${tax.toFixed(2)}</div>
-            <div className="text-lg font-semibold">Total: ${total.toFixed(2)}</div>
+            <div>Subtotal: {formData.currency} {subtotal.toFixed(2)}</div>
+            <div>Tax ({taxRate}%): {formData.currency} {tax.toFixed(2)}</div>
+            <div className="text-lg font-semibold">Total: {formData.currency} {total.toFixed(2)}</div>
+            {formData.currency !== "USD" && (
+              <div className="text-xs text-muted-foreground">
+                ≈ USD {functionalTotal.toFixed(2)} @ {exchangeRate.toFixed(4)}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">

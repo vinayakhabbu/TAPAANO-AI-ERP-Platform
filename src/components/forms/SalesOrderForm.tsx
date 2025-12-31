@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { CURRENCIES, useLatestRates } from "@/hooks/useCurrency";
+import { useTaxCodesWithRates } from "@/hooks/useTransactionDefaults";
 
 interface LineItem {
   description: string;
@@ -38,6 +40,8 @@ export function SalesOrderForm({ trigger }: SalesOrderFormProps) {
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
+  const [taxCodeId, setTaxCodeId] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const queryClient = useQueryClient();
 
   const { data: customers = [] } = useQuery({
@@ -58,6 +62,23 @@ export function SalesOrderForm({ trigger }: SalesOrderFormProps) {
     },
   });
 
+  const { data: taxCodes = [] } = useTaxCodesWithRates();
+  const salesTaxCodes = taxCodes.filter(tc => tc.tax_type === "sales" || tc.tax_type === "vat_output");
+  
+  const { data: latestRates = [] } = useLatestRates();
+  
+  const getExchangeRate = () => {
+    if (currency === "USD") return 1;
+    const rate = latestRates.find(r => r.from_currency === currency && r.to_currency === "USD");
+    return rate?.rate || 1;
+  };
+
+  const getTaxRate = () => {
+    if (!taxCodeId) return 0;
+    const taxCode = taxCodes.find(tc => tc.id === taxCodeId);
+    return taxCode?.currentRate || 0;
+  };
+
   const mutation = useMutation({
     mutationFn: async () => {
       const { data: profile } = await supabase.from("profiles").select("org_id").single();
@@ -67,7 +88,8 @@ export function SalesOrderForm({ trigger }: SalesOrderFormProps) {
       if (!entityId) throw new Error("No entity found");
 
       const subtotal = lines.reduce((sum, l) => sum + l.quantity * l.unit_price, 0);
-      const tax = subtotal * 0.1;
+      const taxRate = getTaxRate();
+      const tax = subtotal * (taxRate / 100);
       const total = subtotal + tax;
 
       const soNumber = `SO-${Date.now().toString().slice(-6)}`;
@@ -85,6 +107,8 @@ export function SalesOrderForm({ trigger }: SalesOrderFormProps) {
           tax,
           total,
           status: "draft",
+          currency,
+          tax_code_id: taxCodeId || null,
         })
         .select()
         .single();
@@ -124,6 +148,8 @@ export function SalesOrderForm({ trigger }: SalesOrderFormProps) {
     setRequestedDeliveryDate("");
     setNotes("");
     setLines([{ description: "", quantity: 1, unit_price: 0 }]);
+    setTaxCodeId("");
+    setCurrency("USD");
   };
 
   const addLine = () => {
@@ -143,8 +169,11 @@ export function SalesOrderForm({ trigger }: SalesOrderFormProps) {
   };
 
   const subtotal = lines.reduce((sum, l) => sum + l.quantity * l.unit_price, 0);
-  const tax = subtotal * 0.1;
+  const taxRate = getTaxRate();
+  const tax = subtotal * (taxRate / 100);
   const total = subtotal + tax;
+  const exchangeRate = getExchangeRate();
+  const functionalTotal = total * exchangeRate;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -191,6 +220,39 @@ export function SalesOrderForm({ trigger }: SalesOrderFormProps) {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.code} - {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tax Code</Label>
+              <Select value={taxCodeId} onValueChange={setTaxCodeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select tax code" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salesTaxCodes.map((tc) => (
+                    <SelectItem key={tc.id} value={tc.id}>
+                      {tc.code} ({tc.currentRate}%)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>Line Items</Label>
             <div className="space-y-2">
@@ -220,7 +282,7 @@ export function SalesOrderForm({ trigger }: SalesOrderFormProps) {
                     />
                   </div>
                   <div className="w-24 text-right font-medium">
-                    ${(line.quantity * line.unit_price).toFixed(2)}
+                    {currency} {(line.quantity * line.unit_price).toFixed(2)}
                   </div>
                   <Button
                     type="button"
@@ -246,9 +308,14 @@ export function SalesOrderForm({ trigger }: SalesOrderFormProps) {
           </div>
 
           <div className="border-t pt-4 space-y-1 text-right">
-            <p className="text-sm text-muted-foreground">Subtotal: ${subtotal.toFixed(2)}</p>
-            <p className="text-sm text-muted-foreground">Tax (10%): ${tax.toFixed(2)}</p>
-            <p className="text-lg font-semibold">Total: ${total.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">Subtotal: {currency} {subtotal.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">Tax ({taxRate}%): {currency} {tax.toFixed(2)}</p>
+            <p className="text-lg font-semibold">Total: {currency} {total.toFixed(2)}</p>
+            {currency !== "USD" && (
+              <p className="text-xs text-muted-foreground">
+                ≈ USD {functionalTotal.toFixed(2)} @ {exchangeRate.toFixed(4)}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">

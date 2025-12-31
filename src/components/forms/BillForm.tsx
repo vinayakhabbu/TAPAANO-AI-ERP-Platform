@@ -22,6 +22,8 @@ import {
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { addDays, format } from "date-fns";
+import { CURRENCIES, useLatestRates } from "@/hooks/useCurrency";
+import { useTaxCodesWithRates } from "@/hooks/useTransactionDefaults";
 
 interface BillFormProps {
   trigger?: React.ReactNode;
@@ -33,7 +35,8 @@ export function BillForm({ trigger }: BillFormProps) {
   const [purchaseOrderId, setPurchaseOrderId] = useState("");
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 30), "yyyy-MM-dd"));
   const [subtotal, setSubtotal] = useState("");
-  const [taxRate, setTaxRate] = useState("10");
+  const [taxCodeId, setTaxCodeId] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const [notes, setNotes] = useState("");
   const queryClient = useQueryClient();
 
@@ -67,6 +70,23 @@ export function BillForm({ trigger }: BillFormProps) {
     },
   });
 
+  const { data: taxCodes = [] } = useTaxCodesWithRates();
+  const purchaseTaxCodes = taxCodes.filter(tc => tc.tax_type === "purchase" || tc.tax_type === "vat_input");
+  
+  const { data: latestRates = [] } = useLatestRates();
+  
+  const getExchangeRate = () => {
+    if (currency === "USD") return 1;
+    const rate = latestRates.find(r => r.from_currency === currency && r.to_currency === "USD");
+    return rate?.rate || 1;
+  };
+
+  const getTaxRate = () => {
+    if (!taxCodeId) return 0;
+    const taxCode = taxCodes.find(tc => tc.id === taxCodeId);
+    return taxCode?.currentRate || 0;
+  };
+
   const mutation = useMutation({
     mutationFn: async () => {
       const { data: profile } = await supabase.from("profiles").select("org_id").single();
@@ -76,8 +96,11 @@ export function BillForm({ trigger }: BillFormProps) {
       if (!entityId) throw new Error("No entity found");
 
       const subtotalNum = parseFloat(subtotal) || 0;
-      const tax = subtotalNum * (parseFloat(taxRate) / 100);
+      const taxRate = getTaxRate();
+      const tax = subtotalNum * (taxRate / 100);
       const total = subtotalNum + tax;
+      const exchangeRate = getExchangeRate();
+      const functionalTotal = total * exchangeRate;
 
       const billNumber = `BILL-${Date.now().toString().slice(-6)}`;
 
@@ -94,6 +117,10 @@ export function BillForm({ trigger }: BillFormProps) {
         notes: notes || null,
         status: "pending",
         match_status: purchaseOrderId ? "partial" : "unmatched",
+        tax_code_id: taxCodeId || null,
+        currency: currency,
+        exchange_rate: exchangeRate,
+        functional_total: functionalTotal,
       });
 
       if (error) throw error;
@@ -114,7 +141,8 @@ export function BillForm({ trigger }: BillFormProps) {
     setPurchaseOrderId("");
     setDueDate(format(addDays(new Date(), 30), "yyyy-MM-dd"));
     setSubtotal("");
-    setTaxRate("10");
+    setTaxCodeId("");
+    setCurrency("USD");
     setNotes("");
   };
 
@@ -123,14 +151,16 @@ export function BillForm({ trigger }: BillFormProps) {
     const po = purchaseOrders.find((p) => p.id === poId);
     if (po) {
       setVendorId(po.vendor_id);
-      const poSubtotal = po.total / 1.1; // Reverse the tax
-      setSubtotal(poSubtotal.toFixed(2));
+      setSubtotal(po.total.toFixed(2));
     }
   };
 
   const subtotalNum = parseFloat(subtotal) || 0;
-  const tax = subtotalNum * (parseFloat(taxRate) / 100);
+  const taxRate = getTaxRate();
+  const tax = subtotalNum * (taxRate / 100);
   const total = subtotalNum + tax;
+  const exchangeRate = getExchangeRate();
+  const functionalTotal = total * exchangeRate;
 
   const filteredPOs = vendorId
     ? purchaseOrders.filter((po) => po.vendor_id === vendorId)
@@ -146,7 +176,7 @@ export function BillForm({ trigger }: BillFormProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Bill</DialogTitle>
         </DialogHeader>
@@ -187,14 +217,31 @@ export function BillForm({ trigger }: BillFormProps) {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Due Date *</Label>
-            <Input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.code} - {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Due Date *</Label>
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -210,13 +257,19 @@ export function BillForm({ trigger }: BillFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Tax Rate (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={taxRate}
-                onChange={(e) => setTaxRate(e.target.value)}
-              />
+              <Label>Tax Code</Label>
+              <Select value={taxCodeId} onValueChange={setTaxCodeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select tax code" />
+                </SelectTrigger>
+                <SelectContent>
+                  {purchaseTaxCodes.map((tc) => (
+                    <SelectItem key={tc.id} value={tc.id}>
+                      {tc.code} ({tc.currentRate}%)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -226,9 +279,14 @@ export function BillForm({ trigger }: BillFormProps) {
           </div>
 
           <div className="border-t pt-4 space-y-1 text-right">
-            <p className="text-sm text-muted-foreground">Subtotal: ${subtotalNum.toFixed(2)}</p>
-            <p className="text-sm text-muted-foreground">Tax ({taxRate}%): ${tax.toFixed(2)}</p>
-            <p className="text-lg font-semibold">Total: ${total.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">Subtotal: {currency} {subtotalNum.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">Tax ({taxRate}%): {currency} {tax.toFixed(2)}</p>
+            <p className="text-lg font-semibold">Total: {currency} {total.toFixed(2)}</p>
+            {currency !== "USD" && (
+              <p className="text-xs text-muted-foreground">
+                ≈ USD {functionalTotal.toFixed(2)} @ {exchangeRate.toFixed(4)}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">
