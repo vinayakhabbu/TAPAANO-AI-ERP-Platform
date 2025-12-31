@@ -708,6 +708,7 @@ export type Database = {
           status: Database["public"]["Enums"]["bill_status"]
           subtotal: number
           tax: number
+          tax_code_id: string | null
           total: number
           updated_at: string
           vendor_id: string
@@ -731,6 +732,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["bill_status"]
           subtotal?: number
           tax?: number
+          tax_code_id?: string | null
           total?: number
           updated_at?: string
           vendor_id: string
@@ -754,6 +756,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["bill_status"]
           subtotal?: number
           tax?: number
+          tax_code_id?: string | null
           total?: number
           updated_at?: string
           vendor_id?: string
@@ -785,6 +788,13 @@ export type Database = {
             columns: ["purchase_order_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_tax_code_id_fkey"
+            columns: ["tax_code_id"]
+            isOneToOne: false
+            referencedRelation: "tax_codes"
             referencedColumns: ["id"]
           },
           {
@@ -2888,6 +2898,7 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
           tax: number
+          tax_code_id: string | null
           total: number
           updated_at: string
         }
@@ -2910,6 +2921,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
           tax?: number
+          tax_code_id?: string | null
           total?: number
           updated_at?: string
         }
@@ -2932,6 +2944,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
           tax?: number
+          tax_code_id?: string | null
           total?: number
           updated_at?: string
         }
@@ -2969,6 +2982,13 @@ export type Database = {
             columns: ["shipment_id"]
             isOneToOne: false
             referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_tax_code_id_fkey"
+            columns: ["tax_code_id"]
+            isOneToOne: false
+            referencedRelation: "tax_codes"
             referencedColumns: ["id"]
           },
         ]
@@ -5263,6 +5283,377 @@ export type Database = {
           },
         ]
       }
+      tax_codes: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          gl_account_id: string | null
+          id: string
+          is_active: boolean
+          is_recoverable: boolean
+          name: string
+          org_id: string
+          tax_type: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          gl_account_id?: string | null
+          id?: string
+          is_active?: boolean
+          is_recoverable?: boolean
+          name: string
+          org_id: string
+          tax_type?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          gl_account_id?: string | null
+          id?: string
+          is_active?: boolean
+          is_recoverable?: boolean
+          name?: string
+          org_id?: string
+          tax_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_codes_gl_account_id_fkey"
+            columns: ["gl_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_codes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_filing_periods: {
+        Row: {
+          created_at: string
+          entity_id: string
+          filed_at: string | null
+          filing_due_date: string
+          id: string
+          jurisdiction_id: string
+          net_tax_payable: number | null
+          notes: string | null
+          org_id: string
+          paid_at: string | null
+          period_end: string
+          period_name: string
+          period_start: string
+          status: string
+          total_purchase_tax: number | null
+          total_sales_tax: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          filed_at?: string | null
+          filing_due_date: string
+          id?: string
+          jurisdiction_id: string
+          net_tax_payable?: number | null
+          notes?: string | null
+          org_id: string
+          paid_at?: string | null
+          period_end: string
+          period_name: string
+          period_start: string
+          status?: string
+          total_purchase_tax?: number | null
+          total_sales_tax?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          filed_at?: string | null
+          filing_due_date?: string
+          id?: string
+          jurisdiction_id?: string
+          net_tax_payable?: number | null
+          notes?: string | null
+          org_id?: string
+          paid_at?: string | null
+          period_end?: string
+          period_name?: string
+          period_start?: string
+          status?: string
+          total_purchase_tax?: number | null
+          total_sales_tax?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_filing_periods_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_filing_periods_jurisdiction_id_fkey"
+            columns: ["jurisdiction_id"]
+            isOneToOne: false
+            referencedRelation: "tax_jurisdictions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_filing_periods_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_jurisdictions: {
+        Row: {
+          code: string
+          country_code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          jurisdiction_type: string
+          name: string
+          org_id: string
+          parent_id: string | null
+          state_province: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          country_code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          jurisdiction_type?: string
+          name: string
+          org_id: string
+          parent_id?: string | null
+          state_province?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          country_code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          jurisdiction_type?: string
+          name?: string
+          org_id?: string
+          parent_id?: string | null
+          state_province?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_jurisdictions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_jurisdictions_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "tax_jurisdictions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_rates: {
+        Row: {
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_active: boolean
+          is_compound: boolean
+          jurisdiction_id: string | null
+          org_id: string
+          priority: number
+          rate: number
+          tax_code_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          is_compound?: boolean
+          jurisdiction_id?: string | null
+          org_id: string
+          priority?: number
+          rate: number
+          tax_code_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          is_compound?: boolean
+          jurisdiction_id?: string | null
+          org_id?: string
+          priority?: number
+          rate?: number
+          tax_code_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_rates_jurisdiction_id_fkey"
+            columns: ["jurisdiction_id"]
+            isOneToOne: false
+            referencedRelation: "tax_jurisdictions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_rates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_rates_tax_code_id_fkey"
+            columns: ["tax_code_id"]
+            isOneToOne: false
+            referencedRelation: "tax_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_transactions: {
+        Row: {
+          base_amount: number
+          created_at: string
+          currency: string
+          entity_id: string
+          exchange_rate: number | null
+          filed_at: string | null
+          functional_tax_amount: number | null
+          id: string
+          is_recoverable: boolean
+          jurisdiction_id: string | null
+          org_id: string
+          source_id: string
+          source_type: string
+          status: string
+          tax_amount: number
+          tax_code_id: string
+          tax_period: string
+          tax_rate: number
+          tax_rate_id: string | null
+          transaction_date: string
+          updated_at: string
+        }
+        Insert: {
+          base_amount: number
+          created_at?: string
+          currency?: string
+          entity_id: string
+          exchange_rate?: number | null
+          filed_at?: string | null
+          functional_tax_amount?: number | null
+          id?: string
+          is_recoverable?: boolean
+          jurisdiction_id?: string | null
+          org_id: string
+          source_id: string
+          source_type: string
+          status?: string
+          tax_amount: number
+          tax_code_id: string
+          tax_period: string
+          tax_rate: number
+          tax_rate_id?: string | null
+          transaction_date: string
+          updated_at?: string
+        }
+        Update: {
+          base_amount?: number
+          created_at?: string
+          currency?: string
+          entity_id?: string
+          exchange_rate?: number | null
+          filed_at?: string | null
+          functional_tax_amount?: number | null
+          id?: string
+          is_recoverable?: boolean
+          jurisdiction_id?: string | null
+          org_id?: string
+          source_id?: string
+          source_type?: string
+          status?: string
+          tax_amount?: number
+          tax_code_id?: string
+          tax_period?: string
+          tax_rate?: number
+          tax_rate_id?: string | null
+          transaction_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_transactions_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_transactions_jurisdiction_id_fkey"
+            columns: ["jurisdiction_id"]
+            isOneToOne: false
+            referencedRelation: "tax_jurisdictions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_transactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_transactions_tax_code_id_fkey"
+            columns: ["tax_code_id"]
+            isOneToOne: false
+            referencedRelation: "tax_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_transactions_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -5496,6 +5887,15 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: string
       }
+      calculate_tax: {
+        Args: {
+          p_amount: number
+          p_jurisdiction_id?: string
+          p_tax_code_id: string
+          p_transaction_date?: string
+        }
+        Returns: number
+      }
       convert_currency: {
         Args: {
           p_amount: number
@@ -5523,6 +5923,10 @@ export type Database = {
           rationale_text: string
           similarity: number
         }[]
+      }
+      get_current_tax_rate: {
+        Args: { p_jurisdiction_id?: string; p_tax_code_id: string }
+        Returns: number
       }
       get_exchange_rate: {
         Args: {
