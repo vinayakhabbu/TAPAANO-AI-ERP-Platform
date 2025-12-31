@@ -12,11 +12,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, subMonths } from "date-fns";
 
 interface HeaderProps {
-  title: string;
   subtitle?: string;
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ subtitle }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const [commandOpen, setCommandOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(new Date());
@@ -29,8 +28,7 @@ export function Header({ title, subtitle }: HeaderProps) {
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-xl">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
-          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+          {subtitle && <p className="text-sm font-medium text-foreground">{subtitle}</p>}
         </div>
 
         <div className="flex items-center gap-3">
