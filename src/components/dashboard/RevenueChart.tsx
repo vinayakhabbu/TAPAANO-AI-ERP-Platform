@@ -7,17 +7,84 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-const data = [
-  { month: "Jun", revenue: 420000, expenses: 310000 },
-  { month: "Jul", revenue: 480000, expenses: 340000 },
-  { month: "Aug", revenue: 510000, expenses: 355000 },
-  { month: "Sep", revenue: 475000, expenses: 330000 },
-  { month: "Oct", revenue: 520000, expenses: 360000 },
-  { month: "Nov", revenue: 565000, expenses: 380000 },
-];
+import { TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function RevenueChart() {
+  const { data: chartData, isLoading } = useQuery({
+    queryKey: ["revenue-expenses-chart"],
+    queryFn: async () => {
+      const months = Array.from({ length: 6 }, (_, i) => {
+        const date = subMonths(new Date(), 5 - i);
+        return {
+          month: format(date, "MMM"),
+          start: startOfMonth(date).toISOString(),
+          end: endOfMonth(date).toISOString(),
+        };
+      });
+
+      const results = await Promise.all(
+        months.map(async ({ month, start, end }) => {
+          // Get revenue from invoices
+          const { data: invoices } = await supabase
+            .from("invoices")
+            .select("total")
+            .gte("issue_date", start)
+            .lte("issue_date", end);
+
+          // Get expenses from bills
+          const { data: bills } = await supabase
+            .from("bills")
+            .select("total")
+            .gte("issue_date", start)
+            .lte("issue_date", end);
+
+          const revenue = invoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
+          const expenses = bills?.reduce((sum, bill) => sum + (bill.total || 0), 0) || 0;
+
+          return { month, revenue, expenses };
+        })
+      );
+
+      return results;
+    },
+  });
+
+  const hasData = chartData && chartData.some(d => d.revenue > 0 || d.expenses > 0);
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="mt-1 h-4 w-36" />
+          </div>
+        </div>
+        <Skeleton className="h-[280px] w-full" />
+      </div>
+    );
+  }
+
+  if (!hasData) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-foreground">Revenue vs Expenses</h3>
+          <p className="text-sm text-muted-foreground">Last 6 months performance</p>
+        </div>
+        <div className="flex flex-col items-center justify-center h-[280px] text-center">
+          <TrendingUp className="h-12 w-12 text-muted-foreground mb-3" />
+          <p className="text-sm font-medium text-foreground">No data yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Create invoices and bills to see trends</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card p-6">
       <div className="mb-6 flex items-center justify-between">
@@ -39,7 +106,7 @@ export function RevenueChart() {
 
       <div className="h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
+          <AreaChart data={chartData}>
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
