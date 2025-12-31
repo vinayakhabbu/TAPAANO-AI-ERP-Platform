@@ -406,61 +406,74 @@ export default function DecisionDesk() {
       subtitle="Audit trail for all approval decisions and exceptions"
     >
       <div className="space-y-6">
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Decisions</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
+        {/* Summary Stats - Compact Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-muted-foreground/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-muted group-hover:bg-muted/80 transition-colors">
+                  <Scale className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <Scale className="h-8 w-8 text-muted-foreground" />
+                <div>
+                  <p className="text-2xl font-bold tracking-tight">{stats.total}</p>
+                  <p className="text-xs text-muted-foreground">Total</p>
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Approved</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+          
+          <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-green-500">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-50 dark:bg-green-950 group-hover:bg-green-100 dark:group-hover:bg-green-900 transition-colors">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
-                <CheckCircle2 className="h-8 w-8 text-green-600" />
+                <div>
+                  <p className="text-2xl font-bold tracking-tight text-green-600">{stats.approved}</p>
+                  <p className="text-xs text-muted-foreground">Approved</p>
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Rejected</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+          
+          <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-red-500">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950 group-hover:bg-red-100 dark:group-hover:bg-red-900 transition-colors">
+                  <XCircle className="h-5 w-5 text-red-600" />
                 </div>
-                <XCircle className="h-8 w-8 text-red-600" />
+                <div>
+                  <p className="text-2xl font-bold tracking-tight text-red-600">{stats.rejected}</p>
+                  <p className="text-xs text-muted-foreground">Rejected</p>
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+          
+          <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-amber-500">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950 group-hover:bg-amber-100 dark:group-hover:bg-amber-900 transition-colors">
+                  <Clock className="h-5 w-5 text-amber-600" />
                 </div>
-                <Clock className="h-8 w-8 text-amber-600" />
+                <div>
+                  <p className="text-2xl font-bold tracking-tight text-amber-600">{stats.pending}</p>
+                  <p className="text-xs text-muted-foreground">Pending</p>
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Auto-Approved</p>
-                  <p className="text-2xl font-bold text-blue-600">{stats.autoApproved}</p>
-                  <p className="text-xs text-blue-600">{stats.autoApprovalRate}% automation</p>
+          
+          <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-blue-500 col-span-2 sm:col-span-1">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950 group-hover:bg-blue-100 dark:group-hover:bg-blue-900 transition-colors">
+                  <Bot className="h-5 w-5 text-blue-600" />
                 </div>
-                <Bot className="h-8 w-8 text-blue-600" />
+                <div>
+                  <p className="text-2xl font-bold tracking-tight text-blue-600">{stats.autoApproved}</p>
+                  <p className="text-xs text-muted-foreground">{stats.autoApprovalRate}% Auto</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -468,47 +481,68 @@ export default function DecisionDesk() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="decisions" className="space-y-4">
-          <div className="relative">
-            <div className="overflow-x-auto scrollbar-hide pb-1">
-              <TabsList className="inline-flex w-max min-w-full h-auto p-1 gap-1">
-                <TabsTrigger value="decisions" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+          <Card className="p-1.5">
+            <div className="overflow-x-auto scrollbar-hide">
+              <TabsList className="inline-flex w-max min-w-full h-auto p-0 gap-1 bg-transparent">
+                <TabsTrigger 
+                  value="decisions" 
+                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+                >
                   <FileText className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline">Decision Log</span>
-                  <span className="sm:hidden">Decisions</span>
+                  <span className="hidden sm:inline font-medium">Decision Log</span>
+                  <span className="sm:hidden font-medium">Log</span>
                 </TabsTrigger>
-                <TabsTrigger value="precedents" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                <TabsTrigger 
+                  value="precedents" 
+                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+                >
                   <History className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline">Precedent Explorer</span>
-                  <span className="sm:hidden">Precedents</span>
+                  <span className="hidden sm:inline font-medium">Precedents</span>
+                  <span className="sm:hidden font-medium">Prec.</span>
                 </TabsTrigger>
-                <TabsTrigger value="agent-runs" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                <TabsTrigger 
+                  value="agent-runs" 
+                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+                >
                   <Play className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline">Agent Runs</span>
-                  <span className="sm:hidden">Runs</span>
+                  <span className="hidden sm:inline font-medium">Agent Runs</span>
+                  <span className="sm:hidden font-medium">Runs</span>
                 </TabsTrigger>
-                <TabsTrigger value="graph" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                <TabsTrigger 
+                  value="graph" 
+                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+                >
                   <Network className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline">Entity Graph</span>
-                  <span className="sm:hidden">Graph</span>
+                  <span className="hidden sm:inline font-medium">Entity Graph</span>
+                  <span className="sm:hidden font-medium">Graph</span>
                 </TabsTrigger>
-                <TabsTrigger value="autonomous" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                <TabsTrigger 
+                  value="autonomous" 
+                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+                >
                   <Bot className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline">Autonomous Approver</span>
-                  <span className="sm:hidden">Auto</span>
+                  <span className="hidden sm:inline font-medium">Auto Approver</span>
+                  <span className="sm:hidden font-medium">Auto</span>
                 </TabsTrigger>
-                <TabsTrigger value="anomalies" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                <TabsTrigger 
+                  value="anomalies" 
+                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+                >
                   <ShieldAlert className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline">Anomaly Detection</span>
-                  <span className="sm:hidden">Anomalies</span>
+                  <span className="hidden sm:inline font-medium">Anomalies</span>
+                  <span className="sm:hidden font-medium">Alert</span>
                 </TabsTrigger>
-                <TabsTrigger value="analytics" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                <TabsTrigger 
+                  value="analytics" 
+                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+                >
                   <BarChart3 className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline">Policy Analytics</span>
-                  <span className="sm:hidden">Analytics</span>
+                  <span className="hidden sm:inline font-medium">Analytics</span>
+                  <span className="sm:hidden font-medium">Stats</span>
                 </TabsTrigger>
               </TabsList>
             </div>
-          </div>
+          </Card>
 
           {/* Precedent Explorer Tab */}
           <TabsContent value="precedents">
@@ -566,105 +600,130 @@ export default function DecisionDesk() {
 
           <TabsContent value="decisions" className="space-y-4">
             {/* Filters */}
-            <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search decisions..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as DecisionType | "all")}>
-                <SelectTrigger className="w-[180px]">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Decision Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="po_approval">PO Approval</SelectItem>
-                  <SelectItem value="po_rejection">PO Rejection</SelectItem>
-                  <SelectItem value="payment_approval">Payment Approval</SelectItem>
-                  <SelectItem value="payment_rejection">Payment Rejection</SelectItem>
-                  <SelectItem value="payment_processing">Payment Processing</SelectItem>
-                  <SelectItem value="journal_post">Journal Post</SelectItem>
-                  <SelectItem value="journal_reverse">Journal Reverse</SelectItem>
-                  <SelectItem value="bill_status_change">Bill Status</SelectItem>
-                  <SelectItem value="requisition_submit">Requisition Submit</SelectItem>
-                  <SelectItem value="requisition_approval">Requisition Approval</SelectItem>
-                  <SelectItem value="requisition_rejection">Requisition Rejection</SelectItem>
-                  <SelectItem value="invoice_sent">Invoice Sent</SelectItem>
-                  <SelectItem value="invoice_void">Invoice Void</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-[140px]">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Date Range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">Last 7 Days</SelectItem>
-                  <SelectItem value="month">Last 30 Days</SelectItem>
-                  <SelectItem value="quarter">Last 90 Days</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" onClick={exportToCSV} title="Export to CSV">
-                <Download className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Decision List */}
-        <div>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <Card key={i}>
-                  <CardHeader className="py-4">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-10 w-10 rounded-lg" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-24" />
-                      </div>
-                    </div>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          ) : filteredDecisions && filteredDecisions.length > 0 ? (
-            filteredDecisions.map((decision) => (
-              <DecisionCard key={decision.id} decision={decision} />
-            ))
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Scale className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Decisions Yet</h3>
-                <p className="text-muted-foreground text-sm">
-                  Decision traces will appear here as you approve, reject, or process transactions.
-                </p>
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex flex-col lg:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by type, rationale, or content..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 bg-muted/50 border-0 focus-visible:bg-background focus-visible:ring-1"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as DecisionType | "all")}>
+                      <SelectTrigger className="w-[160px] bg-muted/50 border-0">
+                        <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="po_approval">PO Approval</SelectItem>
+                        <SelectItem value="po_rejection">PO Rejection</SelectItem>
+                        <SelectItem value="payment_approval">Payment Approval</SelectItem>
+                        <SelectItem value="payment_rejection">Payment Rejection</SelectItem>
+                        <SelectItem value="payment_processing">Payment Processing</SelectItem>
+                        <SelectItem value="journal_post">Journal Post</SelectItem>
+                        <SelectItem value="journal_reverse">Journal Reverse</SelectItem>
+                        <SelectItem value="bill_status_change">Bill Status</SelectItem>
+                        <SelectItem value="requisition_submit">Requisition Submit</SelectItem>
+                        <SelectItem value="requisition_approval">Requisition Approval</SelectItem>
+                        <SelectItem value="requisition_rejection">Requisition Rejection</SelectItem>
+                        <SelectItem value="invoice_sent">Invoice Sent</SelectItem>
+                        <SelectItem value="invoice_void">Invoice Void</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[130px] bg-muted/50 border-0">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={dateRange} onValueChange={setDateRange}>
+                      <SelectTrigger className="w-[140px] bg-muted/50 border-0">
+                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <SelectValue placeholder="Time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="week">Last 7 Days</SelectItem>
+                        <SelectItem value="month">Last 30 Days</SelectItem>
+                        <SelectItem value="quarter">Last 90 Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={exportToCSV} 
+                      title="Export to CSV"
+                      className="bg-muted/50 border-0 hover:bg-muted"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
-        </div>
+
+            {/* Decision List */}
+            <div className="space-y-3">
+              {isLoading ? (
+                <>
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardHeader className="py-4">
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="h-12 w-12 rounded-xl" />
+                          <div className="space-y-2 flex-1">
+                            <Skeleton className="h-4 w-40" />
+                            <Skeleton className="h-3 w-28" />
+                          </div>
+                          <Skeleton className="h-6 w-20 rounded-full" />
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </>
+              ) : filteredDecisions && filteredDecisions.length > 0 ? (
+                filteredDecisions.map((decision) => (
+                  <DecisionCard key={decision.id} decision={decision} />
+                ))
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-16 text-center">
+                    <div className="mx-auto w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
+                      <Scale className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">No Decisions Yet</h3>
+                    <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6">
+                      Decision traces will appear here as you approve, reject, or process transactions across the system.
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="secondary" className="gap-1">
+                        <ShoppingCart className="h-3 w-3" /> Purchase Orders
+                      </Badge>
+                      <Badge variant="secondary" className="gap-1">
+                        <CreditCard className="h-3 w-3" /> Payments
+                      </Badge>
+                      <Badge variant="secondary" className="gap-1">
+                        <BookOpen className="h-3 w-3" /> Journal Entries
+                      </Badge>
+                      <Badge variant="secondary" className="gap-1">
+                        <FileText className="h-3 w-3" /> Invoices
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="autonomous">
