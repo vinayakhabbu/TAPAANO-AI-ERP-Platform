@@ -24,16 +24,6 @@ export function Header({ title, subtitle }: HeaderProps) {
   // Generate last 12 months for period selection
   const periods = Array.from({ length: 12 }, (_, i) => subMonths(new Date(), i));
 
-  // Sample notifications
-  const notifications = [
-    { id: 1, title: "Invoice #INV-0042 approved", time: "5 min ago", read: false },
-    { id: 2, title: "New purchase order received", time: "1 hour ago", read: false },
-    { id: 3, title: "Payment of $12,500 processed", time: "2 hours ago", read: true },
-    { id: 4, title: "Month-end close reminder", time: "Yesterday", read: true },
-  ];
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
   return (
     <>
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
@@ -74,40 +64,16 @@ export function Header({ title, subtitle }: HeaderProps) {
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5 text-muted-foreground" />
-                {unreadCount > 0 && (
-                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-                )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="end">
               <div className="border-b border-border p-3">
                 <h4 className="font-medium text-foreground">Notifications</h4>
-                <p className="text-xs text-muted-foreground">{unreadCount} unread</p>
+                <p className="text-xs text-muted-foreground">0 unread</p>
               </div>
-              <ScrollArea className="h-[300px]">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`flex items-start gap-3 border-b border-border p-3 last:border-0 ${
-                      !notification.read ? "bg-muted/50" : ""
-                    }`}
-                  >
-                    <div
-                      className={`mt-1.5 h-2 w-2 rounded-full ${
-                        !notification.read ? "bg-primary" : "bg-transparent"
-                      }`}
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm text-foreground">{notification.title}</p>
-                      <p className="text-xs text-muted-foreground">{notification.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </ScrollArea>
-              <div className="border-t border-border p-2">
-                <Button variant="ghost" size="sm" className="w-full text-xs">
-                  View all notifications
-                </Button>
+              <div className="p-8 text-center">
+                <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No notifications yet</p>
               </div>
             </PopoverContent>
           </Popover>
