@@ -6,6 +6,9 @@ import { useProducts, useWarehouses } from "./useInventory";
 import { useProductionOrders } from "./useProduction";
 import { useBankAccounts } from "./useBanking";
 import { useControlling } from "./useControlling";
+import { useEmployees, useDepartments, usePayrollRuns } from "./useHRPayroll";
+import { useTaxSummary } from "./useTaxManagement";
+import { useExchangeRates, useCurrencyRevaluations } from "./useCurrency";
 
 export function useDashboardStats() {
   const { stats: arStats, isLoading: arLoading } = useReceivables();
@@ -28,6 +31,18 @@ export function useDashboardStats() {
     budgetsLoading, 
     costCentersLoading 
   } = useControlling();
+
+  // HR & Payroll
+  const { data: employees, isLoading: isLoadingEmployees } = useEmployees();
+  const { data: departments, isLoading: isLoadingDepartments } = useDepartments();
+  const { data: payrollRuns, isLoading: isLoadingPayroll } = usePayrollRuns();
+
+  // Tax Management
+  const taxSummary = useTaxSummary();
+
+  // Multi-Currency
+  const { data: exchangeRates, isLoading: isLoadingRates } = useExchangeRates();
+  const { data: revaluations, isLoading: isLoadingRevaluations } = useCurrencyRevaluations();
 
   // Calculate service stats
   const activeContracts = serviceContracts?.filter(c => c.status === 'active').length || 0;
@@ -53,9 +68,21 @@ export function useDashboardStats() {
     .reduce((sum, b) => sum + Number(b.total_amount || 0), 0) || 0;
   const activeCostCenters = costCenters?.filter(cc => cc.is_active).length || 0;
 
+  // Calculate HR stats
+  const activeEmployees = employees?.filter(e => e.employment_status === 'active').length || 0;
+  const totalDepartments = departments?.length || 0;
+  const lastPayrollRun = payrollRuns?.[0];
+  const monthlyPayroll = lastPayrollRun?.total_net || 0;
+
+  // Calculate currency stats
+  const activeCurrencies = new Set(exchangeRates?.map(r => r.from_currency) || []).size;
+  const totalGainLoss = revaluations?.reduce((sum, r) => sum + Number(r.gain_loss_amount || 0), 0) || 0;
+
   const isLoading = arLoading || apStats.isLoading || isLoadingContracts || isLoadingCalls || 
     isLoadingProducts || isLoadingWarehouses || isLoadingOrders || 
-    isLoadingAccounts || budgetsLoading || costCentersLoading;
+    isLoadingAccounts || budgetsLoading || costCentersLoading ||
+    isLoadingEmployees || isLoadingDepartments || isLoadingPayroll ||
+    isLoadingRates || isLoadingRevaluations;
 
   return {
     // CRM / Sales
@@ -110,6 +137,27 @@ export function useDashboardStats() {
       approvedBudgets,
       totalBudgetAmount,
       activeCostCenters,
+    },
+    // HR & Payroll
+    hr: {
+      activeEmployees,
+      totalEmployees: employees?.length || 0,
+      totalDepartments,
+      monthlyPayroll,
+    },
+    // Tax Management
+    tax: {
+      salesTax: taxSummary.salesTax,
+      purchaseTax: taxSummary.purchaseTax,
+      netPayable: taxSummary.netTaxPayable,
+      pendingFilings: taxSummary.pendingFilings,
+      overdueFilings: taxSummary.overdueFilings,
+    },
+    // Multi-Currency
+    currency: {
+      activeCurrencies,
+      totalGainLoss,
+      rateCount: exchangeRates?.length || 0,
     },
     isLoading,
   };
