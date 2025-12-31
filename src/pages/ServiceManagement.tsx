@@ -181,24 +181,30 @@ const ServiceManagement = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="contracts" className="mt-6">
-        <TabsList className="bg-muted/50">
-          <TabsTrigger value="contracts" className="gap-2">
-            <FileText className="h-4 w-4" />
-            Contracts
-          </TabsTrigger>
-          <TabsTrigger value="warranties" className="gap-2">
-            <Shield className="h-4 w-4" />
-            Warranties
-          </TabsTrigger>
-          <TabsTrigger value="service-calls" className="gap-2">
-            <Phone className="h-4 w-4" />
-            Service Calls
-          </TabsTrigger>
-          <TabsTrigger value="field-service" className="gap-2">
-            <MapPin className="h-4 w-4" />
-            Field Service
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <TabsList className="inline-flex h-10 w-auto bg-muted/50">
+            <TabsTrigger value="contracts" className="gap-2 whitespace-nowrap">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Contracts</span>
+              <span className="sm:hidden">Contr</span>
+            </TabsTrigger>
+            <TabsTrigger value="warranties" className="gap-2 whitespace-nowrap">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Warranties</span>
+              <span className="sm:hidden">Warr</span>
+            </TabsTrigger>
+            <TabsTrigger value="service-calls" className="gap-2 whitespace-nowrap">
+              <Phone className="h-4 w-4" />
+              <span className="hidden sm:inline">Service Calls</span>
+              <span className="sm:hidden">Calls</span>
+            </TabsTrigger>
+            <TabsTrigger value="field-service" className="gap-2 whitespace-nowrap">
+              <MapPin className="h-4 w-4" />
+              <span className="hidden sm:inline">Field Service</span>
+              <span className="sm:hidden">Field</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Contracts Tab */}
         <TabsContent value="contracts">

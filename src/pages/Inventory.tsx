@@ -197,40 +197,50 @@ const Inventory = () => {
 
       {/* Tabs for Inventory Workflow */}
       <Tabs defaultValue="stock" className="mt-6">
-        <TabsList className="inline-flex h-10 w-auto flex-wrap">
-          <TabsTrigger value="stock" className="gap-2">
-            <Package className="h-4 w-4 hidden sm:inline" />
-            Stock
-          </TabsTrigger>
-          <TabsTrigger value="warehouses" className="gap-2">
-            <Warehouse className="h-4 w-4 hidden sm:inline" />
-            Warehouses
-          </TabsTrigger>
-          <TabsTrigger value="products" className="gap-2">
-            <Tag className="h-4 w-4 hidden sm:inline" />
-            Products
-          </TabsTrigger>
-          <TabsTrigger value="transfers" className="gap-2">
-            <ArrowLeftRight className="h-4 w-4 hidden sm:inline" />
-            Transfers
-          </TabsTrigger>
-          <TabsTrigger value="receipts" className="gap-2">
-            <FileInput className="h-4 w-4 hidden sm:inline" />
-            Receipts
-          </TabsTrigger>
-          <TabsTrigger value="consignment" className="gap-2">
-            <Handshake className="h-4 w-4 hidden sm:inline" />
-            Consignment
-          </TabsTrigger>
-          <TabsTrigger value="counting" className="gap-2">
-            <ClipboardList className="h-4 w-4 hidden sm:inline" />
-            Counting
-          </TabsTrigger>
-          <TabsTrigger value="tracking" className="gap-2">
-            <Boxes className="h-4 w-4 hidden sm:inline" />
-            Tracking
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <TabsList className="inline-flex h-10 w-auto bg-muted/50">
+            <TabsTrigger value="stock" className="gap-2 whitespace-nowrap">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Stock</span>
+              <span className="sm:hidden">Stk</span>
+            </TabsTrigger>
+            <TabsTrigger value="warehouses" className="gap-2 whitespace-nowrap">
+              <Warehouse className="h-4 w-4" />
+              <span className="hidden sm:inline">Warehouses</span>
+              <span className="sm:hidden">WH</span>
+            </TabsTrigger>
+            <TabsTrigger value="products" className="gap-2 whitespace-nowrap">
+              <Tag className="h-4 w-4" />
+              <span className="hidden sm:inline">Products</span>
+              <span className="sm:hidden">Prod</span>
+            </TabsTrigger>
+            <TabsTrigger value="transfers" className="gap-2 whitespace-nowrap">
+              <ArrowLeftRight className="h-4 w-4" />
+              <span className="hidden sm:inline">Transfers</span>
+              <span className="sm:hidden">Xfer</span>
+            </TabsTrigger>
+            <TabsTrigger value="receipts" className="gap-2 whitespace-nowrap">
+              <FileInput className="h-4 w-4" />
+              <span className="hidden sm:inline">Receipts</span>
+              <span className="sm:hidden">Rcpt</span>
+            </TabsTrigger>
+            <TabsTrigger value="consignment" className="gap-2 whitespace-nowrap">
+              <Handshake className="h-4 w-4" />
+              <span className="hidden sm:inline">Consignment</span>
+              <span className="sm:hidden">Cons</span>
+            </TabsTrigger>
+            <TabsTrigger value="counting" className="gap-2 whitespace-nowrap">
+              <ClipboardList className="h-4 w-4" />
+              <span className="hidden sm:inline">Counting</span>
+              <span className="sm:hidden">Count</span>
+            </TabsTrigger>
+            <TabsTrigger value="tracking" className="gap-2 whitespace-nowrap">
+              <Boxes className="h-4 w-4" />
+              <span className="hidden sm:inline">Tracking</span>
+              <span className="sm:hidden">Track</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Stock Tab */}
         <TabsContent value="stock" className="mt-4">

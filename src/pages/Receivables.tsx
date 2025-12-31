@@ -236,28 +236,35 @@ const Receivables = () => {
 
       {/* Tabs for O2C stages */}
       <Tabs defaultValue="quotations" className="mt-6">
-        <TabsList className="bg-muted/50">
-          <TabsTrigger value="quotations" className="gap-2">
-            <ClipboardList className="h-4 w-4" />
-            Quotations
-          </TabsTrigger>
-          <TabsTrigger value="sales-orders" className="gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            Sales Orders
-          </TabsTrigger>
-          <TabsTrigger value="shipping" className="gap-2">
-            <Truck className="h-4 w-4" />
-            Shipping
-          </TabsTrigger>
-          <TabsTrigger value="invoices" className="gap-2">
-            <FileText className="h-4 w-4" />
-            Invoices
-          </TabsTrigger>
-          <TabsTrigger value="collections" className="gap-2">
-            <CreditCard className="h-4 w-4" />
-            Collections
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <TabsList className="inline-flex h-10 w-auto bg-muted/50">
+            <TabsTrigger value="quotations" className="gap-2 whitespace-nowrap">
+              <ClipboardList className="h-4 w-4" />
+              <span className="hidden sm:inline">Quotations</span>
+              <span className="sm:hidden">Quotes</span>
+            </TabsTrigger>
+            <TabsTrigger value="sales-orders" className="gap-2 whitespace-nowrap">
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">Sales Orders</span>
+              <span className="sm:hidden">Orders</span>
+            </TabsTrigger>
+            <TabsTrigger value="shipping" className="gap-2 whitespace-nowrap">
+              <Truck className="h-4 w-4" />
+              <span className="hidden sm:inline">Shipping</span>
+              <span className="sm:hidden">Ship</span>
+            </TabsTrigger>
+            <TabsTrigger value="invoices" className="gap-2 whitespace-nowrap">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Invoices</span>
+              <span className="sm:hidden">Inv</span>
+            </TabsTrigger>
+            <TabsTrigger value="collections" className="gap-2 whitespace-nowrap">
+              <CreditCard className="h-4 w-4" />
+              <span className="hidden sm:inline">Collections</span>
+              <span className="sm:hidden">Collect</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Quotations Tab */}
         <TabsContent value="quotations">

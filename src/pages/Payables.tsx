@@ -268,32 +268,40 @@ const Payables = () => {
 
       {/* Tabs for P2P Workflow */}
       <Tabs defaultValue="requisitions" className="mt-6">
-        <TabsList className="inline-flex h-10 w-auto">
-          <TabsTrigger value="requisitions" className="gap-2">
-            <FileInput className="h-4 w-4 hidden sm:inline" />
-            Requisitions
-          </TabsTrigger>
-          <TabsTrigger value="purchase-orders" className="gap-2">
-            <FileText className="h-4 w-4 hidden sm:inline" />
-            POs
-          </TabsTrigger>
-          <TabsTrigger value="receiving" className="gap-2">
-            <Package className="h-4 w-4 hidden sm:inline" />
-            Receiving
-          </TabsTrigger>
-          <TabsTrigger value="bills" className="gap-2">
-            <DollarSign className="h-4 w-4 hidden sm:inline" />
-            Bills
-          </TabsTrigger>
-          <TabsTrigger value="matching" className="gap-2">
-            <CheckCircle2 className="h-4 w-4 hidden sm:inline" />
-            Matching
-          </TabsTrigger>
-          <TabsTrigger value="payments" className="gap-2">
-            <Banknote className="h-4 w-4 hidden sm:inline" />
-            Payments
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <TabsList className="inline-flex h-10 w-auto bg-muted/50">
+            <TabsTrigger value="requisitions" className="gap-2 whitespace-nowrap">
+              <FileInput className="h-4 w-4" />
+              <span className="hidden sm:inline">Requisitions</span>
+              <span className="sm:hidden">Req</span>
+            </TabsTrigger>
+            <TabsTrigger value="purchase-orders" className="gap-2 whitespace-nowrap">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Purchase Orders</span>
+              <span className="sm:hidden">POs</span>
+            </TabsTrigger>
+            <TabsTrigger value="receiving" className="gap-2 whitespace-nowrap">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Receiving</span>
+              <span className="sm:hidden">Recv</span>
+            </TabsTrigger>
+            <TabsTrigger value="bills" className="gap-2 whitespace-nowrap">
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Bills</span>
+              <span className="sm:hidden">Bills</span>
+            </TabsTrigger>
+            <TabsTrigger value="matching" className="gap-2 whitespace-nowrap">
+              <CheckCircle2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Matching</span>
+              <span className="sm:hidden">Match</span>
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="gap-2 whitespace-nowrap">
+              <Banknote className="h-4 w-4" />
+              <span className="hidden sm:inline">Payments</span>
+              <span className="sm:hidden">Pay</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Requisitions Tab */}
         <TabsContent value="requisitions" className="mt-4">

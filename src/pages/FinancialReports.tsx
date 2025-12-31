@@ -219,21 +219,26 @@ const FinancialReports = () => {
 
       {/* Report Tabs */}
       <Tabs defaultValue="income" className="space-y-4">
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="income" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Income Statement
-            </TabsTrigger>
-            <TabsTrigger value="balance" className="gap-2">
-              <Scale className="h-4 w-4" />
-              Balance Sheet
-            </TabsTrigger>
-            <TabsTrigger value="cashflow" className="gap-2">
-              <Banknote className="h-4 w-4" />
-              Cash Flow
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1 w-full sm:w-auto">
+            <TabsList className="inline-flex h-10 w-auto bg-muted/50">
+              <TabsTrigger value="income" className="gap-2 whitespace-nowrap">
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Income Statement</span>
+                <span className="sm:hidden">P&L</span>
+              </TabsTrigger>
+              <TabsTrigger value="balance" className="gap-2 whitespace-nowrap">
+                <Scale className="h-4 w-4" />
+                <span className="hidden sm:inline">Balance Sheet</span>
+                <span className="sm:hidden">BS</span>
+              </TabsTrigger>
+              <TabsTrigger value="cashflow" className="gap-2 whitespace-nowrap">
+                <Banknote className="h-4 w-4" />
+                <span className="hidden sm:inline">Cash Flow</span>
+                <span className="sm:hidden">CF</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2" disabled={isLoading}>

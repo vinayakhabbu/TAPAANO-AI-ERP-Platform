@@ -101,15 +101,45 @@ const Controlling = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
-          <TabsTrigger value="budgets">Budgets</TabsTrigger>
-          <TabsTrigger value="assets">Fixed Assets</TabsTrigger>
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-          <TabsTrigger value="cost-centers">Cost Centers</TabsTrigger>
-          <TabsTrigger value="internal-orders">Internal Orders</TabsTrigger>
-          <TabsTrigger value="co-documents">CO Documents</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <TabsList className="inline-flex h-10 w-auto bg-muted/50">
+            <TabsTrigger value="cash-flow" className="gap-2 whitespace-nowrap">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Cash Flow</span>
+              <span className="sm:hidden">Cash</span>
+            </TabsTrigger>
+            <TabsTrigger value="budgets" className="gap-2 whitespace-nowrap">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">Budgets</span>
+              <span className="sm:hidden">Budg</span>
+            </TabsTrigger>
+            <TabsTrigger value="assets" className="gap-2 whitespace-nowrap">
+              <Landmark className="h-4 w-4" />
+              <span className="hidden sm:inline">Fixed Assets</span>
+              <span className="sm:hidden">Assets</span>
+            </TabsTrigger>
+            <TabsTrigger value="projects" className="gap-2 whitespace-nowrap">
+              <FolderKanban className="h-4 w-4" />
+              <span className="hidden sm:inline">Projects</span>
+              <span className="sm:hidden">Proj</span>
+            </TabsTrigger>
+            <TabsTrigger value="cost-centers" className="gap-2 whitespace-nowrap">
+              <Building2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Cost Centers</span>
+              <span className="sm:hidden">CC</span>
+            </TabsTrigger>
+            <TabsTrigger value="internal-orders" className="gap-2 whitespace-nowrap">
+              <ClipboardList className="h-4 w-4" />
+              <span className="hidden sm:inline">Internal Orders</span>
+              <span className="sm:hidden">IO</span>
+            </TabsTrigger>
+            <TabsTrigger value="co-documents" className="gap-2 whitespace-nowrap">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">CO Documents</span>
+              <span className="sm:hidden">CO</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Cash Flow Tab */}
         <TabsContent value="cash-flow" className="space-y-4">
