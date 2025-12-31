@@ -21,7 +21,9 @@ import {
   Zap,
   Bot,
   ShieldAlert,
-  History
+  History,
+  GitBranch,
+  TrendingUp
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +64,12 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; col
   auto_approved: { label: "Auto-Approved", icon: CheckCircle2, color: "text-blue-600" },
 };
 
+interface PrecedentRef {
+  decision_id: string;
+  similarity: number;
+  note?: string;
+}
+
 function DecisionCard({ decision }: { decision: DecisionTrace }) {
   const [isOpen, setIsOpen] = useState(false);
   const { data: entities } = useDecisionEntities(isOpen ? decision.id : null);
@@ -77,6 +85,10 @@ function DecisionCard({ decision }: { decision: DecisionTrace }) {
 
   const inputSnapshot = decision.input_snapshot as Record<string, unknown>;
   const commitWrites = decision.commit_writes as Array<Record<string, unknown>>;
+  
+  // Get precedents_referenced from the decision (stored as JSONB)
+  const rawPrecedents = (decision as any).precedents_referenced;
+  const precedentsReferenced: PrecedentRef[] = Array.isArray(rawPrecedents) ? rawPrecedents : [];
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -181,6 +193,44 @@ function DecisionCard({ decision }: { decision: DecisionTrace }) {
                   Rationale
                 </h4>
                 <p className="text-sm bg-muted rounded-lg p-3 italic">"{decision.rationale_text}"</p>
+              </div>
+            )}
+
+            {/* Referenced Precedents */}
+            {precedentsReferenced.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <GitBranch className="h-4 w-4" />
+                  Precedents Consulted
+                  <Badge variant="secondary" className="text-xs">{precedentsReferenced.length}</Badge>
+                </h4>
+                <div className="space-y-2">
+                  {precedentsReferenced.map((precedent, idx) => (
+                    <div 
+                      key={precedent.decision_id || idx} 
+                      className="flex items-center justify-between bg-muted rounded-lg p-2 text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <History className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          {precedent.note || `Decision ${precedent.decision_id.slice(0, 8)}...`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs">
+                        <TrendingUp className={`h-3 w-3 ${
+                          precedent.similarity >= 0.8 ? "text-green-600" : 
+                          precedent.similarity >= 0.6 ? "text-amber-600" : "text-muted-foreground"
+                        }`} />
+                        <span className={
+                          precedent.similarity >= 0.8 ? "text-green-600 font-medium" : 
+                          precedent.similarity >= 0.6 ? "text-amber-600" : "text-muted-foreground"
+                        }>
+                          {Math.round(precedent.similarity * 100)}% match
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

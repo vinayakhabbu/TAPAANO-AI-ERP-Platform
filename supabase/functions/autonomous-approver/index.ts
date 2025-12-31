@@ -225,7 +225,7 @@ serve(async (req) => {
           } else {
             result.autoApproved++;
             
-            // Capture decision trace
+            // Capture decision trace with precedents referenced
             await supabase.from("decision_traces").insert({
               org_id,
               decision_type: "po_approval",
@@ -240,6 +240,11 @@ serve(async (req) => {
                   factors: evaluation,
                 },
               },
+              precedents_referenced: precedents.map(p => ({
+                decision_id: p.decision_id,
+                similarity: p.similarity,
+                note: `Precedent with ${Math.round(p.similarity * 100)}% similarity`
+              })),
               approval_status: "approved",
               approval_channel: "auto",
               rationale_text: `Autonomous auto-approval: ${evaluation.reason}`,
@@ -306,6 +311,11 @@ serve(async (req) => {
                 payment_method: payment.payment_method,
                 auto_approval: { confidence: evaluation.confidence, factors: evaluation },
               },
+              precedents_referenced: precedents.map(p => ({
+                decision_id: p.decision_id,
+                similarity: p.similarity,
+                note: `Precedent with ${Math.round(p.similarity * 100)}% similarity`
+              })),
               approval_status: "approved",
               approval_channel: "auto",
               rationale_text: `Autonomous auto-approval: ${evaluation.reason}`,
@@ -384,6 +394,11 @@ serve(async (req) => {
                 department: req.department,
                 auto_approval: { confidence: evaluation.confidence, factors: evaluation },
               },
+              precedents_referenced: precedents.map(p => ({
+                decision_id: p.decision_id,
+                similarity: p.similarity,
+                note: `Precedent with ${Math.round(p.similarity * 100)}% similarity`
+              })),
               approval_status: "approved",
               approval_channel: "auto",
               rationale_text: `Autonomous auto-approval: ${evaluation.reason}`,
