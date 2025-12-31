@@ -338,11 +338,11 @@ Organization
 
 **Technical Implementation**:
 
-- Edge Function: `unified-agent`
+- Edge Function: `agent-river` (orchestrating multi-agent system)
 - Model: GPT-4o-mini with function calling
-- UI Component: `AIChatBar` (sidebar panel)
+- UI Component: `AIChatBar` (global sidebar panel, available on all pages)
 - Org-scoped context awareness
-- Suggested prompts adapt to current context
+- Suggested prompts include CRM, Finance, Inventory, Production, and Service contexts
 
 **AI Tools Available**:
 | Tool | Context | Description |
@@ -476,15 +476,46 @@ AI-powered auto-approval for low-risk decisions that match policy and have stron
 - Search across decision types, rationales, document numbers
 - Filter by type, status, date range
 
+#### Agent Runs Trace Playback
+
+- Replay AI agent execution steps
+- Timeline view of each step with duration
+- View input/output data for each step
+- Error tracking and debugging
+
+#### Entity Graph Visualization
+
+- Visual graph showing decision-entity relationships
+- Interactive nodes for decisions and linked entities
+- Relationship mapping across the organization
+
+#### "This becomes precedent" Checkbox
+
+- Mark any decision as a precedent for future reference
+- Add scope (global, department, personal) and notes
+- Precedents influence future auto-approval confidence
+
+#### Referenced Precedents in Traces
+
+- Each auto-approval decision stores which precedents were consulted
+- Similarity scores and notes for each referenced precedent
+- Full traceability of AI decision-making
+
 **Technical Implementation**:
-- `decision_traces` table stores all decision records with `approval_channel`
+- `decision_traces` table stores all decision records with `approval_channel`, `is_precedent`, `precedent_scope`, `precedent_notes`, `precedents_referenced`
 - `decision_entities` table links related entities
+- `agent_runs` and `agent_run_steps` tables for AI execution playback
 - `src/lib/policyRules.ts` - Policy evaluation engine
 - `src/lib/autoApproval.ts` - Auto-approval engine with confidence scoring
 - `src/components/decisions/PolicyAnalyticsChart.tsx` - Analytics dashboard
 - `src/components/decisions/AutonomousApprover.tsx` - Phase 3 autonomous batch processing
+- `src/components/decisions/AgentRunPlayback.tsx` - Agent execution timeline
+- `src/components/decisions/EntityGraph.tsx` - Decision-entity relationship graph
+- `src/components/decisions/PrecedentCheckbox.tsx` - Mark decisions as precedents
+- `src/components/decisions/PrecedentExplorer.tsx` - Search and browse precedents
 - `supabase/functions/autonomous-approver/` - Backend for autonomous processing
-- Hooks: `useDecisionLedger.ts`, `useApprovals.ts`, `usePurchaseRequisitions.ts`
+- `supabase/functions/precedent-search/` - Vector/text search for precedents
+- Hooks: `useDecisionLedger.ts`, `useApprovals.ts`, `usePurchaseRequisitions.ts`, `useAgentRuns.ts`, `usePrecedentSearch.ts`
 
 #### Autonomous Approver (Phase 3 Full Autonomy)
 
@@ -707,10 +738,12 @@ AI-powered detection of unusual patterns in approval decisions.
 
 ### Decision Ledger Tables
 
-| Table                    | Description                                      |
-| ------------------------ | ------------------------------------------------ |
-| `decision_traces`        | Decision audit records with policy evaluations   |
-| `decision_entities`      | Linked entities for each decision trace          |
+| Table                    | Description                                           |
+| ------------------------ | ----------------------------------------------------- |
+| `decision_traces`        | Decision audit records with policy evaluations        |
+| `decision_entities`      | Linked entities for each decision trace               |
+| `agent_runs`             | AI agent execution runs with status and timing        |
+| `agent_run_steps`        | Individual steps within an agent run for playback     |
 | `decision_overrides`     | Human overrides of AI decisions for learning     |
 | `confidence_adjustments` | Learned confidence adjustments per decision type |
 
@@ -764,12 +797,13 @@ USING (EXISTS (
 - **Auth**: Not required (public)
 - **Features**: Multi-context support (CRM, Finance, Inventory, Production), OpenAI function calling
 
-### `crm-agent`
+### `precedent-search`
 
-- **Purpose**: CRM-specific AI agent (legacy)
-- **Endpoint**: `/functions/v1/crm-agent`
+- **Purpose**: Search for similar past decisions (precedents)
+- **Endpoint**: `/functions/v1/precedent-search`
 - **Method**: POST
 - **Auth**: Not required (public)
+- **Features**: Vector search (with OpenAI embeddings) and text search fallback
 
 ### `finance-chat`
 
@@ -830,9 +864,13 @@ src/
 │   ├── crm/                # CRM-specific components
 │   ├── dashboard/          # Dashboard widgets
 │   ├── decisions/          # Decision Desk components
+│   │   ├── AgentRunPlayback.tsx     # Agent execution timeline
 │   │   ├── AnomalyDetector.tsx      # Anomaly detection UI
 │   │   ├── AutonomousApprover.tsx   # Batch approval UI
-│   │   └── PolicyAnalyticsChart.tsx # Policy analytics
+│   │   ├── EntityGraph.tsx          # Decision-entity graph
+│   │   ├── PolicyAnalyticsChart.tsx # Policy analytics
+│   │   ├── PrecedentCheckbox.tsx    # Mark as precedent UI
+│   │   └── PrecedentExplorer.tsx    # Precedent search/browse
 │   ├── forecasting/        # Forecasting components
 │   ├── forms/              # Data entry forms
 │   ├── layout/             # App layout components
@@ -842,14 +880,15 @@ src/
 │   └── ui/                 # Shadcn UI components
 ├── hooks/
 │   ├── useAuth.tsx         # Authentication hook
+│   ├── useAgentRuns.ts     # Agent execution playback
 │   ├── useBanking.ts       # Banking data hook
-│   ├── useCRMAgent.ts      # CRM AI agent hook
 │   ├── useDecisionLedger.ts    # Decision audit trail
 │   ├── useDecisionOverrides.ts # Override learning
 │   ├── useGeneralLedger.ts # GL data hook
 │   ├── useOpportunities.ts # CRM opportunities hook
 │   ├── usePayables.ts      # AP data hook
 │   ├── usePeriodClose.ts   # Close data hook
+│   ├── usePrecedentSearch.ts # Precedent search
 │   ├── useQuotations.ts    # Quotations hook
 │   ├── useReceivables.ts   # AR data hook
 │   └── useSalesForecasting.ts # Forecasting hook
@@ -879,14 +918,11 @@ src/
 supabase/
 ├── config.toml             # Supabase configuration
 └── functions/
-    ├── agent-river/        # Orchestrating AI agent
+    ├── agent-river/        # Orchestrating multi-agent system
     ├── anomaly-detector/   # Anomaly detection
     ├── autonomous-approver/ # Batch autonomous approvals
-    ├── crm-agent/          # CRM AI agent
-    ├── finance-agents/     # Finance AI agents
-    ├── finance-chat/       # Chat edge function
     ├── global-search/      # Cross-module search
-    └── unified-agent/      # Context-aware unified AI agent
+    └── precedent-search/   # Vector/text precedent search
 ```
 
 ---
@@ -982,6 +1018,11 @@ supabase/
 | Learn from Overrides       | ✅     | System learns from human overrides to improve accuracy         |
 | Scheduled Processing       | ✅     | Hourly autonomous processing via pg_cron                       |
 | Anomaly Detection          | ✅     | AI-powered detection of unusual approval patterns              |
+| Agent Runs Playback        | ✅     | Replay AI agent execution steps with timeline view             |
+| Entity Graph               | ✅     | Visual graph of decision-entity relationships                  |
+| Precedent Checkbox         | ✅     | Mark decisions as precedents for future reference              |
+| Referenced Precedents      | ✅     | Track which precedents influenced each decision                |
+| Precedent Search           | ✅     | Vector and text search for similar past decisions              |
 
 #### Advanced Reporting (Planned)
 
