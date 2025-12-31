@@ -1,3 +1,4 @@
+import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -46,19 +47,14 @@ export default function Currency() {
       .reduce((sum, r) => sum + Math.abs(r.gain_loss_amount), 0) || 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Multi-Currency</h1>
-          <p className="text-muted-foreground">
-            Manage exchange rates and track currency gains/losses
-          </p>
+    <AppLayout title="Multi-Currency" subtitle="Manage exchange rates and track currency gains/losses">
+      <div className="space-y-6">
+        <div className="flex items-center justify-end">
+          <div className="flex gap-2">
+            <CurrencyRevaluationDialog />
+            <ExchangeRateForm />
+          </div>
         </div>
-        <div className="flex gap-2">
-          <CurrencyRevaluationDialog />
-          <ExchangeRateForm />
-        </div>
-      </div>
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -252,7 +248,8 @@ export default function Currency() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
-    </div>
+        </Tabs>
+      </div>
+    </AppLayout>
   );
 }
