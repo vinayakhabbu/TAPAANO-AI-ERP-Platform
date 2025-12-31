@@ -468,36 +468,47 @@ export default function DecisionDesk() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="decisions" className="space-y-4">
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="decisions" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Decision Log
-            </TabsTrigger>
-            <TabsTrigger value="precedents" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Precedent Explorer
-            </TabsTrigger>
-            <TabsTrigger value="agent-runs" className="flex items-center gap-2">
-              <Play className="h-4 w-4" />
-              Agent Runs
-            </TabsTrigger>
-            <TabsTrigger value="graph" className="flex items-center gap-2">
-              <Network className="h-4 w-4" />
-              Entity Graph
-            </TabsTrigger>
-            <TabsTrigger value="autonomous" className="flex items-center gap-2">
-              <Bot className="h-4 w-4" />
-              Autonomous Approver
-            </TabsTrigger>
-            <TabsTrigger value="anomalies" className="flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4" />
-              Anomaly Detection
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Policy Analytics
-            </TabsTrigger>
-          </TabsList>
+          <div className="relative">
+            <div className="overflow-x-auto scrollbar-hide pb-1">
+              <TabsList className="inline-flex w-max min-w-full h-auto p-1 gap-1">
+                <TabsTrigger value="decisions" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Decision Log</span>
+                  <span className="sm:hidden">Decisions</span>
+                </TabsTrigger>
+                <TabsTrigger value="precedents" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                  <History className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Precedent Explorer</span>
+                  <span className="sm:hidden">Precedents</span>
+                </TabsTrigger>
+                <TabsTrigger value="agent-runs" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                  <Play className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Agent Runs</span>
+                  <span className="sm:hidden">Runs</span>
+                </TabsTrigger>
+                <TabsTrigger value="graph" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                  <Network className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Entity Graph</span>
+                  <span className="sm:hidden">Graph</span>
+                </TabsTrigger>
+                <TabsTrigger value="autonomous" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                  <Bot className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Autonomous Approver</span>
+                  <span className="sm:hidden">Auto</span>
+                </TabsTrigger>
+                <TabsTrigger value="anomalies" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                  <ShieldAlert className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Anomaly Detection</span>
+                  <span className="sm:hidden">Anomalies</span>
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="flex items-center gap-2 whitespace-nowrap px-4 py-2">
+                  <BarChart3 className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Policy Analytics</span>
+                  <span className="sm:hidden">Analytics</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
 
           {/* Precedent Explorer Tab */}
           <TabsContent value="precedents">
