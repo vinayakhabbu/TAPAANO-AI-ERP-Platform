@@ -693,8 +693,11 @@ export type Database = {
           amount_paid: number
           bill_number: string
           created_at: string
+          currency: string | null
           due_date: string
           entity_id: string
+          exchange_rate: number | null
+          functional_total: number | null
           goods_receipt_id: string | null
           id: string
           issue_date: string
@@ -713,8 +716,11 @@ export type Database = {
           amount_paid?: number
           bill_number: string
           created_at?: string
+          currency?: string | null
           due_date: string
           entity_id: string
+          exchange_rate?: number | null
+          functional_total?: number | null
           goods_receipt_id?: string | null
           id?: string
           issue_date?: string
@@ -733,8 +739,11 @@ export type Database = {
           amount_paid?: number
           bill_number?: string
           created_at?: string
+          currency?: string | null
           due_date?: string
           entity_id?: string
+          exchange_rate?: number | null
+          functional_total?: number | null
           goods_receipt_id?: string | null
           id?: string
           issue_date?: string
@@ -1688,6 +1697,91 @@ export type Database = {
           },
         ]
       }
+      currency_revaluations: {
+        Row: {
+          created_at: string
+          current_functional_amount: number
+          current_rate: number
+          entity_id: string
+          functional_currency: string
+          gain_loss_amount: number
+          gain_loss_type: string
+          id: string
+          journal_entry_id: string | null
+          notes: string | null
+          org_id: string
+          original_amount: number
+          original_currency: string
+          original_functional_amount: number
+          original_rate: number
+          revaluation_date: string
+          source_id: string
+          source_type: string
+        }
+        Insert: {
+          created_at?: string
+          current_functional_amount: number
+          current_rate: number
+          entity_id: string
+          functional_currency?: string
+          gain_loss_amount: number
+          gain_loss_type: string
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          org_id: string
+          original_amount: number
+          original_currency: string
+          original_functional_amount: number
+          original_rate: number
+          revaluation_date: string
+          source_id: string
+          source_type: string
+        }
+        Update: {
+          created_at?: string
+          current_functional_amount?: number
+          current_rate?: number
+          entity_id?: string
+          functional_currency?: string
+          gain_loss_amount?: number
+          gain_loss_type?: string
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          org_id?: string
+          original_amount?: number
+          original_currency?: string
+          original_functional_amount?: number
+          original_rate?: number
+          revaluation_date?: string
+          source_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "currency_revaluations_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "currency_revaluations_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "currency_revaluations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -2067,6 +2161,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "entities_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exchange_rates: {
+        Row: {
+          created_at: string
+          from_currency: string
+          id: string
+          is_active: boolean
+          org_id: string
+          rate: number
+          rate_date: string
+          rate_type: string
+          source: string | null
+          to_currency: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_currency: string
+          id?: string
+          is_active?: boolean
+          org_id: string
+          rate: number
+          rate_date: string
+          rate_type?: string
+          source?: string | null
+          to_currency: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_currency?: string
+          id?: string
+          is_active?: boolean
+          org_id?: string
+          rate?: number
+          rate_date?: string
+          rate_type?: string
+          source?: string | null
+          to_currency?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exchange_rates_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2728,9 +2872,12 @@ export type Database = {
         Row: {
           amount_paid: number
           created_at: string
+          currency: string | null
           customer_id: string
           due_date: string
           entity_id: string
+          exchange_rate: number | null
+          functional_total: number | null
           id: string
           invoice_number: string
           issue_date: string
@@ -2747,9 +2894,12 @@ export type Database = {
         Insert: {
           amount_paid?: number
           created_at?: string
+          currency?: string | null
           customer_id: string
           due_date: string
           entity_id: string
+          exchange_rate?: number | null
+          functional_total?: number | null
           id?: string
           invoice_number: string
           issue_date?: string
@@ -2766,9 +2916,12 @@ export type Database = {
         Update: {
           amount_paid?: number
           created_at?: string
+          currency?: string | null
           customer_id?: string
           due_date?: string
           entity_id?: string
+          exchange_rate?: number | null
+          functional_total?: number | null
           id?: string
           invoice_number?: string
           issue_date?: string
@@ -5343,6 +5496,16 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: string
       }
+      convert_currency: {
+        Args: {
+          p_amount: number
+          p_date?: string
+          p_from_currency: string
+          p_org_id: string
+          p_to_currency: string
+        }
+        Returns: number
+      }
       find_similar_precedents: {
         Args: {
           p_decision_type?: string
@@ -5360,6 +5523,16 @@ export type Database = {
           rationale_text: string
           similarity: number
         }[]
+      }
+      get_exchange_rate: {
+        Args: {
+          p_date?: string
+          p_from_currency: string
+          p_org_id: string
+          p_rate_type?: string
+          p_to_currency: string
+        }
+        Returns: number
       }
       get_user_org_id: { Args: never; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
