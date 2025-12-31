@@ -27,6 +27,9 @@ You have access to specialized sub-agents that you can delegate tasks to:
 8. **controlling_agent**: Cost centers, internal orders, budget variance, CO documents, fixed assets
 9. **service_agent**: Service contracts, warranties, service calls, field visits
 10. **approvals_agent**: Approve/reject purchase orders, payment runs, purchase requisitions via natural language
+11. **hr_payroll_agent**: Employees, departments, positions, payroll runs, salary analysis, headcount, deductions
+12. **tax_agent**: Tax codes, tax rates, jurisdictions, tax transactions, filing periods, tax liability analysis
+13. **currency_agent**: Exchange rates, currency revaluations, unrealized/realized gains/losses, FX exposure
 
 When a user asks a question:
 1. Analyze which agent(s) can best answer the question
@@ -39,6 +42,9 @@ Route queries appropriately:
 - General AR/AP summaries, GL, key metrics → finance_agent
 - Bank accounts, transactions, reconciliation, matching, positive pay → banking_agent
 - Approval requests like "approve PO-001" or "reject payment run" → approvals_agent
+- Employees, departments, positions, salaries, payroll runs, headcount → hr_payroll_agent
+- Tax codes, rates, jurisdictions, tax liability, filings → tax_agent
+- Exchange rates, currency gains/losses, FX revaluation → currency_agent
 
 You can call multiple agents in parallel for complex queries that span modules.
 Always provide actionable, data-driven insights. Format numbers clearly.`;
@@ -166,6 +172,45 @@ For bulk approvals, process each one and report results.`,
       { type: "function", function: { name: "reject_purchase_requisition", description: "Reject a purchase requisition", parameters: { type: "object", properties: { id: { type: "string", description: "PR ID" }, rationale: { type: "string", description: "Reason for rejection" } }, required: ["id", "rationale"] } } },
       { type: "function", function: { name: "get_pending_approvals", description: "Get all pending approvals across POs, payment runs, and PRs", parameters: { type: "object", properties: { type: { type: "string", enum: ["all", "purchase_order", "payment_run", "purchase_requisition"] } }, required: [] } } },
       { type: "function", function: { name: "bulk_approve", description: "Approve multiple documents at once", parameters: { type: "object", properties: { type: { type: "string", enum: ["purchase_order", "payment_run", "purchase_requisition"] }, ids: { type: "array", items: { type: "string" } }, rationale: { type: "string" } }, required: ["type", "ids"] } } },
+    ]
+  },
+  hr_payroll_agent: {
+    description: "Handles HR and Payroll queries: employees, departments, positions, payroll runs, salary analysis, headcount metrics",
+    prompt: `You are an HR and Payroll specialist. Analyze employee data, organizational structure, and payroll information. Provide insights on headcount, compensation, and workforce metrics.`,
+    tools: [
+      { type: "function", function: { name: "get_employees", description: "Get employees with filters", parameters: { type: "object", properties: { status: { type: "string", enum: ["active", "on_leave", "terminated", "suspended"] }, department_id: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_employee_summary", description: "Get employee headcount summary by department and status", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_departments", description: "Get departments with employee counts", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_positions", description: "Get positions with salary ranges", parameters: { type: "object", properties: { department_id: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_payroll_summary", description: "Get payroll cost summary", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_payroll_runs", description: "Get payroll runs", parameters: { type: "object", properties: { status: { type: "string", enum: ["draft", "approved", "posted", "paid"] }, limit: { type: "number" } }, required: [] } } },
+      { type: "function", function: { name: "get_payroll_periods", description: "Get payroll periods", parameters: { type: "object", properties: { status: { type: "string", enum: ["open", "closed"] } }, required: [] } } },
+      { type: "function", function: { name: "get_salary_analysis", description: "Analyze salary distribution by department/position", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_deduction_types", description: "Get configured deduction types", parameters: { type: "object", properties: {}, required: [] } } },
+    ]
+  },
+  tax_agent: {
+    description: "Handles Tax Management queries: tax codes, rates, jurisdictions, tax transactions, filing periods, tax liability analysis",
+    prompt: `You are a Tax specialist. Analyze tax data, compliance status, and provide insights on tax liability, filings, and rates. Help ensure tax compliance.`,
+    tools: [
+      { type: "function", function: { name: "get_tax_codes", description: "Get tax codes", parameters: { type: "object", properties: { tax_type: { type: "string", enum: ["sales", "purchase", "vat", "gst", "withholding"] } }, required: [] } } },
+      { type: "function", function: { name: "get_tax_rates", description: "Get tax rates by code or jurisdiction", parameters: { type: "object", properties: { tax_code_id: { type: "string" }, jurisdiction_id: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_tax_jurisdictions", description: "Get tax jurisdictions", parameters: { type: "object", properties: { country_code: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_tax_transactions", description: "Get tax transactions", parameters: { type: "object", properties: { status: { type: "string", enum: ["pending", "filed", "paid"] }, period: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_tax_summary", description: "Get tax liability summary (sales vs purchase tax, net payable)", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_filing_periods", description: "Get tax filing periods and their status", parameters: { type: "object", properties: { status: { type: "string", enum: ["open", "filed", "paid", "overdue"] } }, required: [] } } },
+      { type: "function", function: { name: "get_overdue_filings", description: "Get overdue tax filings that need attention", parameters: { type: "object", properties: {}, required: [] } } },
+    ]
+  },
+  currency_agent: {
+    description: "Handles Multi-Currency queries: exchange rates, currency revaluations, unrealized/realized gains and losses, FX exposure analysis",
+    prompt: `You are a Multi-Currency and FX specialist. Analyze exchange rates, currency exposures, and gains/losses from foreign currency transactions. Help manage FX risk.`,
+    tools: [
+      { type: "function", function: { name: "get_exchange_rates", description: "Get exchange rates", parameters: { type: "object", properties: { from_currency: { type: "string" }, to_currency: { type: "string" }, rate_type: { type: "string", enum: ["spot", "average", "closing"] } }, required: [] } } },
+      { type: "function", function: { name: "get_currency_revaluations", description: "Get currency revaluations", parameters: { type: "object", properties: { gain_loss_type: { type: "string", enum: ["realized", "unrealized"] }, currency: { type: "string" } }, required: [] } } },
+      { type: "function", function: { name: "get_fx_summary", description: "Get FX gains/losses summary", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_fx_exposure", description: "Get foreign currency exposure by currency", parameters: { type: "object", properties: {}, required: [] } } },
+      { type: "function", function: { name: "get_latest_rates", description: "Get latest exchange rates for all configured currency pairs", parameters: { type: "object", properties: {}, required: [] } } },
     ]
   }
 };
@@ -307,6 +352,48 @@ const ORCHESTRATOR_TOOLS = [
         type: "object",
         properties: {
           task: { type: "string", description: "The specific approval action for the Approvals agent" }
+        },
+        required: ["task"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "call_hr_payroll_agent",
+      description: "Delegate HR and Payroll queries: employees, departments, positions, payroll runs, salary analysis, headcount metrics",
+      parameters: {
+        type: "object",
+        properties: {
+          task: { type: "string", description: "The specific task or question for the HR/Payroll agent" }
+        },
+        required: ["task"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "call_tax_agent",
+      description: "Delegate Tax Management queries: tax codes, rates, jurisdictions, tax liability, filings, compliance",
+      parameters: {
+        type: "object",
+        properties: {
+          task: { type: "string", description: "The specific task or question for the Tax agent" }
+        },
+        required: ["task"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "call_currency_agent",
+      description: "Delegate Multi-Currency queries: exchange rates, FX gains/losses, currency revaluations, exposure analysis",
+      parameters: {
+        type: "object",
+        properties: {
+          task: { type: "string", description: "The specific task or question for the Currency agent" }
         },
         required: ["task"]
       }
@@ -1267,6 +1354,396 @@ async function executeSubAgentTool(toolName: string, args: any, supabase: any): 
         });
       }
 
+      // =========================================================================
+      // HR & PAYROLL TOOLS
+      // =========================================================================
+
+      case 'get_employees': {
+        let query = supabase.from('employees').select('*, department:departments(name), position:positions(title)');
+        if (args.status) query = query.eq('employment_status', args.status);
+        if (args.department_id) query = query.eq('department_id', args.department_id);
+        const { data } = await query.order('last_name').limit(50);
+        return JSON.stringify(data?.map((e: any) => ({
+          id: e.id,
+          employee_number: e.employee_number,
+          name: `${e.first_name} ${e.last_name}`,
+          email: e.email,
+          department: e.department?.name,
+          position: e.position?.title,
+          status: e.employment_status,
+          hire_date: e.hire_date,
+          base_salary: e.base_salary,
+          hourly_rate: e.hourly_rate
+        })) || []);
+      }
+
+      case 'get_employee_summary': {
+        const { data: employees } = await supabase.from('employees').select('employment_status, department_id, base_salary, departments(name)');
+        if (!employees?.length) return JSON.stringify({ message: "No employees found" });
+
+        const statuses = ['active', 'on_leave', 'terminated', 'suspended'];
+        const byStatus = statuses.map(s => ({
+          status: s,
+          count: employees.filter((e: any) => e.employment_status === s).length
+        }));
+
+        const deptCounts: Record<string, number> = {};
+        employees.forEach((e: any) => {
+          const deptName = e.departments?.name || 'Unassigned';
+          deptCounts[deptName] = (deptCounts[deptName] || 0) + 1;
+        });
+
+        const totalSalary = employees.filter((e: any) => e.employment_status === 'active')
+          .reduce((sum: number, e: any) => sum + (e.base_salary || 0), 0);
+
+        return JSON.stringify({
+          total_employees: employees.length,
+          active_employees: employees.filter((e: any) => e.employment_status === 'active').length,
+          by_status: byStatus,
+          by_department: Object.entries(deptCounts).map(([dept, count]) => ({ department: dept, count })),
+          total_monthly_payroll: totalSalary
+        });
+      }
+
+      case 'get_departments': {
+        const { data: departments } = await supabase.from('departments').select('*, manager:employees(first_name, last_name)');
+        const { data: employees } = await supabase.from('employees').select('department_id').eq('employment_status', 'active');
+        
+        const deptCounts: Record<string, number> = {};
+        employees?.forEach((e: any) => {
+          if (e.department_id) deptCounts[e.department_id] = (deptCounts[e.department_id] || 0) + 1;
+        });
+
+        return JSON.stringify(departments?.map((d: any) => ({
+          id: d.id,
+          code: d.code,
+          name: d.name,
+          description: d.description,
+          manager: d.manager ? `${d.manager.first_name} ${d.manager.last_name}` : null,
+          employee_count: deptCounts[d.id] || 0,
+          is_active: d.is_active
+        })) || []);
+      }
+
+      case 'get_positions': {
+        let query = supabase.from('positions').select('*, department:departments(name)');
+        if (args.department_id) query = query.eq('department_id', args.department_id);
+        const { data } = await query.order('title');
+        return JSON.stringify(data?.map((p: any) => ({
+          id: p.id,
+          code: p.code,
+          title: p.title,
+          department: p.department?.name,
+          min_salary: p.min_salary,
+          max_salary: p.max_salary,
+          is_active: p.is_active
+        })) || []);
+      }
+
+      case 'get_payroll_summary': {
+        const { data: employees } = await supabase.from('employees').select('base_salary, hourly_rate, employment_status, pay_frequency');
+        const { data: runs } = await supabase.from('payroll_runs').select('*').order('run_date', { ascending: false }).limit(5);
+        
+        const activeEmps = employees?.filter((e: any) => e.employment_status === 'active') || [];
+        const totalMonthlySalary = activeEmps.reduce((sum: number, e: any) => sum + (e.base_salary || 0), 0);
+        
+        return JSON.stringify({
+          active_employees: activeEmps.length,
+          total_monthly_base_salary: totalMonthlySalary,
+          recent_payroll_runs: runs?.map((r: any) => ({
+            run_number: r.run_number,
+            run_date: r.run_date,
+            status: r.status,
+            total_gross: r.total_gross,
+            total_net: r.total_net,
+            employee_count: r.employee_count
+          })) || []
+        });
+      }
+
+      case 'get_payroll_runs': {
+        let query = supabase.from('payroll_runs').select('*, payroll_period:payroll_periods(period_name)');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.order('run_date', { ascending: false }).limit(args.limit || 10);
+        return JSON.stringify(data?.map((r: any) => ({
+          id: r.id,
+          run_number: r.run_number,
+          period: r.payroll_period?.period_name,
+          run_date: r.run_date,
+          status: r.status,
+          employee_count: r.employee_count,
+          total_gross: r.total_gross,
+          total_deductions: r.total_deductions,
+          total_net: r.total_net,
+          total_employer_cost: r.total_employer_cost
+        })) || []);
+      }
+
+      case 'get_payroll_periods': {
+        let query = supabase.from('payroll_periods').select('*');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.order('period_start', { ascending: false }).limit(10);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_salary_analysis': {
+        const { data: employees } = await supabase.from('employees')
+          .select('base_salary, department_id, position_id, departments(name), positions(title)')
+          .eq('employment_status', 'active')
+          .not('base_salary', 'is', null);
+        
+        if (!employees?.length) return JSON.stringify({ message: "No salary data available" });
+
+        const byDept: Record<string, { total: number; count: number; min: number; max: number }> = {};
+        employees.forEach((e: any) => {
+          const dept = e.departments?.name || 'Unassigned';
+          if (!byDept[dept]) byDept[dept] = { total: 0, count: 0, min: Infinity, max: 0 };
+          byDept[dept].total += e.base_salary;
+          byDept[dept].count++;
+          byDept[dept].min = Math.min(byDept[dept].min, e.base_salary);
+          byDept[dept].max = Math.max(byDept[dept].max, e.base_salary);
+        });
+
+        const totalSalary = employees.reduce((sum: number, e: any) => sum + e.base_salary, 0);
+
+        return JSON.stringify({
+          total_employees: employees.length,
+          total_salary: totalSalary,
+          average_salary: totalSalary / employees.length,
+          by_department: Object.entries(byDept).map(([dept, stats]) => ({
+            department: dept,
+            count: stats.count,
+            total: stats.total,
+            average: stats.total / stats.count,
+            min: stats.min === Infinity ? 0 : stats.min,
+            max: stats.max
+          }))
+        });
+      }
+
+      case 'get_deduction_types': {
+        const { data } = await supabase.from('deduction_types').select('*').eq('is_active', true);
+        return JSON.stringify(data || []);
+      }
+
+      // =========================================================================
+      // TAX MANAGEMENT TOOLS
+      // =========================================================================
+
+      case 'get_tax_codes': {
+        let query = supabase.from('tax_codes').select('*');
+        if (args.tax_type) query = query.eq('tax_type', args.tax_type);
+        const { data } = await query.order('code');
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_tax_rates': {
+        let query = supabase.from('tax_rates').select('*, tax_code:tax_codes(code, name), jurisdiction:tax_jurisdictions(name)');
+        if (args.tax_code_id) query = query.eq('tax_code_id', args.tax_code_id);
+        if (args.jurisdiction_id) query = query.eq('jurisdiction_id', args.jurisdiction_id);
+        const { data } = await query.eq('is_active', true);
+        return JSON.stringify(data?.map((r: any) => ({
+          id: r.id,
+          tax_code: r.tax_code?.code,
+          tax_name: r.tax_code?.name,
+          jurisdiction: r.jurisdiction?.name,
+          rate: r.rate,
+          effective_from: r.effective_from,
+          effective_to: r.effective_to
+        })) || []);
+      }
+
+      case 'get_tax_jurisdictions': {
+        let query = supabase.from('tax_jurisdictions').select('*').eq('is_active', true);
+        if (args.country_code) query = query.eq('country_code', args.country_code);
+        const { data } = await query.order('name');
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_tax_transactions': {
+        let query = supabase.from('tax_transactions').select('*, tax_code:tax_codes(code, name)');
+        if (args.status) query = query.eq('status', args.status);
+        if (args.period) query = query.eq('tax_period', args.period);
+        const { data } = await query.order('transaction_date', { ascending: false }).limit(50);
+        return JSON.stringify(data?.map((t: any) => ({
+          id: t.id,
+          date: t.transaction_date,
+          period: t.tax_period,
+          tax_code: t.tax_code?.code,
+          source_type: t.source_type,
+          base_amount: t.base_amount,
+          tax_rate: t.tax_rate,
+          tax_amount: t.tax_amount,
+          status: t.status
+        })) || []);
+      }
+
+      case 'get_tax_summary': {
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const { data: transactions } = await supabase.from('tax_transactions').select('*');
+        
+        const mtdTx = transactions?.filter((t: any) => t.transaction_date?.startsWith(currentMonth)) || [];
+        
+        const salesTax = mtdTx.filter((t: any) => t.source_type === 'invoice')
+          .reduce((sum: number, t: any) => sum + (t.tax_amount || 0), 0);
+        const purchaseTax = mtdTx.filter((t: any) => t.source_type === 'bill')
+          .reduce((sum: number, t: any) => sum + (t.tax_amount || 0), 0);
+        
+        return JSON.stringify({
+          period: currentMonth,
+          sales_tax_collected: salesTax,
+          purchase_tax_paid: purchaseTax,
+          net_tax_payable: salesTax - purchaseTax,
+          total_transactions: mtdTx.length
+        });
+      }
+
+      case 'get_filing_periods': {
+        let query = supabase.from('tax_filing_periods').select('*, jurisdiction:tax_jurisdictions(name)');
+        if (args.status) query = query.eq('status', args.status);
+        const { data } = await query.order('due_date', { ascending: false }).limit(20);
+        return JSON.stringify(data?.map((p: any) => ({
+          id: p.id,
+          period: p.period_name,
+          jurisdiction: p.jurisdiction?.name,
+          due_date: p.due_date,
+          status: p.status,
+          sales_tax: p.sales_tax_amount,
+          purchase_tax: p.purchase_tax_amount,
+          net_payable: p.net_payable
+        })) || []);
+      }
+
+      case 'get_overdue_filings': {
+        const today = new Date().toISOString().split('T')[0];
+        const { data } = await supabase.from('tax_filing_periods')
+          .select('*, jurisdiction:tax_jurisdictions(name)')
+          .lt('due_date', today)
+          .in('status', ['open', 'pending']);
+        
+        return JSON.stringify({
+          overdue_count: data?.length || 0,
+          filings: data?.map((p: any) => ({
+            period: p.period_name,
+            jurisdiction: p.jurisdiction?.name,
+            due_date: p.due_date,
+            days_overdue: Math.floor((Date.now() - new Date(p.due_date).getTime()) / (1000 * 60 * 60 * 24)),
+            net_payable: p.net_payable
+          })) || []
+        });
+      }
+
+      // =========================================================================
+      // MULTI-CURRENCY TOOLS
+      // =========================================================================
+
+      case 'get_exchange_rates': {
+        let query = supabase.from('exchange_rates').select('*');
+        if (args.from_currency) query = query.eq('from_currency', args.from_currency);
+        if (args.to_currency) query = query.eq('to_currency', args.to_currency);
+        if (args.rate_type) query = query.eq('rate_type', args.rate_type);
+        const { data } = await query.order('rate_date', { ascending: false }).limit(50);
+        return JSON.stringify(data || []);
+      }
+
+      case 'get_currency_revaluations': {
+        let query = supabase.from('currency_revaluations').select('*');
+        if (args.gain_loss_type) query = query.eq('gain_loss_type', args.gain_loss_type);
+        if (args.currency) query = query.eq('original_currency', args.currency);
+        const { data } = await query.order('revaluation_date', { ascending: false }).limit(50);
+        return JSON.stringify(data?.map((r: any) => ({
+          id: r.id,
+          date: r.revaluation_date,
+          source_type: r.source_type,
+          currency: r.original_currency,
+          original_amount: r.original_amount,
+          original_rate: r.original_rate,
+          current_rate: r.current_rate,
+          gain_loss: r.gain_loss_amount,
+          type: r.gain_loss_type
+        })) || []);
+      }
+
+      case 'get_fx_summary': {
+        const { data: revaluations } = await supabase.from('currency_revaluations').select('*');
+        
+        const unrealizedGains = revaluations?.filter((r: any) => r.gain_loss_type === 'unrealized' && r.gain_loss_amount > 0)
+          .reduce((sum: number, r: any) => sum + r.gain_loss_amount, 0) || 0;
+        const unrealizedLosses = revaluations?.filter((r: any) => r.gain_loss_type === 'unrealized' && r.gain_loss_amount < 0)
+          .reduce((sum: number, r: any) => sum + Math.abs(r.gain_loss_amount), 0) || 0;
+        const realizedGains = revaluations?.filter((r: any) => r.gain_loss_type === 'realized' && r.gain_loss_amount > 0)
+          .reduce((sum: number, r: any) => sum + r.gain_loss_amount, 0) || 0;
+        const realizedLosses = revaluations?.filter((r: any) => r.gain_loss_type === 'realized' && r.gain_loss_amount < 0)
+          .reduce((sum: number, r: any) => sum + Math.abs(r.gain_loss_amount), 0) || 0;
+
+        return JSON.stringify({
+          unrealized: {
+            gains: unrealizedGains,
+            losses: unrealizedLosses,
+            net: unrealizedGains - unrealizedLosses
+          },
+          realized: {
+            gains: realizedGains,
+            losses: realizedLosses,
+            net: realizedGains - realizedLosses
+          },
+          total_net_gain_loss: (unrealizedGains - unrealizedLosses) + (realizedGains - realizedLosses)
+        });
+      }
+
+      case 'get_fx_exposure': {
+        const { data: invoices } = await supabase.from('invoices').select('currency, total, functional_total').neq('status', 'paid');
+        const { data: bills } = await supabase.from('bills').select('currency, total, functional_total').neq('status', 'paid');
+        
+        const exposure: Record<string, { receivables: number; payables: number }> = {};
+        
+        invoices?.forEach((i: any) => {
+          if (i.currency && i.currency !== 'USD') {
+            if (!exposure[i.currency]) exposure[i.currency] = { receivables: 0, payables: 0 };
+            exposure[i.currency].receivables += i.total || 0;
+          }
+        });
+        
+        bills?.forEach((b: any) => {
+          if (b.currency && b.currency !== 'USD') {
+            if (!exposure[b.currency]) exposure[b.currency] = { receivables: 0, payables: 0 };
+            exposure[b.currency].payables += b.total || 0;
+          }
+        });
+
+        return JSON.stringify({
+          exposures: Object.entries(exposure).map(([currency, amounts]) => ({
+            currency,
+            receivables: amounts.receivables,
+            payables: amounts.payables,
+            net_exposure: amounts.receivables - amounts.payables
+          })),
+          total_foreign_receivables: Object.values(exposure).reduce((sum, e) => sum + e.receivables, 0),
+          total_foreign_payables: Object.values(exposure).reduce((sum, e) => sum + e.payables, 0)
+        });
+      }
+
+      case 'get_latest_rates': {
+        const { data } = await supabase.from('exchange_rates')
+          .select('*')
+          .order('rate_date', { ascending: false });
+        
+        // Get latest rate per currency pair
+        const latestRates: Record<string, any> = {};
+        data?.forEach((r: any) => {
+          const key = `${r.from_currency}-${r.to_currency}`;
+          if (!latestRates[key]) latestRates[key] = r;
+        });
+
+        return JSON.stringify(Object.values(latestRates).map((r: any) => ({
+          from: r.from_currency,
+          to: r.to_currency,
+          rate: r.rate,
+          date: r.rate_date,
+          type: r.rate_type
+        })));
+      }
+
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -1370,6 +1847,9 @@ async function executeOrchestratorTool(toolName: string, args: any, supabase: an
     'call_controlling_agent': 'controlling_agent',
     'call_service_agent': 'service_agent',
     'call_approvals_agent': 'approvals_agent',
+    'call_hr_payroll_agent': 'hr_payroll_agent',
+    'call_tax_agent': 'tax_agent',
+    'call_currency_agent': 'currency_agent',
   };
 
   const agentName = agentMap[toolName];

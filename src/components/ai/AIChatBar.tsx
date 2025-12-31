@@ -24,11 +24,13 @@ const SUGGESTED_PROMPTS = [
   "Give me an overview of the business",
   "What needs my attention today?",
   "Show pipeline and AR summary",
-  "What are my at-risk deals?",
-  "How is inventory looking?",
-  "Show production status",
-  "Any open service calls?",
-  "Show top opportunities over $50k",
+  "How many employees do we have?",
+  "What's our payroll cost by department?",
+  "Show tax liability summary",
+  "Any overdue tax filings?",
+  "What's our FX exposure?",
+  "Show currency gains/losses",
+  "Run next payroll analysis",
 ];
 
 export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
