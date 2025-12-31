@@ -21,6 +21,7 @@ import Controlling from "./pages/Controlling";
 import ServiceManagement from "./pages/ServiceManagement";
 import Help from "./pages/Help";
 import DecisionDesk from "./pages/DecisionDesk";
+import Currency from "./pages/Currency";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/help" element={<Help />} />
               <Route path="/decisions" element={<DecisionDesk />} />
+              <Route path="/currency" element={<Currency />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
