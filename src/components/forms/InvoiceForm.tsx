@@ -22,6 +22,8 @@ import {
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { addDays, format } from "date-fns";
+import { CURRENCIES, useLatestRates } from "@/hooks/useCurrency";
+import { useTaxCodesWithRates } from "@/hooks/useTransactionDefaults";
 
 interface InvoiceFormProps {
   trigger?: React.ReactNode;
@@ -36,7 +38,8 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
   const [shipmentId, setShipmentId] = useState(defaultShipmentId || "");
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 30), "yyyy-MM-dd"));
   const [subtotal, setSubtotal] = useState("");
-  const [taxRate, setTaxRate] = useState("10");
+  const [taxCodeId, setTaxCodeId] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const [notes, setNotes] = useState("");
   const queryClient = useQueryClient();
 
@@ -52,32 +55,24 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
   const { data: entities = [] } = useQuery({
     queryKey: ["entities"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("entities").select("id, name");
+      const { data, error } = await supabase.from("entities").select("id, name, currency");
       if (error) throw error;
       return data || [];
     },
   });
 
-  // Fetch shipped sales orders that don't have an invoice yet
   const { data: shippedOrders = [] } = useQuery({
     queryKey: ["shipped-sales-orders"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales_orders")
-        .select(`
-          id, 
-          so_number, 
-          customer_id,
-          total,
-          customers (name)
-        `)
+        .select(`id, so_number, customer_id, total, customers (name)`)
         .eq("status", "shipped");
       if (error) throw error;
       return data || [];
     },
   });
 
-  // Fetch shipments for the selected sales order
   const { data: orderShipments = [] } = useQuery({
     queryKey: ["shipments-for-order", salesOrderId],
     queryFn: async () => {
@@ -92,7 +87,25 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
     enabled: !!salesOrderId,
   });
 
-  // Auto-fill customer and total when SO is selected
+  const { data: taxCodes = [] } = useTaxCodesWithRates();
+  const salesTaxCodes = taxCodes.filter(tc => tc.tax_type === "sales" || tc.tax_type === "vat_output");
+  
+  const { data: latestRates = [] } = useLatestRates();
+  
+  // Get exchange rate for selected currency
+  const getExchangeRate = () => {
+    if (currency === "USD") return 1;
+    const rate = latestRates.find(r => r.from_currency === currency && r.to_currency === "USD");
+    return rate?.rate || 1;
+  };
+
+  // Get tax rate from selected tax code
+  const getTaxRate = () => {
+    if (!taxCodeId) return 0;
+    const taxCode = taxCodes.find(tc => tc.id === taxCodeId);
+    return taxCode?.currentRate || 0;
+  };
+
   useEffect(() => {
     if (salesOrderId && salesOrderId !== "manual") {
       const selectedOrder = shippedOrders.find((o) => o.id === salesOrderId);
@@ -103,7 +116,6 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
     }
   }, [salesOrderId, shippedOrders]);
 
-  // Auto-select first shipment when order changes
   useEffect(() => {
     if (orderShipments.length > 0 && !shipmentId) {
       setShipmentId(orderShipments[0].id);
@@ -119,11 +131,13 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
       if (!entityId) throw new Error("No entity found");
 
       const subtotalNum = parseFloat(subtotal) || 0;
-      const tax = subtotalNum * (parseFloat(taxRate) / 100);
+      const taxRate = getTaxRate();
+      const tax = subtotalNum * (taxRate / 100);
       const total = subtotalNum + tax;
+      const exchangeRate = getExchangeRate();
+      const functionalTotal = total * exchangeRate;
 
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-
       const actualSalesOrderId = salesOrderId === "manual" ? null : salesOrderId;
       
       const { error } = await supabase.from("invoices").insert({
@@ -139,11 +153,14 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
         status: "draft",
         sales_order_id: actualSalesOrderId || null,
         shipment_id: actualSalesOrderId ? (shipmentId || null) : null,
+        tax_code_id: taxCodeId || null,
+        currency: currency,
+        exchange_rate: exchangeRate,
+        functional_total: functionalTotal,
       });
 
       if (error) throw error;
 
-      // Update sales order status to invoiced if linked
       if (actualSalesOrderId) {
         await supabase
           .from("sales_orders")
@@ -170,13 +187,17 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
     setShipmentId(defaultShipmentId || "");
     setDueDate(format(addDays(new Date(), 30), "yyyy-MM-dd"));
     setSubtotal("");
-    setTaxRate("10");
+    setTaxCodeId("");
+    setCurrency("USD");
     setNotes("");
   };
 
   const subtotalNum = parseFloat(subtotal) || 0;
-  const tax = subtotalNum * (parseFloat(taxRate) / 100);
+  const taxRate = getTaxRate();
+  const tax = subtotalNum * (taxRate / 100);
   const total = subtotalNum + tax;
+  const exchangeRate = getExchangeRate();
+  const functionalTotal = total * exchangeRate;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -188,7 +209,7 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Invoice</DialogTitle>
         </DialogHeader>
@@ -199,8 +220,6 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
           }}
           className="space-y-4"
         >
-          {/* Link to Sales Order (optional) */}
-          {/* Link to Sales Order (optional) */}
           <div className="space-y-2">
             <Label>From Sales Order (optional)</Label>
             <Select value={salesOrderId} onValueChange={setSalesOrderId}>
@@ -218,7 +237,6 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
             </Select>
           </div>
 
-          {/* Shipment selection when SO is selected */}
           {salesOrderId && salesOrderId !== "manual" && orderShipments.length > 0 && (
             <div className="space-y-2">
               <Label>Shipment</Label>
@@ -255,14 +273,31 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Due Date *</Label>
-            <Input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.code} - {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Due Date *</Label>
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -279,13 +314,19 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
               />
             </div>
             <div className="space-y-2">
-              <Label>Tax Rate (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={taxRate}
-                onChange={(e) => setTaxRate(e.target.value)}
-              />
+              <Label>Tax Code</Label>
+              <Select value={taxCodeId} onValueChange={setTaxCodeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select tax code" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salesTaxCodes.map((tc) => (
+                    <SelectItem key={tc.id} value={tc.id}>
+                      {tc.code} ({tc.currentRate}%)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -295,9 +336,14 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
           </div>
 
           <div className="border-t pt-4 space-y-1 text-right">
-            <p className="text-sm text-muted-foreground">Subtotal: ${subtotalNum.toFixed(2)}</p>
-            <p className="text-sm text-muted-foreground">Tax ({taxRate}%): ${tax.toFixed(2)}</p>
-            <p className="text-lg font-semibold">Total: ${total.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">Subtotal: {currency} {subtotalNum.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">Tax ({taxRate}%): {currency} {tax.toFixed(2)}</p>
+            <p className="text-lg font-semibold">Total: {currency} {total.toFixed(2)}</p>
+            {currency !== "USD" && (
+              <p className="text-xs text-muted-foreground">
+                ≈ USD {functionalTotal.toFixed(2)} @ {exchangeRate.toFixed(4)}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">
