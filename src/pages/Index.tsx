@@ -19,7 +19,10 @@ import {
   Factory,
   Wrench,
   Building2,
-  PieChart
+  PieChart,
+  Users,
+  Calculator,
+  Coins
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -167,6 +170,42 @@ const Index = () => {
               { label: "Total Balance", value: formatCurrency(stats.banking.totalBalance), highlight: true },
               { label: "Accounts", value: stats.banking.activeAccounts },
               { label: "", value: "" },
+              { label: "", value: "" },
+            ]}
+          />
+          <ModuleSummaryCard
+            title="HR & Payroll"
+            href="/hr"
+            icon={Users}
+            accentColor="text-primary"
+            stats={[
+              { label: "Active Staff", value: stats.hr.activeEmployees, highlight: true },
+              { label: "Departments", value: stats.hr.totalDepartments },
+              { label: "Total Employees", value: stats.hr.totalEmployees },
+              { label: "Monthly Payroll", value: formatCurrency(stats.hr.monthlyPayroll) },
+            ]}
+          />
+          <ModuleSummaryCard
+            title="Tax Management"
+            href="/tax"
+            icon={Calculator}
+            accentColor="text-overdue"
+            stats={[
+              { label: "Net Payable", value: formatCurrency(stats.tax.netPayable), highlight: true },
+              { label: "Sales Tax", value: formatCurrency(stats.tax.salesTax) },
+              { label: "Purchase Tax", value: formatCurrency(stats.tax.purchaseTax) },
+              { label: "Pending Filings", value: stats.tax.pendingFilings },
+            ]}
+          />
+          <ModuleSummaryCard
+            title="Multi-Currency"
+            href="/currency"
+            icon={Coins}
+            accentColor="text-warning"
+            stats={[
+              { label: "Currencies", value: stats.currency.activeCurrencies, highlight: true },
+              { label: "Exchange Rates", value: stats.currency.rateCount },
+              { label: "FX Gain/Loss", value: formatCurrency(stats.currency.totalGainLoss) },
               { label: "", value: "" },
             ]}
           />
