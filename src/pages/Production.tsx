@@ -96,44 +96,42 @@ export default function Production() {
           </div>
         </div>
 
-        <Tabs defaultValue="orders" className="space-y-4">
-          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
-            <TabsList className="inline-flex h-10 w-auto bg-muted/50">
-              <TabsTrigger value="orders" className="flex items-center gap-2 whitespace-nowrap">
-                <Factory className="h-4 w-4" />
-                <span className="hidden sm:inline">Orders</span>
-                <span className="sm:hidden">Ord</span>
-              </TabsTrigger>
-              <TabsTrigger value="receipts" className="flex items-center gap-2 whitespace-nowrap">
-                <PackageCheck className="h-4 w-4" />
-                <span className="hidden sm:inline">Receipts</span>
-                <span className="sm:hidden">Rcpt</span>
-              </TabsTrigger>
-              <TabsTrigger value="bom" className="flex items-center gap-2 whitespace-nowrap">
-                <Package className="h-4 w-4" />
-                <span>BOM</span>
-              </TabsTrigger>
-              <TabsTrigger value="workcenters" className="flex items-center gap-2 whitespace-nowrap">
-                <Cog className="h-4 w-4" />
-                <span className="hidden sm:inline">Work Centers</span>
-                <span className="sm:hidden">WC</span>
-              </TabsTrigger>
-              <TabsTrigger value="mrp" className="flex items-center gap-2 whitespace-nowrap">
-                <Calculator className="h-4 w-4" />
-                <span>MRP</span>
-              </TabsTrigger>
-              <TabsTrigger value="capacity" className="flex items-center gap-2 whitespace-nowrap">
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Capacity</span>
-                <span className="sm:hidden">Cap</span>
-              </TabsTrigger>
-              <TabsTrigger value="shopfloor" className="flex items-center gap-2 whitespace-nowrap">
-                <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">Shop Floor</span>
-                <span className="sm:hidden">Floor</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        <Tabs defaultValue="orders" className="space-y-6">
+          <TabsList className="h-auto flex-wrap gap-1 p-1 bg-muted/50">
+            <TabsTrigger value="orders" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Factory className="h-4 w-4" />
+              <span className="hidden sm:inline">Orders</span>
+              <span className="sm:hidden">Ord</span>
+            </TabsTrigger>
+            <TabsTrigger value="receipts" className="flex items-center gap-2 text-xs sm:text-sm">
+              <PackageCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Receipts</span>
+              <span className="sm:hidden">Rcpt</span>
+            </TabsTrigger>
+            <TabsTrigger value="bom" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Package className="h-4 w-4" />
+              <span>BOM</span>
+            </TabsTrigger>
+            <TabsTrigger value="workcenters" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Cog className="h-4 w-4" />
+              <span className="hidden sm:inline">Work Centers</span>
+              <span className="sm:hidden">WC</span>
+            </TabsTrigger>
+            <TabsTrigger value="mrp" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Calculator className="h-4 w-4" />
+              <span>MRP</span>
+            </TabsTrigger>
+            <TabsTrigger value="capacity" className="flex items-center gap-2 text-xs sm:text-sm">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Capacity</span>
+              <span className="sm:hidden">Cap</span>
+            </TabsTrigger>
+            <TabsTrigger value="shopfloor" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Calendar className="h-4 w-4" />
+              <span className="hidden sm:inline">Shop Floor</span>
+              <span className="sm:hidden">Floor</span>
+            </TabsTrigger>
+          </TabsList>
 
           {/* Production Orders */}
           <TabsContent value="orders">
