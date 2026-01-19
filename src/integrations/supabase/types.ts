@@ -2234,6 +2234,57 @@ export type Database = {
           },
         ]
       }
+      decision_desk_tabs: {
+        Row: {
+          created_at: string
+          display_order: number
+          icon_name: string
+          id: string
+          is_visible: boolean
+          org_id: string
+          tab_key: string
+          tab_label: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          icon_name: string
+          id?: string
+          is_visible?: boolean
+          org_id: string
+          tab_key: string
+          tab_label: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          icon_name?: string
+          id?: string
+          is_visible?: boolean
+          org_id?: string
+          tab_key?: string
+          tab_label?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_desk_tabs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_desk_tabs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_entities: {
         Row: {
           created_at: string
