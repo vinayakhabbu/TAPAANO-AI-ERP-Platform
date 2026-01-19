@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { captureDecisionTrace } from "./useDecisionLedger";
 // Work Centers
 export const useWorkCenters = () => {
   return useQuery({
@@ -286,6 +286,13 @@ export const usePostProductionGoodsReceipt = () => {
       quantity: number;
       warehouse_id?: string;
     }) => {
+      // Get production order details
+      const { data: order } = await supabase
+        .from("production_orders")
+        .select("*, product:products(name)")
+        .eq("id", production_order_id)
+        .single();
+
       const { data, error } = await supabase.rpc('post_production_goods_receipt', {
         p_org_id: org_id,
         p_production_order_id: production_order_id,
@@ -293,6 +300,35 @@ export const usePostProductionGoodsReceipt = () => {
         p_warehouse_id: warehouse_id || null,
       });
       if (error) throw error;
+
+      // Capture decision trace
+      await captureDecisionTrace(org_id, {
+        decision_type: "production_goods_receipt",
+        source_type: "production_order",
+        source_id: production_order_id,
+        approval_status: "approved",
+        approval_channel: "human",
+        input_snapshot: {
+          order_number: order?.order_number,
+          product_name: order?.product?.name,
+          quantity_received: quantity,
+          warehouse_id,
+        },
+        rationale_text: `Goods receipt posted for ${quantity} units from production order ${order?.order_number}`,
+        entities: [
+          {
+            entity_type: "production_order",
+            entity_id: production_order_id,
+            entity_label: order?.order_number,
+          },
+          {
+            entity_type: "product",
+            entity_id: order?.product_id,
+            entity_label: order?.product?.name,
+          },
+        ],
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -338,6 +374,13 @@ export const useUpdateProductionOrderStatus = () => {
       status: string;
       completed_quantity?: number;
     }) => {
+      // Get production order details first
+      const { data: order } = await supabase
+        .from("production_orders")
+        .select("*, product:products(name)")
+        .eq("id", id)
+        .single();
+
       const updateData: Record<string, unknown> = { status };
       if (status === 'in_progress') {
         updateData.actual_start_date = new Date().toISOString().split('T')[0];
@@ -353,6 +396,39 @@ export const useUpdateProductionOrderStatus = () => {
         .select()
         .single();
       if (error) throw error;
+
+      // Capture decision trace
+      if (order?.org_id) {
+        await captureDecisionTrace(order.org_id, {
+          decision_type: "production_order_status_change",
+          source_type: "production_order",
+          source_id: id,
+          approval_status: "approved",
+          approval_channel: "human",
+          input_snapshot: {
+            order_number: order.order_number,
+            product_name: order.product?.name,
+            planned_quantity: order.planned_quantity,
+            completed_quantity,
+            previous_status: order.status,
+            new_status: status,
+          },
+          rationale_text: `Production order ${order.order_number} status changed from ${order.status} to ${status}`,
+          commit_writes: [{
+            entity: "production_orders",
+            id,
+            field: "status",
+            before: order.status,
+            after: status,
+          }],
+          entities: [{
+            entity_type: "product",
+            entity_id: order.product_id,
+            entity_label: order.product?.name,
+          }],
+        });
+      }
+
       return data;
     },
     onSuccess: () => {

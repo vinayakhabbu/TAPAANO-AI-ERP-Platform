@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { captureDecisionTrace } from "./useDecisionLedger";
 // Warehouses
 export const useWarehouses = () => {
   return useQuery({
@@ -288,13 +288,58 @@ export const useCreateStockTransfer = () => {
 
       const transferNumber = `TRF-${Date.now().toString().slice(-6)}`;
 
-      const { error } = await supabase.from("stock_transfers").insert({
+      // Get warehouse names for the decision trace
+      const { data: fromWarehouse } = await supabase
+        .from("warehouses")
+        .select("name")
+        .eq("id", data.from_warehouse_id)
+        .single();
+      
+      const { data: toWarehouse } = await supabase
+        .from("warehouses")
+        .select("name")
+        .eq("id", data.to_warehouse_id)
+        .single();
+
+      const { data: transfer, error } = await supabase.from("stock_transfers").insert({
         org_id: profile.org_id,
         transfer_number: transferNumber,
         ...data,
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Capture decision trace
+      await captureDecisionTrace(profile.org_id, {
+        decision_type: "stock_transfer_created",
+        source_type: "stock_transfer",
+        source_id: transfer.id,
+        approval_status: "approved",
+        approval_channel: "human",
+        input_snapshot: {
+          transfer_number: transferNumber,
+          from_warehouse: fromWarehouse?.name,
+          to_warehouse: toWarehouse?.name,
+          transfer_date: data.transfer_date,
+          expected_arrival_date: data.expected_arrival_date,
+          notes: data.notes,
+        },
+        rationale_text: `Stock transfer ${transferNumber} created from ${fromWarehouse?.name} to ${toWarehouse?.name}`,
+        entities: [
+          {
+            entity_type: "warehouse",
+            entity_id: data.from_warehouse_id,
+            entity_label: fromWarehouse?.name,
+          },
+          {
+            entity_type: "warehouse",
+            entity_id: data.to_warehouse_id,
+            entity_label: toWarehouse?.name,
+          },
+        ],
+      });
+
+      return transfer;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock_transfers"] });
@@ -326,13 +371,43 @@ export const useCreateCycleCount = () => {
 
       const countNumber = `CC-${Date.now().toString().slice(-6)}`;
 
-      const { error } = await supabase.from("cycle_counts").insert({
+      // Get warehouse name
+      const { data: warehouse } = await supabase
+        .from("warehouses")
+        .select("name")
+        .eq("id", data.warehouse_id)
+        .single();
+
+      const { data: cycleCount, error } = await supabase.from("cycle_counts").insert({
         org_id: profile.org_id,
         count_number: countNumber,
         ...data,
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Capture decision trace
+      await captureDecisionTrace(profile.org_id, {
+        decision_type: "cycle_count_completed",
+        source_type: "cycle_count",
+        source_id: cycleCount.id,
+        approval_status: "approved",
+        approval_channel: "human",
+        input_snapshot: {
+          count_number: countNumber,
+          warehouse_name: warehouse?.name,
+          scheduled_date: data.scheduled_date,
+          notes: data.notes,
+        },
+        rationale_text: `Cycle count ${countNumber} scheduled for ${warehouse?.name}`,
+        entities: [{
+          entity_type: "warehouse",
+          entity_id: data.warehouse_id,
+          entity_label: warehouse?.name,
+        }],
+      });
+
+      return cycleCount;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cycle_counts"] });

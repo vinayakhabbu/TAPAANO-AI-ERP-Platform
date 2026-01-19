@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { captureDecisionTrace } from "./useDecisionLedger";
 // Inventory Receipts with joins
 export const useInventoryReceipts = () => {
   return useQuery({
@@ -122,12 +122,49 @@ export const usePostInventoryReceipt = () => {
 
   return useMutation({
     mutationFn: async (receiptId: string) => {
+      // Get receipt details first
+      const { data: receipt } = await supabase
+        .from("inventory_receipts")
+        .select("*, warehouses(name)")
+        .eq("id", receiptId)
+        .single();
+
       const { error } = await supabase
         .from("inventory_receipts")
         .update({ status: "posted" })
         .eq("id", receiptId);
 
       if (error) throw error;
+
+      // Capture decision trace
+      if (receipt?.org_id) {
+        await captureDecisionTrace(receipt.org_id, {
+          decision_type: "inventory_receipt_posted",
+          source_type: "inventory_receipt",
+          source_id: receiptId,
+          approval_status: "approved",
+          approval_channel: "human",
+          input_snapshot: {
+            receipt_number: receipt.receipt_number,
+            warehouse_name: receipt.warehouses?.name,
+            receipt_type: receipt.receipt_type,
+            receipt_date: receipt.receipt_date,
+          },
+          rationale_text: `Inventory receipt ${receipt.receipt_number} posted to update stock`,
+          commit_writes: [{
+            entity: "inventory_receipts",
+            id: receiptId,
+            field: "status",
+            before: receipt.status,
+            after: "posted",
+          }],
+          entities: [{
+            entity_type: "warehouse",
+            entity_id: receipt.warehouse_id,
+            entity_label: receipt.warehouses?.name,
+          }],
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory_receipts"] });
