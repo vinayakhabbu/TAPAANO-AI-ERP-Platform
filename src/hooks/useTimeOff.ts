@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { notifyTimeOffResponse } from "./useNotifications";
-
+import { captureDecisionTrace } from "./useDecisionLedger";
 export interface TimeOffType {
   id: string;
   org_id: string;
@@ -133,7 +133,7 @@ export const useApproveTimeOffRequest = () => {
       // First get the request details for notification
       const { data: request } = await supabase
         .from("time_off_requests")
-        .select("*, time_off_type:time_off_types(name), employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email)")
+        .select("*, time_off_type:time_off_types(name), employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email, org_id)")
         .eq("id", requestId)
         .single();
 
@@ -148,6 +148,38 @@ export const useApproveTimeOffRequest = () => {
         .select()
         .single();
       if (error) throw error;
+
+      // Capture decision trace
+      if (request?.employee?.org_id) {
+        await captureDecisionTrace(request.employee.org_id, {
+          decision_type: "time_off_approval",
+          source_type: "time_off_request",
+          source_id: requestId,
+          approval_status: "approved",
+          approval_channel: "human",
+          input_snapshot: {
+            employee_name: `${request.employee.first_name} ${request.employee.last_name}`,
+            time_off_type: request.time_off_type?.name,
+            start_date: request.start_date,
+            end_date: request.end_date,
+            days_requested: request.days_requested,
+            reason: request.reason,
+          },
+          rationale_text: "Time off request approved by manager",
+          commit_writes: [{
+            entity: "time_off_requests",
+            id: requestId,
+            field: "status",
+            before: request.status,
+            after: "approved",
+          }],
+          entities: [{
+            entity_type: "employee",
+            entity_id: request.employee_id,
+            entity_label: `${request.employee.first_name} ${request.employee.last_name}`,
+          }],
+        });
+      }
 
       // Send email notification to employee
       if (request?.employee?.email) {
@@ -179,7 +211,7 @@ export const useRejectTimeOffRequest = () => {
       // First get the request details for notification
       const { data: request } = await supabase
         .from("time_off_requests")
-        .select("*, time_off_type:time_off_types(name), employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email)")
+        .select("*, time_off_type:time_off_types(name), employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email, org_id)")
         .eq("id", requestId)
         .single();
 
@@ -193,6 +225,39 @@ export const useRejectTimeOffRequest = () => {
         .select()
         .single();
       if (error) throw error;
+
+      // Capture decision trace
+      if (request?.employee?.org_id) {
+        await captureDecisionTrace(request.employee.org_id, {
+          decision_type: "time_off_rejection",
+          source_type: "time_off_request",
+          source_id: requestId,
+          approval_status: "rejected",
+          approval_channel: "human",
+          input_snapshot: {
+            employee_name: `${request.employee.first_name} ${request.employee.last_name}`,
+            time_off_type: request.time_off_type?.name,
+            start_date: request.start_date,
+            end_date: request.end_date,
+            days_requested: request.days_requested,
+            reason: request.reason,
+          },
+          rationale_text: `Time off request rejected: ${reason}`,
+          reason_codes: ["rejected_by_manager"],
+          commit_writes: [{
+            entity: "time_off_requests",
+            id: requestId,
+            field: "status",
+            before: request.status,
+            after: "rejected",
+          }],
+          entities: [{
+            entity_type: "employee",
+            entity_id: request.employee_id,
+            entity_label: `${request.employee.first_name} ${request.employee.last_name}`,
+          }],
+        });
+      }
 
       // Send email notification to employee
       if (request?.employee?.email) {

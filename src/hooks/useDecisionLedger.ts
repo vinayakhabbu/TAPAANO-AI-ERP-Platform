@@ -6,19 +6,51 @@ import type { PolicyEvaluation } from "@/lib/policyRules";
 
 // Decision types for the ERP
 export type DecisionType = 
+  // Procurement
   | "po_approval" 
   | "po_rejection"
-  | "payment_approval" 
-  | "payment_rejection"
-  | "payment_processing"
-  | "journal_post"
-  | "journal_reverse"
-  | "bill_status_change"
   | "requisition_approval"
   | "requisition_rejection"
   | "requisition_submit"
+  // Payables
+  | "payment_approval" 
+  | "payment_rejection"
+  | "payment_processing"
+  | "bill_status_change"
+  // General Ledger
+  | "journal_post"
+  | "journal_reverse"
+  // Receivables/Invoicing
   | "invoice_sent"
   | "invoice_void"
+  | "invoice_paid"
+  // Sales/CRM
+  | "quotation_sent"
+  | "quotation_accepted"
+  | "quotation_rejected"
+  | "quotation_converted"
+  | "sales_order_status_change"
+  | "opportunity_stage_change"
+  // Inventory
+  | "stock_transfer_created"
+  | "stock_transfer_completed"
+  | "cycle_count_completed"
+  | "inventory_receipt_posted"
+  | "inventory_adjustment"
+  // HR/Payroll
+  | "time_off_approval"
+  | "time_off_rejection"
+  | "expense_claim_approval"
+  | "expense_claim_rejection"
+  | "expense_claim_paid"
+  | "payroll_run_processed"
+  // Service Management
+  | "service_call_status_change"
+  | "service_contract_renewal"
+  // Production
+  | "production_order_status_change"
+  | "production_goods_receipt"
+  // Overrides
   | "credit_override"
   | "discount_override";
 

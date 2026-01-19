@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
+import { captureDecisionTrace } from "./useDecisionLedger";
 export interface ExpenseClaim {
   id: string;
   org_id: string;
@@ -94,6 +94,13 @@ export const useApproveExpenseClaim = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ claimId, approverId }: { claimId: string; approverId: string }) => {
+      // Get claim details first
+      const { data: claim } = await supabase
+        .from("expense_claims")
+        .select("*, employee:employees!expense_claims_employee_id_fkey(first_name, last_name, org_id)")
+        .eq("id", claimId)
+        .single();
+
       const { data, error } = await supabase
         .from("expense_claims")
         .update({
@@ -105,6 +112,39 @@ export const useApproveExpenseClaim = () => {
         .select()
         .single();
       if (error) throw error;
+
+      // Capture decision trace
+      if (claim?.employee?.org_id) {
+        await captureDecisionTrace(claim.employee.org_id, {
+          decision_type: "expense_claim_approval",
+          source_type: "expense_claim",
+          source_id: claimId,
+          approval_status: "approved",
+          approval_channel: "human",
+          input_snapshot: {
+            claim_number: claim.claim_number,
+            employee_name: `${claim.employee.first_name} ${claim.employee.last_name}`,
+            amount: claim.amount,
+            currency: claim.currency,
+            category: claim.category,
+            description: claim.description,
+          },
+          rationale_text: "Expense claim approved by manager",
+          commit_writes: [{
+            entity: "expense_claims",
+            id: claimId,
+            field: "status",
+            before: claim.status,
+            after: "approved",
+          }],
+          entities: [{
+            entity_type: "employee",
+            entity_id: claim.employee_id,
+            entity_label: `${claim.employee.first_name} ${claim.employee.last_name}`,
+          }],
+        });
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -119,6 +159,13 @@ export const useRejectExpenseClaim = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ claimId, reason }: { claimId: string; reason: string }) => {
+      // Get claim details first
+      const { data: claim } = await supabase
+        .from("expense_claims")
+        .select("*, employee:employees!expense_claims_employee_id_fkey(first_name, last_name, org_id)")
+        .eq("id", claimId)
+        .single();
+
       const { data, error } = await supabase
         .from("expense_claims")
         .update({
@@ -129,6 +176,40 @@ export const useRejectExpenseClaim = () => {
         .select()
         .single();
       if (error) throw error;
+
+      // Capture decision trace
+      if (claim?.employee?.org_id) {
+        await captureDecisionTrace(claim.employee.org_id, {
+          decision_type: "expense_claim_rejection",
+          source_type: "expense_claim",
+          source_id: claimId,
+          approval_status: "rejected",
+          approval_channel: "human",
+          input_snapshot: {
+            claim_number: claim.claim_number,
+            employee_name: `${claim.employee.first_name} ${claim.employee.last_name}`,
+            amount: claim.amount,
+            currency: claim.currency,
+            category: claim.category,
+            description: claim.description,
+          },
+          rationale_text: `Expense claim rejected: ${reason}`,
+          reason_codes: ["rejected_by_manager"],
+          commit_writes: [{
+            entity: "expense_claims",
+            id: claimId,
+            field: "status",
+            before: claim.status,
+            after: "rejected",
+          }],
+          entities: [{
+            entity_type: "employee",
+            entity_id: claim.employee_id,
+            entity_label: `${claim.employee.first_name} ${claim.employee.last_name}`,
+          }],
+        });
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -143,6 +224,13 @@ export const useMarkExpenseAsPaid = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (claimId: string) => {
+      // Get claim details first
+      const { data: claim } = await supabase
+        .from("expense_claims")
+        .select("*, employee:employees!expense_claims_employee_id_fkey(first_name, last_name, org_id)")
+        .eq("id", claimId)
+        .single();
+
       const { data, error } = await supabase
         .from("expense_claims")
         .update({
@@ -153,6 +241,38 @@ export const useMarkExpenseAsPaid = () => {
         .select()
         .single();
       if (error) throw error;
+
+      // Capture decision trace
+      if (claim?.employee?.org_id) {
+        await captureDecisionTrace(claim.employee.org_id, {
+          decision_type: "expense_claim_paid",
+          source_type: "expense_claim",
+          source_id: claimId,
+          approval_status: "approved",
+          approval_channel: "human",
+          input_snapshot: {
+            claim_number: claim.claim_number,
+            employee_name: `${claim.employee.first_name} ${claim.employee.last_name}`,
+            amount: claim.amount,
+            currency: claim.currency,
+            category: claim.category,
+          },
+          rationale_text: "Expense claim payment processed",
+          commit_writes: [{
+            entity: "expense_claims",
+            id: claimId,
+            field: "status",
+            before: claim.status,
+            after: "paid",
+          }],
+          entities: [{
+            entity_type: "employee",
+            entity_id: claim.employee_id,
+            entity_label: `${claim.employee.first_name} ${claim.employee.last_name}`,
+          }],
+        });
+      }
+
       return data;
     },
     onSuccess: () => {

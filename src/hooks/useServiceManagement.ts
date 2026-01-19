@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-
+import { captureDecisionTrace } from "./useDecisionLedger";
 export interface ServiceContract {
   id: string;
   contract_number: string;
@@ -225,9 +225,17 @@ export function useCreateFieldVisit() {
 
 export function useUpdateServiceCallStatus() {
   const queryClient = useQueryClient();
+  const { profile } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, status, resolution }: { id: string; status: string; resolution?: string }) => {
+      // Get service call details first
+      const { data: call } = await supabase
+        .from("service_calls")
+        .select("*, customers(name)")
+        .eq("id", id)
+        .single();
+
       const updates: Record<string, unknown> = { status };
       if (status === "completed") {
         updates.completed_at = new Date().toISOString();
@@ -237,6 +245,39 @@ export function useUpdateServiceCallStatus() {
       }
       const { error } = await supabase.from("service_calls").update(updates).eq("id", id);
       if (error) throw error;
+
+      // Capture decision trace
+      if (profile?.org_id && call) {
+        await captureDecisionTrace(profile.org_id, {
+          decision_type: "service_call_status_change",
+          source_type: "service_call",
+          source_id: id,
+          approval_status: "approved",
+          approval_channel: "human",
+          input_snapshot: {
+            call_number: call.call_number,
+            customer_name: call.customers?.name,
+            subject: call.subject,
+            priority: call.priority,
+            previous_status: call.status,
+            new_status: status,
+            resolution,
+          },
+          rationale_text: `Service call status changed from ${call.status} to ${status}${resolution ? ` with resolution: ${resolution}` : ""}`,
+          commit_writes: [{
+            entity: "service_calls",
+            id,
+            field: "status",
+            before: call.status,
+            after: status,
+          }],
+          entities: call.customer_id ? [{
+            entity_type: "customer",
+            entity_id: call.customer_id,
+            entity_label: call.customers?.name,
+          }] : [],
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["service-calls"] });

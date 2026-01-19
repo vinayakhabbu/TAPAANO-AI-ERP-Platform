@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-
+import { captureDecisionTrace } from "./useDecisionLedger";
 export interface Opportunity {
   id: string;
   opportunity_name: string;
@@ -106,6 +106,13 @@ export const useUpdateOpportunityStage = () => {
 
   return useMutation({
     mutationFn: async ({ id, stage, reason }: { id: string; stage: string; reason?: string }) => {
+      // Get opportunity details first
+      const { data: opp } = await supabase
+        .from("opportunities")
+        .select("*, customers(name)")
+        .eq("id", id)
+        .single();
+
       const stageConfig = OPPORTUNITY_STAGES.find((s) => s.value === stage);
       const updateData: Record<string, unknown> = {
         stage,
@@ -126,6 +133,39 @@ export const useUpdateOpportunityStage = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Capture decision trace for stage changes
+      if (opp?.org_id) {
+        await captureDecisionTrace(opp.org_id, {
+          decision_type: "opportunity_stage_change",
+          source_type: "opportunity",
+          source_id: id,
+          approval_status: stage === "closed_won" ? "approved" : stage === "closed_lost" ? "rejected" : "approved",
+          approval_channel: "human",
+          input_snapshot: {
+            opportunity_number: opp.opportunity_number,
+            opportunity_name: opp.opportunity_name,
+            customer_name: opp.customers?.name,
+            expected_value: opp.expected_value,
+            previous_stage: opp.stage,
+            new_stage: stage,
+            reason,
+          },
+          rationale_text: `Opportunity stage changed from ${opp.stage} to ${stage}${reason ? `: ${reason}` : ""}`,
+          commit_writes: [{
+            entity: "opportunities",
+            id,
+            field: "stage",
+            before: opp.stage,
+            after: stage,
+          }],
+          entities: opp.customer_id ? [{
+            entity_type: "customer",
+            entity_id: opp.customer_id,
+            entity_label: opp.customers?.name,
+          }] : [],
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
