@@ -480,69 +480,44 @@ export default function DecisionDesk() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="decisions" className="space-y-4">
-          <Card className="p-1.5">
-            <div className="overflow-x-auto scrollbar-hide">
-              <TabsList className="inline-flex w-max min-w-full h-auto p-0 gap-1 bg-transparent">
-                <TabsTrigger 
-                  value="decisions" 
-                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
-                >
-                  <FileText className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline font-medium">Decision Log</span>
-                  <span className="sm:hidden font-medium">Log</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="precedents" 
-                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
-                >
-                  <History className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline font-medium">Precedents</span>
-                  <span className="sm:hidden font-medium">Prec.</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="agent-runs" 
-                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
-                >
-                  <Play className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline font-medium">Agent Runs</span>
-                  <span className="sm:hidden font-medium">Runs</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="graph" 
-                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
-                >
-                  <Network className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline font-medium">Entity Graph</span>
-                  <span className="sm:hidden font-medium">Graph</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="autonomous" 
-                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
-                >
-                  <Bot className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline font-medium">Auto Approver</span>
-                  <span className="sm:hidden font-medium">Auto</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="anomalies" 
-                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
-                >
-                  <ShieldAlert className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline font-medium">Anomalies</span>
-                  <span className="sm:hidden font-medium">Alert</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="analytics" 
-                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
-                >
-                  <BarChart3 className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline font-medium">Analytics</span>
-                  <span className="sm:hidden font-medium">Stats</span>
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          </Card>
+        <Tabs defaultValue="decisions" className="space-y-6">
+          <TabsList className="h-auto flex-wrap gap-1 p-1 bg-muted/50">
+            <TabsTrigger value="decisions" className="gap-2 text-xs sm:text-sm">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Decision Log</span>
+              <span className="sm:hidden">Log</span>
+            </TabsTrigger>
+            <TabsTrigger value="precedents" className="gap-2 text-xs sm:text-sm">
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">Precedents</span>
+              <span className="sm:hidden">Prec.</span>
+            </TabsTrigger>
+            <TabsTrigger value="agent-runs" className="gap-2 text-xs sm:text-sm">
+              <Play className="h-4 w-4" />
+              <span className="hidden sm:inline">Agent Runs</span>
+              <span className="sm:hidden">Runs</span>
+            </TabsTrigger>
+            <TabsTrigger value="graph" className="gap-2 text-xs sm:text-sm">
+              <Network className="h-4 w-4" />
+              <span className="hidden sm:inline">Entity Graph</span>
+              <span className="sm:hidden">Graph</span>
+            </TabsTrigger>
+            <TabsTrigger value="autonomous" className="gap-2 text-xs sm:text-sm">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">Auto Approver</span>
+              <span className="sm:hidden">Auto</span>
+            </TabsTrigger>
+            <TabsTrigger value="anomalies" className="gap-2 text-xs sm:text-sm">
+              <ShieldAlert className="h-4 w-4" />
+              <span className="hidden sm:inline">Anomalies</span>
+              <span className="sm:hidden">Alert</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2 text-xs sm:text-sm">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Analytics</span>
+              <span className="sm:hidden">Stats</span>
+            </TabsTrigger>
+          </TabsList>
 
           {/* Precedent Explorer Tab */}
           <TabsContent value="precedents">
