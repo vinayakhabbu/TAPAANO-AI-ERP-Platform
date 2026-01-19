@@ -177,10 +177,15 @@ export const useCreateDecisionTrace = () => {
         }
       }
 
+      // Generate embedding asynchronously for precedent search
+      generateEmbeddingForTrace(trace.id);
+
       return trace;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["decision-traces"] });
+      queryClient.invalidateQueries({ queryKey: ["precedent-search"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-precedents"] });
     },
   });
 };
@@ -330,5 +335,24 @@ export const captureDecisionTrace = async (
       .insert(entitiesData as any);
   }
 
+  // Generate embedding asynchronously for precedent search
+  generateEmbeddingForTrace(trace.id);
+
   return trace;
+};
+
+// Helper to generate embedding for a decision trace (fire-and-forget)
+const generateEmbeddingForTrace = async (decisionTraceId: string): Promise<void> => {
+  try {
+    const { error } = await supabase.functions.invoke("generate-embedding", {
+      body: { decision_trace_id: decisionTraceId },
+    });
+    
+    if (error) {
+      console.warn("Failed to generate embedding (non-blocking):", error);
+    }
+  } catch (err) {
+    // Non-blocking - embedding generation failure shouldn't affect decision logging
+    console.warn("Embedding generation failed (non-blocking):", err);
+  }
 };
