@@ -1866,6 +1866,43 @@ async function executeOrchestratorTool(toolName: string, args: any, supabase: an
 }
 
 // ============================================================================
+// AUTH HELPER - Validates user and extracts verified org_id
+// ============================================================================
+
+async function validateAuthAndGetOrgId(req: Request): Promise<{ user: any; org_id: string; error?: string }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { user: null, org_id: '', error: 'Missing or invalid authorization header' };
+  }
+
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  // Verify user token using getClaims for efficiency
+  const token = authHeader.replace('Bearer ', '');
+  const { data, error: authError } = await supabaseClient.auth.getUser(token);
+  
+  if (authError || !data?.user) {
+    return { user: null, org_id: '', error: 'Invalid or expired token' };
+  }
+
+  // Get user's org_id from their profile (don't trust client input!)
+  const { data: profile, error: profileError } = await supabaseClient
+    .from('profiles')
+    .select('org_id')
+    .eq('id', data.user.id)
+    .single();
+
+  if (profileError || !profile?.org_id) {
+    return { user: data.user, org_id: '', error: 'User profile not found or not associated with an organization' };
+  }
+
+  return { user: data.user, org_id: profile.org_id };
+}
+
+// ============================================================================
 // MAIN HANDLER
 // ============================================================================
 
@@ -1875,24 +1912,32 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, org_id } = await req.json();
-    console.log('Agent River request - messages:', messages.length, 'org_id:', org_id);
+    // Validate authentication and get verified org_id
+    const { user, org_id, error: authError } = await validateAuthAndGetOrgId(req);
+    
+    if (authError || !org_id) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { messages } = await req.json();
+    console.log('Agent River request - messages:', messages.length, 'org_id:', org_id, 'user:', user.id);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user's OpenAI key from their organization
+    // Get user's OpenAI key from their organization (using verified org_id)
     let apiKey: string | null = null;
-    if (org_id) {
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('openai_api_key')
-        .eq('id', org_id)
-        .single();
-      
-      if (orgData?.openai_api_key) {
-        apiKey = orgData.openai_api_key;
-        console.log('Using user-provided OpenAI API key');
-      }
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('openai_api_key')
+      .eq('id', org_id)
+      .single();
+    
+    if (orgData?.openai_api_key) {
+      apiKey = orgData.openai_api_key;
+      console.log('Using user-provided OpenAI API key');
     }
 
     if (!apiKey) {
