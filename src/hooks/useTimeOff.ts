@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { notifyTimeOffResponse } from "./useNotifications";
 
 export interface TimeOffType {
   id: string;
@@ -129,6 +130,13 @@ export const useApproveTimeOffRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ requestId, approverId }: { requestId: string; approverId: string }) => {
+      // First get the request details for notification
+      const { data: request } = await supabase
+        .from("time_off_requests")
+        .select("*, time_off_type:time_off_types(name), employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email)")
+        .eq("id", requestId)
+        .single();
+
       const { data, error } = await supabase
         .from("time_off_requests")
         .update({
@@ -140,6 +148,19 @@ export const useApproveTimeOffRequest = () => {
         .select()
         .single();
       if (error) throw error;
+
+      // Send email notification to employee
+      if (request?.employee?.email) {
+        notifyTimeOffResponse(
+          request.employee.email,
+          `${request.employee.first_name} ${request.employee.last_name}`,
+          "Approved",
+          request.start_date,
+          request.end_date,
+          request.time_off_type?.name || "Leave"
+        );
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -155,6 +176,13 @@ export const useRejectTimeOffRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) => {
+      // First get the request details for notification
+      const { data: request } = await supabase
+        .from("time_off_requests")
+        .select("*, time_off_type:time_off_types(name), employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email)")
+        .eq("id", requestId)
+        .single();
+
       const { data, error } = await supabase
         .from("time_off_requests")
         .update({
@@ -165,6 +193,19 @@ export const useRejectTimeOffRequest = () => {
         .select()
         .single();
       if (error) throw error;
+
+      // Send email notification to employee
+      if (request?.employee?.email) {
+        notifyTimeOffResponse(
+          request.employee.email,
+          `${request.employee.first_name} ${request.employee.last_name}`,
+          "Rejected",
+          request.start_date,
+          request.end_date,
+          request.time_off_type?.name || "Leave"
+        );
+      }
+
       return data;
     },
     onSuccess: () => {

@@ -540,3 +540,202 @@ export const exportBillsList = (bills: BillData[]) => {
   addFooter(doc);
   doc.save(`bills-report-${format(new Date(), "yyyy-MM-dd")}.pdf`);
 };
+
+interface PayslipData {
+  payslip_number: string;
+  employee_name: string;
+  employee_number: string;
+  period_start: string;
+  period_end: string;
+  pay_date: string;
+  gross_pay: number;
+  total_deductions: number;
+  net_pay: number;
+  earnings_breakdown: Record<string, number>;
+  deductions_breakdown: Record<string, number>;
+  ytd_gross?: number;
+  ytd_deductions?: number;
+  ytd_net?: number;
+}
+
+export const exportPayslip = (payslip: PayslipData, companyName?: string) => {
+  const doc = new jsPDF();
+  
+  // Company header
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text(companyName || "Company Name", 20, 20);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text("PAYSLIP", 20, 28);
+  doc.setTextColor(0);
+  
+  // Payslip number and generation date
+  doc.setFontSize(9);
+  doc.setTextColor(128);
+  doc.text(`#${payslip.payslip_number}`, doc.internal.pageSize.width - 20, 20, { align: "right" });
+  doc.text(`Generated: ${format(new Date(), "MMM d, yyyy")}`, doc.internal.pageSize.width - 20, 28, { align: "right" });
+  doc.setTextColor(0);
+  
+  let yPosition = 40;
+  
+  // Employee information box
+  doc.setDrawColor(200);
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(20, yPosition, 170, 30, 2, 2, "FD");
+  
+  yPosition += 8;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("Employee:", 25, yPosition);
+  doc.setFont("helvetica", "normal");
+  doc.text(payslip.employee_name, 60, yPosition);
+  
+  doc.setFont("helvetica", "bold");
+  doc.text("Employee #:", 120, yPosition);
+  doc.setFont("helvetica", "normal");
+  doc.text(payslip.employee_number, 150, yPosition);
+  
+  yPosition += 10;
+  doc.setFont("helvetica", "bold");
+  doc.text("Pay Period:", 25, yPosition);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${format(new Date(payslip.period_start), "MMM d, yyyy")} - ${format(new Date(payslip.period_end), "MMM d, yyyy")}`, 60, yPosition);
+  
+  doc.setFont("helvetica", "bold");
+  doc.text("Pay Date:", 120, yPosition);
+  doc.setFont("helvetica", "normal");
+  doc.text(format(new Date(payslip.pay_date), "MMM d, yyyy"), 150, yPosition);
+  
+  yPosition += 25;
+  
+  // Earnings section
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("EARNINGS", 20, yPosition);
+  yPosition += 2;
+  
+  const earningsData = Object.entries(payslip.earnings_breakdown).map(([key, value]) => [
+    key,
+    formatCurrency(value)
+  ]);
+  
+  if (earningsData.length > 0) {
+    autoTable(doc, {
+      startY: yPosition,
+      head: [["Description", "Amount"]],
+      body: earningsData,
+      theme: "plain",
+      headStyles: { fillColor: [34, 197, 94], textColor: 255, fontSize: 9 },
+      styles: { fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 120 },
+        1: { cellWidth: 50, halign: "right" }
+      },
+      margin: { left: 20, right: 20 }
+    });
+    yPosition = (doc as any).lastAutoTable.finalY + 3;
+  }
+  
+  // Gross Pay subtotal
+  autoTable(doc, {
+    startY: yPosition,
+    head: [],
+    body: [["Gross Pay", formatCurrency(payslip.gross_pay)]],
+    theme: "plain",
+    styles: { fontSize: 10, fontStyle: "bold" },
+    columnStyles: {
+      0: { cellWidth: 120 },
+      1: { cellWidth: 50, halign: "right" }
+    },
+    margin: { left: 20, right: 20 }
+  });
+  yPosition = (doc as any).lastAutoTable.finalY + 10;
+  
+  // Deductions section
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("DEDUCTIONS", 20, yPosition);
+  yPosition += 2;
+  
+  const deductionsData = Object.entries(payslip.deductions_breakdown)
+    .filter(([, value]) => value > 0)
+    .map(([key, value]) => [key, formatCurrency(value)]);
+  
+  if (deductionsData.length > 0) {
+    autoTable(doc, {
+      startY: yPosition,
+      head: [["Description", "Amount"]],
+      body: deductionsData,
+      theme: "plain",
+      headStyles: { fillColor: [239, 68, 68], textColor: 255, fontSize: 9 },
+      styles: { fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 120 },
+        1: { cellWidth: 50, halign: "right" }
+      },
+      margin: { left: 20, right: 20 }
+    });
+    yPosition = (doc as any).lastAutoTable.finalY + 3;
+  }
+  
+  // Total Deductions subtotal
+  autoTable(doc, {
+    startY: yPosition,
+    head: [],
+    body: [["Total Deductions", formatCurrency(payslip.total_deductions)]],
+    theme: "plain",
+    styles: { fontSize: 10, fontStyle: "bold" },
+    columnStyles: {
+      0: { cellWidth: 120 },
+      1: { cellWidth: 50, halign: "right" }
+    },
+    margin: { left: 20, right: 20 }
+  });
+  yPosition = (doc as any).lastAutoTable.finalY + 10;
+  
+  // Net Pay box
+  doc.setDrawColor(34, 197, 94);
+  doc.setFillColor(240, 253, 244);
+  doc.setLineWidth(1);
+  doc.roundedRect(20, yPosition, 170, 20, 2, 2, "FD");
+  
+  yPosition += 13;
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("NET PAY", 30, yPosition);
+  doc.text(formatCurrency(payslip.net_pay), 180, yPosition, { align: "right" });
+  
+  yPosition += 25;
+  
+  // YTD Summary if available
+  if (payslip.ytd_gross || payslip.ytd_deductions || payslip.ytd_net) {
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("YEAR-TO-DATE SUMMARY", 20, yPosition);
+    yPosition += 2;
+    
+    autoTable(doc, {
+      startY: yPosition,
+      head: [["", "Amount"]],
+      body: [
+        ["YTD Gross Earnings", formatCurrency(payslip.ytd_gross || 0)],
+        ["YTD Deductions", formatCurrency(payslip.ytd_deductions || 0)],
+        ["YTD Net Pay", formatCurrency(payslip.ytd_net || 0)],
+      ],
+      theme: "striped",
+      headStyles: { fillColor: [100, 116, 139], textColor: 255, fontSize: 9 },
+      styles: { fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 120 },
+        1: { cellWidth: 50, halign: "right" }
+      },
+      margin: { left: 20, right: 20 }
+    });
+  }
+  
+  addFooter(doc);
+  doc.save(`payslip-${payslip.payslip_number}.pdf`);
+};
