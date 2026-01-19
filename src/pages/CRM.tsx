@@ -158,38 +158,36 @@ const CRM = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="pipeline" className="mt-6">
-        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
-          <TabsList className="inline-flex h-10 w-auto bg-muted/50">
-            <TabsTrigger value="pipeline" className="gap-2 whitespace-nowrap">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Pipeline</span>
-              <span className="sm:hidden">Pipe</span>
-            </TabsTrigger>
-            <TabsTrigger value="opportunities" className="gap-2 whitespace-nowrap">
-              <Target className="h-4 w-4" />
-              <span className="hidden sm:inline">Opportunities</span>
-              <span className="sm:hidden">Opps</span>
-            </TabsTrigger>
-            <TabsTrigger value="customers" className="gap-2 whitespace-nowrap">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Customers</span>
-              <span className="sm:hidden">Custs</span>
-            </TabsTrigger>
-            <TabsTrigger value="forecasting" className="gap-2 whitespace-nowrap">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Forecasting</span>
-              <span className="sm:hidden">Fcast</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="gap-2 whitespace-nowrap">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Analytics</span>
-              <span className="sm:hidden">Stats</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="h-auto flex-wrap gap-1 p-1 bg-muted/50">
+          <TabsTrigger value="pipeline" className="gap-2 text-xs sm:text-sm">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Pipeline</span>
+            <span className="sm:hidden">Pipe</span>
+          </TabsTrigger>
+          <TabsTrigger value="opportunities" className="gap-2 text-xs sm:text-sm">
+            <Target className="h-4 w-4" />
+            <span className="hidden sm:inline">Opportunities</span>
+            <span className="sm:hidden">Opps</span>
+          </TabsTrigger>
+          <TabsTrigger value="customers" className="gap-2 text-xs sm:text-sm">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Customers</span>
+            <span className="sm:hidden">Custs</span>
+          </TabsTrigger>
+          <TabsTrigger value="forecasting" className="gap-2 text-xs sm:text-sm">
+            <TrendingUp className="h-4 w-4" />
+            <span className="hidden sm:inline">Forecasting</span>
+            <span className="sm:hidden">Fcast</span>
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-2 text-xs sm:text-sm">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Analytics</span>
+            <span className="sm:hidden">Stats</span>
+          </TabsTrigger>
+        </TabsList>
 
         {/* Pipeline Tab */}
-        <TabsContent value="pipeline">
+        <TabsContent value="pipeline" className="mt-6">
           <div className="rounded-xl border border-border bg-card">
             <div className="flex items-center justify-between border-b border-border p-4">
               <div>

@@ -236,38 +236,36 @@ const Receivables = () => {
 
       {/* Tabs for O2C stages */}
       <Tabs defaultValue="quotations" className="mt-6">
-        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
-          <TabsList className="inline-flex h-10 w-auto bg-muted/50">
-            <TabsTrigger value="quotations" className="gap-2 whitespace-nowrap">
-              <ClipboardList className="h-4 w-4" />
-              <span className="hidden sm:inline">Quotations</span>
-              <span className="sm:hidden">Quotes</span>
-            </TabsTrigger>
-            <TabsTrigger value="sales-orders" className="gap-2 whitespace-nowrap">
-              <ShoppingCart className="h-4 w-4" />
-              <span className="hidden sm:inline">Sales Orders</span>
-              <span className="sm:hidden">Orders</span>
-            </TabsTrigger>
-            <TabsTrigger value="shipping" className="gap-2 whitespace-nowrap">
-              <Truck className="h-4 w-4" />
-              <span className="hidden sm:inline">Shipping</span>
-              <span className="sm:hidden">Ship</span>
-            </TabsTrigger>
-            <TabsTrigger value="invoices" className="gap-2 whitespace-nowrap">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Invoices</span>
-              <span className="sm:hidden">Inv</span>
-            </TabsTrigger>
-            <TabsTrigger value="collections" className="gap-2 whitespace-nowrap">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Collections</span>
-              <span className="sm:hidden">Collect</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="h-auto flex-wrap gap-1 p-1 bg-muted/50">
+          <TabsTrigger value="quotations" className="gap-2 text-xs sm:text-sm">
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">Quotations</span>
+            <span className="sm:hidden">Quotes</span>
+          </TabsTrigger>
+          <TabsTrigger value="sales-orders" className="gap-2 text-xs sm:text-sm">
+            <ShoppingCart className="h-4 w-4" />
+            <span className="hidden sm:inline">Sales Orders</span>
+            <span className="sm:hidden">Orders</span>
+          </TabsTrigger>
+          <TabsTrigger value="shipping" className="gap-2 text-xs sm:text-sm">
+            <Truck className="h-4 w-4" />
+            <span className="hidden sm:inline">Shipping</span>
+            <span className="sm:hidden">Ship</span>
+          </TabsTrigger>
+          <TabsTrigger value="invoices" className="gap-2 text-xs sm:text-sm">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Invoices</span>
+            <span className="sm:hidden">Inv</span>
+          </TabsTrigger>
+          <TabsTrigger value="collections" className="gap-2 text-xs sm:text-sm">
+            <CreditCard className="h-4 w-4" />
+            <span className="hidden sm:inline">Collections</span>
+            <span className="sm:hidden">Collect</span>
+          </TabsTrigger>
+        </TabsList>
 
         {/* Quotations Tab */}
-        <TabsContent value="quotations">
+        <TabsContent value="quotations" className="mt-6">
           <div className="rounded-xl border border-border bg-card">
             <div className="flex items-center justify-between border-b border-border p-4">
               <div>
