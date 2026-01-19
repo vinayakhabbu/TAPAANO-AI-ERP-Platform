@@ -138,43 +138,43 @@ export default function HRPayroll() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="employees" className="space-y-4">
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="employees" className="gap-2">
-              <Users className="h-4 w-4" /> Employees
+        <Tabs defaultValue="employees" className="space-y-6">
+          <TabsList className="h-auto flex-wrap gap-1 p-1">
+            <TabsTrigger value="employees" className="gap-1.5 text-xs sm:text-sm">
+              <Users className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Employees</span><span className="sm:hidden">Emp</span>
             </TabsTrigger>
-            <TabsTrigger value="departments" className="gap-2">
-              <Building2 className="h-4 w-4" /> Departments
+            <TabsTrigger value="departments" className="gap-1.5 text-xs sm:text-sm">
+              <Building2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Departments</span><span className="sm:hidden">Dept</span>
             </TabsTrigger>
-            <TabsTrigger value="positions" className="gap-2">
-              <Briefcase className="h-4 w-4" /> Positions
+            <TabsTrigger value="positions" className="gap-1.5 text-xs sm:text-sm">
+              <Briefcase className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Positions</span><span className="sm:hidden">Pos</span>
             </TabsTrigger>
-            <TabsTrigger value="timeoff" className="gap-2">
-              <Calendar className="h-4 w-4" /> Time Off
+            <TabsTrigger value="timeoff" className="gap-1.5 text-xs sm:text-sm">
+              <Calendar className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Time Off</span><span className="sm:hidden">Off</span>
             </TabsTrigger>
-            <TabsTrigger value="attendance" className="gap-2">
-              <Clock className="h-4 w-4" /> Attendance
+            <TabsTrigger value="attendance" className="gap-1.5 text-xs sm:text-sm">
+              <Clock className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Attendance</span><span className="sm:hidden">Att</span>
             </TabsTrigger>
-            <TabsTrigger value="periods" className="gap-2">
-              <Calendar className="h-4 w-4" /> Pay Periods
+            <TabsTrigger value="periods" className="gap-1.5 text-xs sm:text-sm">
+              <Calendar className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Pay Periods</span><span className="sm:hidden">Per</span>
             </TabsTrigger>
-            <TabsTrigger value="runs" className="gap-2">
-              <FileText className="h-4 w-4" /> Payroll Runs
+            <TabsTrigger value="runs" className="gap-1.5 text-xs sm:text-sm">
+              <FileText className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Payroll</span><span className="sm:hidden">Pay</span>
             </TabsTrigger>
-            <TabsTrigger value="payslips" className="gap-2">
-              <FileText className="h-4 w-4" /> Payslips
+            <TabsTrigger value="payslips" className="gap-1.5 text-xs sm:text-sm">
+              <FileText className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Payslips</span><span className="sm:hidden">Slip</span>
             </TabsTrigger>
-            <TabsTrigger value="expenses" className="gap-2">
-              <Receipt className="h-4 w-4" /> Expenses
+            <TabsTrigger value="expenses" className="gap-1.5 text-xs sm:text-sm">
+              <Receipt className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Expenses</span><span className="sm:hidden">Exp</span>
             </TabsTrigger>
-            <TabsTrigger value="documents" className="gap-2">
-              <FolderOpen className="h-4 w-4" /> Documents
+            <TabsTrigger value="documents" className="gap-1.5 text-xs sm:text-sm">
+              <FolderOpen className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Documents</span><span className="sm:hidden">Doc</span>
             </TabsTrigger>
-            <TabsTrigger value="contacts" className="gap-2">
-              <Phone className="h-4 w-4" /> Emergency
+            <TabsTrigger value="contacts" className="gap-1.5 text-xs sm:text-sm">
+              <Phone className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Emergency</span><span className="sm:hidden">Emg</span>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="gap-2">
-              <BarChart3 className="h-4 w-4" /> Analytics
+            <TabsTrigger value="analytics" className="gap-1.5 text-xs sm:text-sm">
+              <BarChart3 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Analytics</span><span className="sm:hidden">Ana</span>
             </TabsTrigger>
           </TabsList>
 
