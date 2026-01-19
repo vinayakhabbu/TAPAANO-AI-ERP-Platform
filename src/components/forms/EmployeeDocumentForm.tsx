@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,8 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
-import { useCreateEmployeeDocument, DOCUMENT_TYPES } from "@/hooks/useEmployeeDocuments";
+import { Plus, Upload, FileText, X } from "lucide-react";
+import { useUploadEmployeeDocument, DOCUMENT_TYPES } from "@/hooks/useEmployeeDocuments";
 import { useEmployees } from "@/hooks/useHRPayroll";
 
 interface EmployeeDocumentFormProps {
@@ -26,36 +26,95 @@ interface EmployeeDocumentFormProps {
   employeeId?: string;
 }
 
+const ALLOWED_TYPES = [
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 export function EmployeeDocumentForm({ trigger, employeeId }: EmployeeDocumentFormProps) {
   const [open, setOpen] = useState(false);
-  const createDocument = useCreateEmployeeDocument();
+  const uploadDocument = useUploadEmployeeDocument();
   const { data: employees = [] } = useEmployees();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     employee_id: employeeId || "",
     document_type: "",
     document_name: "",
-    file_url: "",
     expiry_date: "",
     notes: "",
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setFileError(null);
+    
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setFileError("Invalid file type. Allowed: PDF, PNG, JPG, DOC, DOCX");
+      setSelectedFile(null);
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setFileError("File too large. Maximum size is 10MB");
+      setSelectedFile(null);
+      return;
+    }
+
+    setSelectedFile(file);
+    // Auto-fill document name if empty
+    if (!formData.document_name) {
+      setFormData(prev => ({ ...prev, document_name: file.name.replace(/\.[^/.]+$/, "") }));
+    }
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    setFileError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createDocument.mutateAsync({
-      ...formData,
+    
+    if (!selectedFile) {
+      setFileError("Please select a file to upload");
+      return;
+    }
+
+    await uploadDocument.mutateAsync({
+      file: selectedFile,
+      employee_id: formData.employee_id,
+      document_type: formData.document_type,
+      document_name: formData.document_name,
       expiry_date: formData.expiry_date || undefined,
-      file_url: formData.file_url || undefined,
+      notes: formData.notes || undefined,
     });
+    
     setOpen(false);
     setFormData({
       employee_id: employeeId || "",
       document_type: "",
       document_name: "",
-      file_url: "",
       expiry_date: "",
       notes: "",
     });
+    setSelectedFile(null);
   };
 
   return (
@@ -64,13 +123,13 @@ export function EmployeeDocumentForm({ trigger, employeeId }: EmployeeDocumentFo
         {trigger || (
           <Button variant="outline" className="gap-2">
             <Plus className="h-4 w-4" />
-            Add Document
+            Upload Document
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Employee Document</DialogTitle>
+          <DialogTitle>Upload Employee Document</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {!employeeId && (
@@ -93,6 +152,51 @@ export function EmployeeDocumentForm({ trigger, employeeId }: EmployeeDocumentFo
               </Select>
             </div>
           )}
+
+          {/* File Upload */}
+          <div className="space-y-2">
+            <Label>Document File *</Label>
+            <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+              {selectedFile ? (
+                <div className="flex items-center justify-between bg-muted rounded p-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium truncate max-w-[200px]">{selectedFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(selectedFile.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={clearFile}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="cursor-pointer">
+                  <div className="flex flex-col items-center gap-2 py-4">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PDF, PNG, JPG, DOC, DOCX (max 10MB)
+                    </p>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                    onChange={handleFileChange}
+                  />
+                </label>
+              )}
+            </div>
+            {fileError && (
+              <p className="text-sm text-destructive">{fileError}</p>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -134,15 +238,6 @@ export function EmployeeDocumentForm({ trigger, employeeId }: EmployeeDocumentFo
           </div>
 
           <div className="space-y-2">
-            <Label>File URL</Label>
-            <Input
-              value={formData.file_url}
-              onChange={(e) => setFormData({ ...formData, file_url: e.target.value })}
-              placeholder="https://..."
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea
               value={formData.notes}
@@ -158,9 +253,9 @@ export function EmployeeDocumentForm({ trigger, employeeId }: EmployeeDocumentFo
             </Button>
             <Button 
               type="submit" 
-              disabled={createDocument.isPending || !formData.employee_id || !formData.document_type || !formData.document_name}
+              disabled={uploadDocument.isPending || !formData.employee_id || !formData.document_type || !formData.document_name || !selectedFile}
             >
-              {createDocument.isPending ? "Adding..." : "Add Document"}
+              {uploadDocument.isPending ? "Uploading..." : "Upload Document"}
             </Button>
           </div>
         </form>
