@@ -7,8 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Auto-approval configuration
-const AUTO_APPROVAL_CONFIGS: Record<string, {
+// Default fallback configs (used when database configs unavailable)
+const DEFAULT_CONFIGS: Record<string, {
   minPrecedentSimilarity: number;
   minPrecedentCount: number;
   maxAutoApprovalAmount: number;
@@ -33,6 +33,13 @@ const AUTO_APPROVAL_CONFIGS: Record<string, {
     enabled: true,
   },
 };
+
+interface AutoApprovalConfig {
+  minPrecedentSimilarity: number;
+  minPrecedentCount: number;
+  maxAutoApprovalAmount: number;
+  enabled: boolean;
+}
 
 interface AutoApprovalCandidate {
   id: string;
@@ -97,6 +104,30 @@ async function validateAuthAndGetOrgId(req: Request): Promise<{ user: any; org_i
   return { user: data.user, org_id: profile.org_id };
 }
 
+// Fetch configs from database
+async function getAutoApprovalConfigs(
+  supabase: any,
+  orgId: string
+): Promise<Record<string, AutoApprovalConfig>> {
+  const { data: configs } = await supabase
+    .from("auto_approval_configs")
+    .select("*")
+    .eq("org_id", orgId);
+
+  const configMap: Record<string, AutoApprovalConfig> = {};
+  
+  for (const config of (configs || [])) {
+    configMap[config.decision_type] = {
+      minPrecedentSimilarity: config.min_precedent_similarity,
+      minPrecedentCount: config.min_precedent_count,
+      maxAutoApprovalAmount: config.max_auto_approval_amount,
+      enabled: config.enabled,
+    };
+  }
+
+  return configMap;
+}
+
 // Find precedents for a decision type
 async function findPrecedents(
   supabase: any,
@@ -124,12 +155,11 @@ async function findPrecedents(
 
 // Evaluate if item can be auto-approved
 function evaluateAutoApproval(
-  decisionType: string,
+  config: AutoApprovalConfig | undefined,
   amount: number,
   precedents: { decision_id: string; similarity: number }[],
   policyPassed: boolean
 ): AutoApprovalCandidate["factors"] & { canAutoApprove: boolean; confidence: number; reason: string } {
-  const config = AUTO_APPROVAL_CONFIGS[decisionType];
   if (!config || !config.enabled) {
     return {
       policyPassed: false,
@@ -214,6 +244,15 @@ serve(async (req) => {
 
     console.log(`Autonomous approver request - org_id: ${org_id}, user: ${user.id}, mode: ${mode}`);
 
+    // Fetch configs from database (single source of truth)
+    const dbConfigs = await getAutoApprovalConfigs(supabase, org_id);
+    
+    // Merge with defaults for any missing configs
+    const configs: Record<string, AutoApprovalConfig> = {
+      ...DEFAULT_CONFIGS,
+      ...dbConfigs,
+    };
+
     const result: ProcessingResult = {
       processed: 0,
       autoApproved: 0,
@@ -224,6 +263,7 @@ serve(async (req) => {
 
     // Process Purchase Orders
     if (types.includes("purchase_order")) {
+      const config = configs["po_approval"];
       const { data: pendingPOs } = await supabase
         .from("purchase_orders")
         .select("id, po_number, total, status, vendor_id, vendors(name)")
@@ -234,7 +274,7 @@ serve(async (req) => {
         result.processed++;
         const precedents = await findPrecedents(supabase, org_id, "po_approval", "purchase_order");
         const policyPassed = (po.total || 0) <= 10000; // Simple policy check
-        const evaluation = evaluateAutoApproval("po_approval", po.total || 0, precedents, policyPassed);
+        const evaluation = evaluateAutoApproval(config, po.total || 0, precedents, policyPassed);
 
         const candidate: AutoApprovalCandidate = {
           id: po.id,
@@ -302,6 +342,7 @@ serve(async (req) => {
 
     // Process Payment Runs
     if (types.includes("payment_run")) {
+      const config = configs["payment_approval"];
       const { data: pendingPayments } = await supabase
         .from("payment_runs")
         .select("id, run_number, total_amount, status, payment_method")
@@ -312,7 +353,7 @@ serve(async (req) => {
         result.processed++;
         const precedents = await findPrecedents(supabase, org_id, "payment_approval", "payment_run");
         const policyPassed = (payment.total_amount || 0) <= 25000;
-        const evaluation = evaluateAutoApproval("payment_approval", payment.total_amount || 0, precedents, policyPassed);
+        const evaluation = evaluateAutoApproval(config, payment.total_amount || 0, precedents, policyPassed);
 
         const candidate: AutoApprovalCandidate = {
           id: payment.id,
@@ -373,6 +414,7 @@ serve(async (req) => {
 
     // Process Purchase Requisitions
     if (types.includes("purchase_requisition")) {
+      const config = configs["requisition_approval"];
       const { data: pendingReqs } = await supabase
         .from("purchase_requisitions")
         .select("id, requisition_number, priority, department, status")
@@ -394,7 +436,7 @@ serve(async (req) => {
         result.processed++;
         const precedents = await findPrecedents(supabase, org_id, "requisition_approval", "purchase_requisition");
         const policyPassed = estimatedTotal <= 5000 && reqItem.priority !== "urgent";
-        const evaluation = evaluateAutoApproval("requisition_approval", estimatedTotal, precedents, policyPassed);
+        const evaluation = evaluateAutoApproval(config, estimatedTotal, precedents, policyPassed);
 
         const candidate: AutoApprovalCandidate = {
           id: reqItem.id,

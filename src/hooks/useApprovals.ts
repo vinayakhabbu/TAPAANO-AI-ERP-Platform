@@ -94,8 +94,23 @@ export const usePurchaseOrderApproval = () => {
       let effectiveAction = action;
 
       if (action === "submit_for_approval" && tryAutoApprove) {
+        // Fetch config from database
+        const { data: configData } = orgId ? await supabase
+          .from("auto_approval_configs")
+          .select("*")
+          .eq("org_id", orgId)
+          .eq("decision_type", "po_approval")
+          .single() : { data: null };
+        
+        const config = configData ? {
+          minPrecedentSimilarity: configData.min_precedent_similarity,
+          minPrecedentCount: configData.min_precedent_count,
+          maxAutoApprovalAmount: configData.max_auto_approval_amount,
+          enabled: configData.enabled,
+        } : null;
+
         autoApprovalResult = evaluateAutoApproval(
-          "po_approval",
+          config,
           policyEvaluation,
           precedentsReferenced,
           currentPO?.total || 0

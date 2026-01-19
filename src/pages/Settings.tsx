@@ -1,11 +1,12 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, User, Shield, Users, Key } from "lucide-react";
+import { Building2, User, Shield, Users, Key, Bot } from "lucide-react";
 import { ProfileSettings } from "@/components/settings/ProfileSettings";
 import { OrganizationSettings } from "@/components/settings/OrganizationSettings";
 import { TeamSettings } from "@/components/settings/TeamSettings";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { APIKeysSettings } from "@/components/settings/APIKeysSettings";
+import { AutoApprovalSettings } from "@/components/settings/AutoApprovalSettings";
 
 const Settings = () => {
   return (
@@ -37,6 +38,11 @@ const Settings = () => {
             <span className="hidden sm:inline">API Keys</span>
             <span className="sm:hidden">API</span>
           </TabsTrigger>
+          <TabsTrigger value="auto-approval" className="gap-2 text-xs sm:text-sm">
+            <Bot className="h-4 w-4" />
+            <span className="hidden sm:inline">Auto-Approval</span>
+            <span className="sm:hidden">Auto</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -57,6 +63,10 @@ const Settings = () => {
 
         <TabsContent value="api-keys">
           <APIKeysSettings />
+        </TabsContent>
+
+        <TabsContent value="auto-approval">
+          <AutoApprovalSettings />
         </TabsContent>
       </Tabs>
     </AppLayout>

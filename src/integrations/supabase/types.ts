@@ -410,6 +410,57 @@ export type Database = {
           },
         ]
       }
+      auto_approval_configs: {
+        Row: {
+          created_at: string
+          decision_type: string
+          enabled: boolean
+          id: string
+          max_auto_approval_amount: number
+          min_precedent_count: number
+          min_precedent_similarity: number
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          decision_type: string
+          enabled?: boolean
+          id?: string
+          max_auto_approval_amount?: number
+          min_precedent_count?: number
+          min_precedent_similarity?: number
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          decision_type?: string
+          enabled?: boolean
+          id?: string
+          max_auto_approval_amount?: number
+          min_precedent_count?: number
+          min_precedent_similarity?: number
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_approval_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_approval_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_accounts: {
         Row: {
           account_id: string | null
