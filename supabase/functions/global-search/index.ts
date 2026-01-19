@@ -15,12 +15,61 @@ interface SearchResult {
   icon: string;
 }
 
+// ============================================================================
+// AUTH HELPER - Validates user and extracts verified org_id
+// ============================================================================
+
+async function validateAuthAndGetOrgId(req: Request): Promise<{ user: any; org_id: string; error?: string }> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { user: null, org_id: '', error: 'Missing or invalid authorization header' };
+  }
+
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  // Verify user token
+  const token = authHeader.replace('Bearer ', '');
+  const { data, error: authError } = await supabaseClient.auth.getUser(token);
+  
+  if (authError || !data?.user) {
+    return { user: null, org_id: '', error: 'Invalid or expired token' };
+  }
+
+  // Get user's org_id from their profile (don't trust client input!)
+  const { data: profile, error: profileError } = await supabaseClient
+    .from('profiles')
+    .select('org_id')
+    .eq('id', data.user.id)
+    .single();
+
+  if (profileError || !profile?.org_id) {
+    return { user: data.user, org_id: '', error: 'User profile not found or not associated with an organization' };
+  }
+
+  return { user: data.user, org_id: profile.org_id };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Validate authentication and get verified org_id
+    const { user, org_id, error: authError } = await validateAuthAndGetOrgId(req);
+    
+    if (authError || !org_id) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { query } = await req.json();
     
     if (!query || query.length < 2) {
@@ -33,13 +82,16 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    console.log("Global search request - query:", query, "org_id:", org_id, "user:", user.id);
+
     const searchPattern = `%${query}%`;
     const results: SearchResult[] = [];
 
-    // Search Customers
+    // Search Customers (scoped to org)
     const { data: customers } = await supabase
       .from("customers")
       .select("id, name, email")
+      .eq("org_id", org_id)
       .or(`name.ilike.${searchPattern},email.ilike.${searchPattern}`)
       .limit(5);
 
@@ -54,10 +106,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Vendors
+    // Search Vendors (scoped to org)
     const { data: vendors } = await supabase
       .from("vendors")
       .select("id, name, email")
+      .eq("org_id", org_id)
       .or(`name.ilike.${searchPattern},email.ilike.${searchPattern}`)
       .limit(5);
 
@@ -72,10 +125,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Products
+    // Search Products (scoped to org)
     const { data: products } = await supabase
       .from("products")
       .select("id, name, sku")
+      .eq("org_id", org_id)
       .or(`name.ilike.${searchPattern},sku.ilike.${searchPattern}`)
       .limit(5);
 
@@ -90,10 +144,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Invoices
+    // Search Invoices (scoped to org)
     const { data: invoices } = await supabase
       .from("invoices")
       .select("id, invoice_number, total, status")
+      .eq("org_id", org_id)
       .ilike("invoice_number", searchPattern)
       .limit(5);
 
@@ -108,10 +163,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Bills
+    // Search Bills (scoped to org)
     const { data: bills } = await supabase
       .from("bills")
       .select("id, bill_number, total, status")
+      .eq("org_id", org_id)
       .ilike("bill_number", searchPattern)
       .limit(5);
 
@@ -126,28 +182,30 @@ serve(async (req) => {
       })));
     }
 
-    // Search Sales Orders
+    // Search Sales Orders (scoped to org)
     const { data: salesOrders } = await supabase
       .from("sales_orders")
-      .select("id, order_number, total, status")
-      .ilike("order_number", searchPattern)
+      .select("id, so_number, total, status")
+      .eq("org_id", org_id)
+      .ilike("so_number", searchPattern)
       .limit(5);
 
     if (salesOrders) {
       results.push(...salesOrders.map(so => ({
         id: so.id,
         type: "Sales Order",
-        title: so.order_number,
+        title: so.so_number,
         subtitle: `$${so.total?.toLocaleString() ?? 0} • ${so.status}`,
         href: "/ar",
         icon: "ShoppingCart",
       })));
     }
 
-    // Search Purchase Orders
+    // Search Purchase Orders (scoped to org)
     const { data: purchaseOrders } = await supabase
       .from("purchase_orders")
       .select("id, po_number, total, status")
+      .eq("org_id", org_id)
       .ilike("po_number", searchPattern)
       .limit(5);
 
@@ -162,10 +220,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Opportunities
+    // Search Opportunities (scoped to org)
     const { data: opportunities } = await supabase
       .from("opportunities")
       .select("id, name, value, stage")
+      .eq("org_id", org_id)
       .ilike("name", searchPattern)
       .limit(5);
 
@@ -180,10 +239,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Quotations
+    // Search Quotations (scoped to org)
     const { data: quotations } = await supabase
       .from("quotations")
       .select("id, quotation_number, total, status")
+      .eq("org_id", org_id)
       .ilike("quotation_number", searchPattern)
       .limit(5);
 
@@ -198,10 +258,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Production Orders
+    // Search Production Orders (scoped to org)
     const { data: productionOrders } = await supabase
       .from("production_orders")
       .select("id, order_number, status")
+      .eq("org_id", org_id)
       .ilike("order_number", searchPattern)
       .limit(5);
 
@@ -216,10 +277,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Service Calls
+    // Search Service Calls (scoped to org)
     const { data: serviceCalls } = await supabase
       .from("service_calls")
       .select("id, call_number, subject, status")
+      .eq("org_id", org_id)
       .or(`call_number.ilike.${searchPattern},subject.ilike.${searchPattern}`)
       .limit(5);
 
@@ -234,10 +296,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Accounts
+    // Search Accounts (scoped to org)
     const { data: accounts } = await supabase
       .from("accounts")
       .select("id, code, name")
+      .eq("org_id", org_id)
       .or(`code.ilike.${searchPattern},name.ilike.${searchPattern}`)
       .limit(5);
 
@@ -251,10 +314,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Warehouses
+    // Search Warehouses (scoped to org)
     const { data: warehouses } = await supabase
       .from("warehouses")
       .select("id, code, name")
+      .eq("org_id", org_id)
       .or(`code.ilike.${searchPattern},name.ilike.${searchPattern}`)
       .limit(5);
 
@@ -268,10 +332,11 @@ serve(async (req) => {
       })));
     }
 
-    // Search Cost Centers
+    // Search Cost Centers (scoped to org)
     const { data: costCenters } = await supabase
       .from("cost_centers")
       .select("id, code, name")
+      .eq("org_id", org_id)
       .or(`code.ilike.${searchPattern},name.ilike.${searchPattern}`)
       .limit(5);
 

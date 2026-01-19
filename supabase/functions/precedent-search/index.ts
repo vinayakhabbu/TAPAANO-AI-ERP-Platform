@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 interface PrecedentSearchRequest {
-  org_id: string;
   query: string;
   decision_type?: string;
   limit?: number;
@@ -23,6 +22,45 @@ interface Precedent {
   reason_codes?: string[];
   approval_status: string;
   created_at: string;
+}
+
+// ============================================================================
+// AUTH HELPER - Validates user and extracts verified org_id
+// ============================================================================
+
+async function validateAuthAndGetOrgId(req: Request): Promise<{ user: any; org_id: string; error?: string }> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { user: null, org_id: '', error: 'Missing or invalid authorization header' };
+  }
+
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  // Verify user token
+  const token = authHeader.replace('Bearer ', '');
+  const { data, error: authError } = await supabaseClient.auth.getUser(token);
+  
+  if (authError || !data?.user) {
+    return { user: null, org_id: '', error: 'Invalid or expired token' };
+  }
+
+  // Get user's org_id from their profile (don't trust client input!)
+  const { data: profile, error: profileError } = await supabaseClient
+    .from('profiles')
+    .select('org_id')
+    .eq('id', data.user.id)
+    .single();
+
+  if (profileError || !profile?.org_id) {
+    return { user: data.user, org_id: '', error: 'User profile not found or not associated with an organization' };
+  }
+
+  return { user: data.user, org_id: profile.org_id };
 }
 
 // Generate embedding using Lovable AI (OpenAI-compatible)
@@ -81,18 +119,30 @@ serve(async (req) => {
   }
 
   try {
+    // Validate authentication and get verified org_id
+    const { user, org_id, error: authError } = await validateAuthAndGetOrgId(req);
+    
+    if (authError || !org_id) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { org_id, query, decision_type, limit = 10, use_vector = true }: PrecedentSearchRequest = await req.json();
+    const { query, decision_type, limit = 10, use_vector = true }: PrecedentSearchRequest = await req.json();
 
-    if (!org_id || !query) {
+    if (!query) {
       return new Response(
-        JSON.stringify({ error: "org_id and query are required" }),
+        JSON.stringify({ error: "query is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("Precedent search request - org_id:", org_id, "user:", user.id, "query:", query);
 
     let precedents: Precedent[] = [];
 

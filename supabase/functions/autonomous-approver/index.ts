@@ -58,6 +58,45 @@ interface ProcessingResult {
   candidates: AutoApprovalCandidate[];
 }
 
+// ============================================================================
+// AUTH HELPER - Validates user and extracts verified org_id
+// ============================================================================
+
+async function validateAuthAndGetOrgId(req: Request): Promise<{ user: any; org_id: string; error?: string }> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { user: null, org_id: '', error: 'Missing or invalid authorization header' };
+  }
+
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  // Verify user token
+  const token = authHeader.replace('Bearer ', '');
+  const { data, error: authError } = await supabaseClient.auth.getUser(token);
+  
+  if (authError || !data?.user) {
+    return { user: null, org_id: '', error: 'Invalid or expired token' };
+  }
+
+  // Get user's org_id from their profile (don't trust client input!)
+  const { data: profile, error: profileError } = await supabaseClient
+    .from('profiles')
+    .select('org_id')
+    .eq('id', data.user.id)
+    .single();
+
+  if (profileError || !profile?.org_id) {
+    return { user: data.user, org_id: '', error: 'User profile not found or not associated with an organization' };
+  }
+
+  return { user: data.user, org_id: profile.org_id };
+}
+
 // Find precedents for a decision type
 async function findPrecedents(
   supabase: any,
@@ -157,18 +196,23 @@ serve(async (req) => {
   }
 
   try {
+    // Validate authentication and get verified org_id
+    const { user, org_id, error: authError } = await validateAuthAndGetOrgId(req);
+    
+    if (authError || !org_id) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { org_id, mode = "preview", types = ["purchase_order", "payment_run", "purchase_requisition"] } = await req.json();
+    const { mode = "preview", types = ["purchase_order", "payment_run", "purchase_requisition"] } = await req.json();
 
-    if (!org_id) {
-      return new Response(JSON.stringify({ error: "org_id required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    console.log(`Autonomous approver request - org_id: ${org_id}, user: ${user.id}, mode: ${mode}`);
 
     const result: ProcessingResult = {
       processed: 0,
@@ -335,12 +379,12 @@ serve(async (req) => {
         .eq("org_id", org_id)
         .eq("status", "pending_approval");
 
-      for (const req of pendingReqs || []) {
+      for (const reqItem of pendingReqs || []) {
         // Get lines to calculate total
         const { data: lines } = await supabase
           .from("purchase_requisition_lines")
           .select("quantity, estimated_unit_cost")
-          .eq("requisition_id", req.id);
+          .eq("requisition_id", reqItem.id);
 
         const estimatedTotal = (lines || []).reduce(
           (sum: number, line: any) => sum + (line.quantity * line.estimated_unit_cost),
@@ -349,13 +393,13 @@ serve(async (req) => {
 
         result.processed++;
         const precedents = await findPrecedents(supabase, org_id, "requisition_approval", "purchase_requisition");
-        const policyPassed = estimatedTotal <= 5000 && req.priority !== "urgent";
+        const policyPassed = estimatedTotal <= 5000 && reqItem.priority !== "urgent";
         const evaluation = evaluateAutoApproval("requisition_approval", estimatedTotal, precedents, policyPassed);
 
         const candidate: AutoApprovalCandidate = {
-          id: req.id,
+          id: reqItem.id,
           type: "purchase_requisition",
-          identifier: req.requisition_number,
+          identifier: reqItem.requisition_number,
           amount: estimatedTotal,
           confidence: evaluation.confidence,
           factors: {
@@ -376,7 +420,7 @@ serve(async (req) => {
               status: "approved",
               approved_at: new Date().toISOString(),
             })
-            .eq("id", req.id);
+            .eq("id", reqItem.id);
 
           if (error) {
             result.errors++;
@@ -386,12 +430,12 @@ serve(async (req) => {
               org_id,
               decision_type: "requisition_approval",
               source_type: "purchase_requisition",
-              source_id: req.id,
+              source_id: reqItem.id,
               input_snapshot: {
-                requisition_number: req.requisition_number,
+                requisition_number: reqItem.requisition_number,
                 estimated_total: estimatedTotal,
-                priority: req.priority,
-                department: req.department,
+                priority: reqItem.priority,
+                department: reqItem.department,
                 auto_approval: { confidence: evaluation.confidence, factors: evaluation },
               },
               precedents_referenced: precedents.map(p => ({
