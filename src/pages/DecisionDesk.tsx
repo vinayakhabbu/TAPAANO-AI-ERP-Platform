@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format, subDays } from "date-fns";
 import { 
   Scale, 
@@ -25,7 +25,8 @@ import {
   GitBranch,
   TrendingUp,
   Network,
-  Play
+  Play,
+  AlertTriangle
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,21 @@ import { PrecedentExplorer } from "@/components/decisions/PrecedentExplorer";
 import { AgentRunPlayback } from "@/components/decisions/AgentRunPlayback";
 import { EntityGraph } from "@/components/decisions/EntityGraph";
 import { PrecedentCheckbox } from "@/components/decisions/PrecedentCheckbox";
+import { useVisibleTabs, type DecisionDeskTab } from "@/hooks/useDecisionDeskTabs";
+
+// Icon mapping for dynamic tab rendering
+const tabIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  FileText,
+  Scale,
+  Bot,
+  Network,
+  Zap,
+  AlertTriangle,
+  BarChart3,
+  History,
+  Play,
+  ShieldAlert,
+};
 
 const decisionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   po_approval: { label: "PO Approval", icon: ShoppingCart, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
@@ -291,11 +307,20 @@ export default function DecisionDesk() {
   const [dateRange, setDateRange] = useState<string>("all");
   const { toast } = useToast();
 
+  // Fetch visible tabs from database
+  const { tabs: visibleTabs, isLoading: tabsLoading } = useVisibleTabs();
+
   const { data: decisions, isLoading } = useDecisionTraces({
     decision_type: typeFilter === "all" ? undefined : typeFilter,
     approval_status: statusFilter === "all" ? undefined : statusFilter,
     limit: 100,
   });
+
+  // Get default tab (first visible one, or 'decisions')
+  const defaultTab = useMemo(() => {
+    if (visibleTabs.length > 0) return visibleTabs[0].tab_key;
+    return 'decisions';
+  }, [visibleTabs]);
 
   // Filter by date range
   const getDateFilteredDecisions = () => {
@@ -480,43 +505,20 @@ export default function DecisionDesk() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="decisions" className="space-y-6">
+        <Tabs defaultValue={defaultTab} key={defaultTab} className="space-y-6">
           <TabsList className="h-auto flex-wrap gap-1 p-1 bg-muted/50">
-            <TabsTrigger value="decisions" className="gap-2 text-xs sm:text-sm">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Decision Log</span>
-              <span className="sm:hidden">Log</span>
-            </TabsTrigger>
-            <TabsTrigger value="precedents" className="gap-2 text-xs sm:text-sm">
-              <History className="h-4 w-4" />
-              <span className="hidden sm:inline">Precedents</span>
-              <span className="sm:hidden">Prec.</span>
-            </TabsTrigger>
-            <TabsTrigger value="agent-runs" className="gap-2 text-xs sm:text-sm">
-              <Play className="h-4 w-4" />
-              <span className="hidden sm:inline">Agent Runs</span>
-              <span className="sm:hidden">Runs</span>
-            </TabsTrigger>
-            <TabsTrigger value="graph" className="gap-2 text-xs sm:text-sm">
-              <Network className="h-4 w-4" />
-              <span className="hidden sm:inline">Entity Graph</span>
-              <span className="sm:hidden">Graph</span>
-            </TabsTrigger>
-            <TabsTrigger value="autonomous" className="gap-2 text-xs sm:text-sm">
-              <Bot className="h-4 w-4" />
-              <span className="hidden sm:inline">Auto Approver</span>
-              <span className="sm:hidden">Auto</span>
-            </TabsTrigger>
-            <TabsTrigger value="anomalies" className="gap-2 text-xs sm:text-sm">
-              <ShieldAlert className="h-4 w-4" />
-              <span className="hidden sm:inline">Anomalies</span>
-              <span className="sm:hidden">Alert</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="gap-2 text-xs sm:text-sm">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Analytics</span>
-              <span className="sm:hidden">Stats</span>
-            </TabsTrigger>
+            {visibleTabs.map((tab) => {
+              const IconComponent = tabIconMap[tab.icon_name] || FileText;
+              // Create shortened label for mobile
+              const shortLabel = tab.tab_label.split(' ')[0].substring(0, 5);
+              return (
+                <TabsTrigger key={tab.tab_key} value={tab.tab_key} className="gap-2 text-xs sm:text-sm">
+                  <IconComponent className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.tab_label}</span>
+                  <span className="sm:hidden">{shortLabel}</span>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           {/* Precedent Explorer Tab */}
@@ -556,7 +558,7 @@ export default function DecisionDesk() {
           </TabsContent>
 
           {/* Entity Graph Tab */}
-          <TabsContent value="graph">
+          <TabsContent value="entity-graph">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
