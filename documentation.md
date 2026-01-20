@@ -4,8 +4,8 @@
 
 TAPAANO is a comprehensive, AI-native enterprise resource planning (ERP) platform built for modern finance teams. It provides full financial management capabilities including multi-entity accounting, CRM, inventory, production, HR & Payroll, Tax Management, and AI-powered automation.
 
-**Version**: 2.0 (January 2026)  
-**Phase 1-4 Implementation**: Complete
+**Version**: 2.1 (January 2026)  
+**Phase 1-6 Implementation**: Complete
 
 ### Platform Capabilities
 
@@ -156,9 +156,11 @@ Organization
 | **Goods Receipts** | Receipt of goods against POs |
 | **Payment Runs** | Batch payment processing |
 | **OCR Capture** | AI-powered bill data extraction |
+| **Prepaids** | Prepaid expense tracking and amortization (Phase 5) |
 
 **Key Components**:
 - `src/components/bills/OCRBillCapture.tsx` - Drag-drop OCR extraction
+- `src/components/prepaid/PrepaidExpenseList.tsx` - Prepaid expense management (Phase 5)
 
 ---
 
@@ -219,10 +221,14 @@ Organization
 | **Trial Balance** | Account balances |
 | **Flux Analysis** | AI-powered variance analysis |
 | **AI Report Builder** | Natural language report generation |
+| **Predictions** | AI cash flow and revenue forecasts (Phase 5) |
+| **Contracts** | AI contract compliance analyzer (Phase 6) |
 
 **Key Components**:
 - `src/components/analytics/FluxAnalysis.tsx` - Period variance insights
 - `src/components/analytics/AIReportBuilder.tsx` - NL report generation
+- `src/components/analytics/PredictiveAnalytics.tsx` - Cash flow/revenue predictions (Phase 5)
+- `src/components/compliance/ContractAnalyzer.tsx` - AI contract analysis (Phase 6)
 
 ---
 
@@ -248,6 +254,18 @@ Organization
 
 **Purpose**: Inventory and warehouse management
 
+**Tabs**:
+
+| Tab | Description |
+|-----|-------------|
+| **Warehouses** | Warehouse master data and bin locations |
+| **Products** | Product catalog with inventory details |
+| **Stock Transfers** | Inter-warehouse stock movements |
+| **Cycle Counts** | Inventory counting and adjustments |
+| **Consignment** | Vendor-owned consignment tracking |
+| **Movements** | Full inventory movement history (Phase 6) |
+| **COGS** | Cost of Goods Sold reporting (Phase 6) |
+
 **Features**:
 - Warehouse and bin location management
 - Stock transfers and adjustments
@@ -255,6 +273,12 @@ Organization
 - Batch/lot tracking
 - Serial number tracking
 - Consignment inventory
+- **Inventory movement tracking** (purchases, sales, adjustments, transfers)
+- **COGS Report** with product breakdown and valuation
+
+**Key Components**:
+- `src/components/inventory/InventoryMovementsPanel.tsx` - Movement recording/viewing
+- `src/components/inventory/COGSReport.tsx` - Cost of goods sold analysis
 
 ---
 
@@ -274,15 +298,28 @@ Organization
 
 **Purpose**: Management accounting and cost control
 
+**Tabs**:
+
+| Tab | Description |
+|-----|-------------|
+| **Cost Centers** | Cost center master data |
+| **Internal Orders** | Project/order cost tracking |
+| **Budgets** | Budget entry and management |
+| **Forecasts** | Cash flow forecasting |
+| **Allocations** | Cost allocation rules (Phase 5) |
+
 **Features**:
 - Cost center management
 - Internal order tracking
 - Budget management with variance analysis
 - Cash flow forecasting
+- **Cost allocation rules** with percentage/formula distribution
+- **Allocation run execution** with journal entry creation
 
 **Key Components**:
 - `src/components/controlling/BudgetVarianceChart.tsx` - Budget vs actual
 - `src/components/controlling/CashFlowChart.tsx` - Cash flow visualization
+- `src/components/allocations/AllocationRulesManager.tsx` - Allocation rule CRUD (Phase 5)
 
 ---
 
@@ -551,6 +588,12 @@ System learns from human overrides to improve future auto-approval accuracy.
 | Anomaly Detection | `/decisions` | Anomalies |
 | Precedent Search | `/decisions` | Precedents |
 | Agent Run Playback | `/decisions` | Agent Runs |
+| Allocation Rules | `/controlling` | Allocations |
+| Prepaid Expenses | `/ap` | Prepaids |
+| Predictive Analytics | `/reports` | Predictions |
+| Contract Analyzer | `/reports` | Contracts |
+| Inventory Movements | `/inventory` | Movements |
+| COGS Report | `/inventory` | COGS |
 
 ---
 
@@ -856,7 +899,7 @@ supabase/
 
 ## Key Features Summary
 
-### Implemented Features (Phase 1-4 Complete)
+### Implemented Features (Phase 1-6 Complete)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -897,34 +940,13 @@ supabase/
 | **SOX Controls** | ✅ | Control matrix, testing, evidence |
 | **NextDay Migration** | ✅ | AI-powered data migration wizard |
 | **AI Categorizer** | ✅ | ML-based transaction categorization |
+| **Allocations Engine** | ✅ | Automated cost allocation with distribution rules (Phase 5) |
+| **Prepaid Expenses** | ✅ | Prepaid expense tracking with amortization (Phase 5) |
+| **Predictive Analytics** | ✅ | AI cash flow and revenue forecasting (Phase 5) |
+| **Inventory COGS** | ✅ | Full inventory movement tracking and COGS reporting (Phase 6) |
+| **AI Contract Analyzer** | ✅ | Contract term extraction and compliance scoring (Phase 6) |
 
-### Planned Features (Phase 5-7 Roadmap)
-
-#### Phase 5: Core Financial Automation
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Allocations Engine** | 🔲 | Automated cost allocation with distribution rules |
-| Allocation Rules Manager | 🔲 | CRUD for allocation rules (percentage, headcount, revenue) |
-| Allocation Run History | 🔲 | Track past allocation runs with journal entries |
-| **Prepaid Expenses** | 🔲 | Prepaid expense tracking with vendor linkage |
-| Amortization Schedules | 🔲 | Auto-generated straight-line amortization |
-| Amortization Posting | 🔲 | Monthly journal entry creation from schedules |
-| **Budget Variance** | 🔲 | Real-time budget vs actual from GL transactions |
-| Variance Drill-Down | 🔲 | Click-through to underlying transactions |
-
-#### Phase 6: Inventory & Predictions
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Inventory COGS** | 🔲 | Full inventory movement tracking tied to sales |
-| Stock Movements | 🔲 | Track purchase, sale, adjustment, transfer movements |
-| COGS Report | 🔲 | Cost of goods sold analysis with valuation method |
-| **Predictive Analytics** | 🔲 | AI-powered cash flow and revenue forecasting |
-| Cash Flow Prediction | 🔲 | 30/60/90 day cash position forecast |
-| Revenue Prediction | 🔲 | Pipeline-based revenue forecasting |
-| **AI Compliance** | 🔲 | AI contract interpretation for compliance |
-| Contract Analyzer | 🔲 | PDF upload with term extraction and risk flagging |
+### Planned Features (Phase 7 Roadmap)
 
 #### Phase 7: Integrations & Automation
 
