@@ -38,6 +38,8 @@ import {
   ClipboardList,
   Send,
   X,
+  Repeat,
+  CalendarCheck,
 } from "lucide-react";
 import { useReceivables } from "@/hooks/useReceivables";
 import { useQuotations, useUpdateQuotationStatus, useConvertToSalesOrder } from "@/hooks/useQuotations";
@@ -45,9 +47,10 @@ import { format } from "date-fns";
 import { SalesOrderForm } from "@/components/forms/SalesOrderForm";
 import { ShipmentForm } from "@/components/forms/ShipmentForm";
 import { InvoiceForm } from "@/components/forms/InvoiceForm";
-
 import { QuotationForm } from "@/components/forms/QuotationForm";
 import { useToast } from "@/hooks/use-toast";
+import { SubscriptionBilling } from "@/components/billing/SubscriptionBilling";
+import { RevenueRecognitionSchedule } from "@/components/revenue/RevenueRecognitionSchedule";
 
 const invoiceStatusConfig = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
@@ -256,6 +259,16 @@ const Receivables = () => {
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">Invoices</span>
             <span className="sm:hidden">Inv</span>
+          </TabsTrigger>
+          <TabsTrigger value="subscriptions" className="gap-2 text-xs sm:text-sm">
+            <Repeat className="h-4 w-4" />
+            <span className="hidden sm:inline">Subscriptions</span>
+            <span className="sm:hidden">Subs</span>
+          </TabsTrigger>
+          <TabsTrigger value="revenue" className="gap-2 text-xs sm:text-sm">
+            <CalendarCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Rev Recognition</span>
+            <span className="sm:hidden">RevRec</span>
           </TabsTrigger>
           <TabsTrigger value="collections" className="gap-2 text-xs sm:text-sm">
             <CreditCard className="h-4 w-4" />
@@ -741,6 +754,16 @@ const Receivables = () => {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        {/* Subscriptions Tab */}
+        <TabsContent value="subscriptions" className="mt-6">
+          <SubscriptionBilling />
+        </TabsContent>
+
+        {/* Revenue Recognition Tab */}
+        <TabsContent value="revenue" className="mt-6">
+          <RevenueRecognitionSchedule />
         </TabsContent>
       </Tabs>
 
