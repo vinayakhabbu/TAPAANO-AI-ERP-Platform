@@ -33,6 +33,9 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronDown,
+  Sparkles,
+  Bot,
+  LineChart,
 } from "lucide-react";
 import { useState } from "react";
 import { useFinancialReports } from "@/hooks/useFinancialReports";
@@ -40,6 +43,8 @@ import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { exportIncomeStatement, exportBalanceSheet } from "@/lib/pdfExport";
 import { toast } from "@/hooks/use-toast";
+import { FluxAnalysis } from "@/components/analytics/FluxAnalysis";
+import { AIReportBuilder } from "@/components/analytics/AIReportBuilder";
 
 const FinancialReports = () => {
   const [periodStart, setPeriodStart] = useState(
@@ -235,6 +240,16 @@ const FinancialReports = () => {
               <Banknote className="h-4 w-4" />
               <span className="hidden sm:inline">Cash Flow</span>
               <span className="sm:hidden">CF</span>
+            </TabsTrigger>
+            <TabsTrigger value="flux" className="gap-2 text-xs sm:text-sm">
+              <LineChart className="h-4 w-4" />
+              <span className="hidden sm:inline">Flux Analysis</span>
+              <span className="sm:hidden">Flux</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai-builder" className="gap-2 text-xs sm:text-sm">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">AI Report Builder</span>
+              <span className="sm:hidden">AI</span>
             </TabsTrigger>
           </TabsList>
           <DropdownMenu>

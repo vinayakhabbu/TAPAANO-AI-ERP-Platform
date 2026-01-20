@@ -30,6 +30,7 @@ import {
   CheckCircle2,
   ArrowRight,
   FileInput,
+  ScanLine,
 } from "lucide-react";
 import {
   useVendors,
@@ -59,6 +60,7 @@ import { PaymentRunForm } from "@/components/forms/PaymentRunForm";
 import { VendorForm } from "@/components/forms/VendorForm";
 import { PurchaseRequisitionForm } from "@/components/forms/PurchaseRequisitionForm";
 import { ConvertRequisitionForm } from "@/components/forms/ConvertRequisitionForm";
+import { OCRBillCapture } from "@/components/bills/OCRBillCapture";
 
 const billStatusConfig = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
@@ -288,6 +290,11 @@ const Payables = () => {
             <DollarSign className="h-4 w-4" />
             <span className="hidden sm:inline">Bills</span>
             <span className="sm:hidden">Bills</span>
+          </TabsTrigger>
+          <TabsTrigger value="ocr-capture" className="gap-2 text-xs sm:text-sm">
+            <ScanLine className="h-4 w-4" />
+            <span className="hidden sm:inline">OCR Capture</span>
+            <span className="sm:hidden">OCR</span>
           </TabsTrigger>
           <TabsTrigger value="matching" className="gap-2 text-xs sm:text-sm">
             <CheckCircle2 className="h-4 w-4" />
@@ -674,6 +681,11 @@ const Payables = () => {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* OCR Capture Tab */}
+        <TabsContent value="ocr-capture" className="mt-4">
+          <OCRBillCapture />
         </TabsContent>
 
         {/* Payments Tab */}
