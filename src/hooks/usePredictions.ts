@@ -168,12 +168,11 @@ export function useGenerateRevenuePrediction() {
     mutationFn: async () => {
       if (!profile?.org_id) throw new Error("No organization");
       
-      // Fetch pipeline data
-      const { data: opportunities } = await supabase
-        .from('opportunities')
-        .select('expected_value, probability, expected_close_date, stage')
-        .eq('is_won', false)
-        .eq('is_lost', false);
+      // Fetch pipeline data - cast to any to avoid TS2589 deep type instantiation
+      type OpportunityRow = { expected_value: number | null; probability: number | null; expected_close_date: string | null; stage: string | null };
+      const query = supabase.from('opportunities').select('expected_value, probability, expected_close_date, stage') as any;
+      const result = await query.eq('is_won', false).eq('is_lost', false);
+      const opportunities = (result.data || []) as OpportunityRow[];
       
       // Group by quarter
       const quarterMap = new Map<string, { total: number; weighted: number }>();
