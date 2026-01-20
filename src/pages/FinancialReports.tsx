@@ -664,6 +664,16 @@ const FinancialReports = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Flux Analysis Tab */}
+        <TabsContent value="flux">
+          <FluxAnalysis />
+        </TabsContent>
+
+        {/* AI Report Builder Tab */}
+        <TabsContent value="ai-builder">
+          <AIReportBuilder />
+        </TabsContent>
       </Tabs>
     </AppLayout>
   );
