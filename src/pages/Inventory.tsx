@@ -29,7 +29,11 @@ import {
   Handshake,
   FileInput,
   CheckCircle,
+  TrendingUp,
+  DollarSign,
 } from "lucide-react";
+import { InventoryMovementsPanel } from "@/components/inventory/InventoryMovementsPanel";
+import { COGSReport } from "@/components/inventory/COGSReport";
 import {
   useWarehouses,
   useProducts,
@@ -237,6 +241,16 @@ const Inventory = () => {
             <Boxes className="h-4 w-4" />
             <span className="hidden sm:inline">Tracking</span>
             <span className="sm:hidden">Track</span>
+          </TabsTrigger>
+          <TabsTrigger value="movements" className="gap-2 text-xs sm:text-sm">
+            <TrendingUp className="h-4 w-4" />
+            <span className="hidden sm:inline">Movements</span>
+            <span className="sm:hidden">Move</span>
+          </TabsTrigger>
+          <TabsTrigger value="cogs" className="gap-2 text-xs sm:text-sm">
+            <DollarSign className="h-4 w-4" />
+            <span className="hidden sm:inline">COGS</span>
+            <span className="sm:hidden">COGS</span>
           </TabsTrigger>
         </TabsList>
 
@@ -843,6 +857,16 @@ const Inventory = () => {
               )}
             </div>
           </div>
+        </TabsContent>
+
+        {/* Movements Tab */}
+        <TabsContent value="movements" className="mt-6">
+          <InventoryMovementsPanel />
+        </TabsContent>
+
+        {/* COGS Tab */}
+        <TabsContent value="cogs" className="mt-6">
+          <COGSReport />
         </TabsContent>
       </Tabs>
     </AppLayout>

@@ -47,6 +47,7 @@ import { toast } from "@/hooks/use-toast";
 import { FluxAnalysis } from "@/components/analytics/FluxAnalysis";
 import { AIReportBuilder } from "@/components/analytics/AIReportBuilder";
 import PredictiveAnalytics from "@/components/analytics/PredictiveAnalytics";
+import { ContractAnalyzer } from "@/components/compliance/ContractAnalyzer";
 
 const FinancialReports = () => {
   const [periodStart, setPeriodStart] = useState(
@@ -257,6 +258,11 @@ const FinancialReports = () => {
               <Brain className="h-4 w-4" />
               <span className="hidden sm:inline">Predictions</span>
               <span className="sm:hidden">Pred</span>
+            </TabsTrigger>
+            <TabsTrigger value="contracts" className="gap-2 text-xs sm:text-sm">
+              <Scale className="h-4 w-4" />
+              <span className="hidden sm:inline">Contracts</span>
+              <span className="sm:hidden">CTR</span>
             </TabsTrigger>
           </TabsList>
           <DropdownMenu>
@@ -685,6 +691,11 @@ const FinancialReports = () => {
         {/* Predictions Tab */}
         <TabsContent value="predictions">
           <PredictiveAnalytics />
+        </TabsContent>
+
+        {/* Contract Analyzer Tab */}
+        <TabsContent value="contracts">
+          <ContractAnalyzer />
         </TabsContent>
       </Tabs>
     </AppLayout>

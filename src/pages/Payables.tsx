@@ -31,7 +31,9 @@ import {
   ArrowRight,
   FileInput,
   ScanLine,
+  CalendarClock,
 } from "lucide-react";
+import PrepaidExpenseList from "@/components/prepaid/PrepaidExpenseList";
 import {
   useVendors,
   useBills,
@@ -305,6 +307,11 @@ const Payables = () => {
             <Banknote className="h-4 w-4" />
             <span className="hidden sm:inline">Payments</span>
             <span className="sm:hidden">Pay</span>
+          </TabsTrigger>
+          <TabsTrigger value="prepaids" className="gap-2 text-xs sm:text-sm">
+            <CalendarClock className="h-4 w-4" />
+            <span className="hidden sm:inline">Prepaids</span>
+            <span className="sm:hidden">Prep</span>
           </TabsTrigger>
         </TabsList>
 
@@ -805,6 +812,11 @@ const Payables = () => {
             )}
           </div>
         </TabsContent>
+
+        {/* Prepaids Tab */}
+        <TabsContent value="prepaids" className="mt-6">
+          <PrepaidExpenseList />
+        </TabsContent>
       </Tabs>
 
       {/* Requisition Rationale Dialog */}
@@ -833,6 +845,7 @@ const Payables = () => {
         sourceType="purchase_requisition"
         policyWarnings={getRequisitionPolicyWarnings()}
       />
+
     </AppLayout>
   );
 };
