@@ -122,12 +122,18 @@ const plans = [
 ];
 
 export function SubscriptionBilling() {
-  const [subscriptions] = useState<Subscription[]>(mockSubscriptions);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(mockSubscriptions);
   const [usageRecords] = useState<UsageRecord[]>(mockUsageRecords);
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
   const [showProrationDialog, setShowProrationDialog] = useState(false);
+  const [showNewSubscriptionDialog, setShowNewSubscriptionDialog] = useState(false);
   const [newPlan, setNewPlan] = useState("");
   const [prorationResult, setProrationResult] = useState<ProrationCalculation | null>(null);
+  
+  // New subscription form state
+  const [newSubCustomer, setNewSubCustomer] = useState("");
+  const [newSubPlan, setNewSubPlan] = useState("");
+  const [newSubBillingCycle, setNewSubBillingCycle] = useState<"monthly" | "quarterly" | "annual">("monthly");
 
   const totalMRR = subscriptions.filter(s => s.status === "active").reduce((sum, s) => sum + s.mrr, 0);
   const totalARR = totalMRR * 12;
@@ -180,12 +186,47 @@ export function SubscriptionBilling() {
     setSelectedSubscription(null);
   };
 
+  const handleCreateSubscription = () => {
+    if (!newSubCustomer || !newSubPlan) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    const selectedPlan = plans.find(p => p.id === newSubPlan);
+    if (!selectedPlan) return;
+    
+    const multiplier = newSubBillingCycle === "annual" ? 12 : newSubBillingCycle === "quarterly" ? 3 : 1;
+    const newSub: Subscription = {
+      id: `sub_${Date.now()}`,
+      customerId: `cust_${Date.now()}`,
+      customerName: newSubCustomer,
+      planName: selectedPlan.name,
+      billingCycle: newSubBillingCycle,
+      status: "active",
+      mrr: selectedPlan.monthlyPrice,
+      startDate: new Date().toISOString().split('T')[0],
+      nextBillingDate: addMonths(new Date(), newSubBillingCycle === "annual" ? 12 : newSubBillingCycle === "quarterly" ? 3 : 1).toISOString().split('T')[0],
+      usageThisMonth: 0,
+      usageLimit: selectedPlan.id === "starter" ? 100 : selectedPlan.id === "professional" ? 500 : 1000,
+      features: selectedPlan.features
+    };
+    
+    setSubscriptions(prev => [...prev, newSub]);
+    toast.success("Subscription created", {
+      description: `${newSubCustomer} subscribed to ${selectedPlan.name} (${newSubBillingCycle})`
+    });
+    setShowNewSubscriptionDialog(false);
+    setNewSubCustomer("");
+    setNewSubPlan("");
+    setNewSubBillingCycle("monthly");
+  };
+
   const getStatusBadge = (status: Subscription["status"]) => {
     const styles = {
-      active: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-      paused: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+      active: "bg-success/10 text-success border-success/20",
+      paused: "bg-warning/10 text-warning border-warning/20",
       cancelled: "bg-destructive/10 text-destructive border-destructive/20",
-      trial: "bg-blue-500/10 text-blue-500 border-blue-500/20"
+      trial: "bg-primary/10 text-primary border-primary/20"
     };
     return <Badge variant="outline" className={styles[status]}>{status}</Badge>;
   };
@@ -201,7 +242,7 @@ export function SubscriptionBilling() {
                 <p className="text-sm text-muted-foreground">Monthly Recurring Revenue</p>
                 <p className="text-2xl font-bold">${totalMRR.toLocaleString()}</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-emerald-500" />
+              <TrendingUp className="h-8 w-8 text-success" />
             </div>
           </CardContent>
         </Card>
@@ -225,7 +266,7 @@ export function SubscriptionBilling() {
                 <p className="text-sm text-muted-foreground">Active Subscriptions</p>
                 <p className="text-2xl font-bold">{activeCount}</p>
               </div>
-              <Users className="h-8 w-8 text-blue-500" />
+              <Users className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -237,7 +278,7 @@ export function SubscriptionBilling() {
                 <p className="text-sm text-muted-foreground">Active Trials</p>
                 <p className="text-2xl font-bold">{trialCount}</p>
               </div>
-              <Clock className="h-8 w-8 text-amber-500" />
+              <Clock className="h-8 w-8 text-warning" />
             </div>
           </CardContent>
         </Card>
@@ -261,7 +302,7 @@ export function SubscriptionBilling() {
                   </CardTitle>
                   <CardDescription>Manage recurring revenue and subscription lifecycle</CardDescription>
                 </div>
-                <Button>
+                <Button onClick={() => setShowNewSubscriptionDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   New Subscription
                 </Button>
@@ -472,7 +513,7 @@ export function SubscriptionBilling() {
                           <span className="text-muted-foreground">Days Used / Total Days</span>
                           <span>{prorationResult.daysUsed} / {prorationResult.totalDays}</span>
                         </div>
-                        <div className="flex justify-between text-emerald-500">
+                        <div className="flex justify-between text-success">
                           <span>Prorated Credit</span>
                           <span>-${prorationResult.proratedCredit}</span>
                         </div>
@@ -544,7 +585,7 @@ export function SubscriptionBilling() {
               <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Credit for unused time:</span>
-                  <span className="text-emerald-500">-${prorationResult.proratedCredit}</span>
+                  <span className="text-success">-${prorationResult.proratedCredit}</span>
                 </div>
                 <div className="flex justify-between font-medium">
                   <span>Net charge today:</span>
@@ -560,6 +601,86 @@ export function SubscriptionBilling() {
             </Button>
             <Button onClick={applyPlanChange} disabled={!prorationResult}>
               Confirm Change
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Subscription Dialog */}
+      <Dialog open={showNewSubscriptionDialog} onOpenChange={setShowNewSubscriptionDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Subscription</DialogTitle>
+            <DialogDescription>
+              Set up a new recurring subscription for a customer.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Customer Name</Label>
+              <Input
+                placeholder="Enter customer name"
+                value={newSubCustomer}
+                onChange={(e) => setNewSubCustomer(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Plan</Label>
+              <Select value={newSubPlan} onValueChange={setNewSubPlan}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - ${plan.monthlyPrice}/mo
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Billing Cycle</Label>
+              <Select value={newSubBillingCycle} onValueChange={(v) => setNewSubBillingCycle(v as "monthly" | "quarterly" | "annual")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="annual">Annual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {newSubPlan && (
+              <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
+                <p className="font-medium">Plan Summary</p>
+                <div className="flex justify-between">
+                  <span>Monthly Rate:</span>
+                  <span>${plans.find(p => p.id === newSubPlan)?.monthlyPrice}/mo</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Billing Amount:</span>
+                  <span className="font-medium">
+                    ${((plans.find(p => p.id === newSubPlan)?.monthlyPrice || 0) * 
+                      (newSubBillingCycle === "annual" ? 12 : newSubBillingCycle === "quarterly" ? 3 : 1)).toLocaleString()}
+                    /{newSubBillingCycle === "annual" ? "year" : newSubBillingCycle === "quarterly" ? "quarter" : "month"}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewSubscriptionDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateSubscription} disabled={!newSubCustomer || !newSubPlan}>
+              Create Subscription
             </Button>
           </DialogFooter>
         </DialogContent>
