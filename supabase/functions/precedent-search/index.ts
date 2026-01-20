@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { AgentRunLogger } from "../_shared/agentRunLogger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -144,7 +145,12 @@ serve(async (req) => {
 
     console.log("Precedent search request - org_id:", org_id, "user:", user.id, "query:", query);
 
+    // Initialize agent run logger
+    const logger = new AgentRunLogger(supabase);
+    await logger.start(org_id, "precedent_search", "user_search", { query, decision_type, use_vector, user_id: user.id });
+
     let precedents: Precedent[] = [];
+    let searchMethod = "none";
 
     // Try vector search first if enabled
     if (use_vector) {
@@ -160,6 +166,7 @@ serve(async (req) => {
         });
 
         if (!error && data && data.length > 0) {
+          searchMethod = "vector";
           precedents = data.map((p: any) => ({
             decision_id: p.decision_id,
             decision_type: p.decision_type,
@@ -183,6 +190,7 @@ serve(async (req) => {
       });
 
       if (!error && data) {
+        searchMethod = "text";
         precedents = data.map((p: any) => ({
           decision_id: p.decision_id,
           decision_type: p.decision_type,
@@ -213,12 +221,15 @@ serve(async (req) => {
       })
     );
 
+    // Complete the agent run
+    await logger.complete(`Found ${enrichedPrecedents.length} precedents using ${searchMethod} search`);
+
     return new Response(
       JSON.stringify({
         success: true,
         precedents: enrichedPrecedents,
         total: enrichedPrecedents.length,
-        search_method: precedents.length > 0 && use_vector ? "vector" : "text",
+        search_method: searchMethod,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

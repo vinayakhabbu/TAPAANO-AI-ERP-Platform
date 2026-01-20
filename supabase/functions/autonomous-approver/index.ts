@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { AgentRunLogger } from "../_shared/agentRunLogger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -244,7 +245,16 @@ serve(async (req) => {
 
     console.log(`Autonomous approver request - org_id: ${org_id}, user: ${user.id}, mode: ${mode}`);
 
+    // Initialize agent run logger
+    const logger = new AgentRunLogger(supabase);
+    await logger.start(org_id, "autonomous_approver", mode === "execute" ? "execute" : "preview", {
+      mode,
+      types,
+      user_id: user.id,
+    });
+
     // Fetch configs from database (single source of truth)
+    const configStepId = await logger.step("fetch", "Load auto-approval configurations", { org_id });
     const dbConfigs = await getAutoApprovalConfigs(supabase, org_id);
     
     // Merge with defaults for any missing configs
@@ -252,6 +262,7 @@ serve(async (req) => {
       ...DEFAULT_CONFIGS,
       ...dbConfigs,
     };
+    await logger.completeStep(configStepId!, { configs_loaded: Object.keys(configs).length });
 
     const result: ProcessingResult = {
       processed: 0,
