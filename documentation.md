@@ -898,21 +898,95 @@ supabase/
 | **NextDay Migration** | ✅ | AI-powered data migration wizard |
 | **AI Categorizer** | ✅ | ML-based transaction categorization |
 
-### Planned Features
+### Planned Features (Phase 5-7 Roadmap)
+
+#### Phase 5: Core Financial Automation
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Predictive Analytics | 🔲 | AI-powered cash flow/revenue forecasting |
-| Automated Cost Allocation | 🔲 | Rules-based allocation engine |
-| Prepaid Amortization | 🔲 | Prepaid expense amortization schedules |
-| Direct Bank Feeds | 🔲 | Live Plaid API integration |
-| Scheduled Email Reports | 🔲 | Auto-email report packages |
-| Public REST API | 🔲 | API documentation and access |
+| **Allocations Engine** | 🔲 | Automated cost allocation with distribution rules |
+| Allocation Rules Manager | 🔲 | CRUD for allocation rules (percentage, headcount, revenue) |
+| Allocation Run History | 🔲 | Track past allocation runs with journal entries |
+| **Prepaid Expenses** | 🔲 | Prepaid expense tracking with vendor linkage |
+| Amortization Schedules | 🔲 | Auto-generated straight-line amortization |
+| Amortization Posting | 🔲 | Monthly journal entry creation from schedules |
+| **Budget Variance** | 🔲 | Real-time budget vs actual from GL transactions |
+| Variance Drill-Down | 🔲 | Click-through to underlying transactions |
+
+#### Phase 6: Inventory & Predictions
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Inventory COGS** | 🔲 | Full inventory movement tracking tied to sales |
+| Stock Movements | 🔲 | Track purchase, sale, adjustment, transfer movements |
+| COGS Report | 🔲 | Cost of goods sold analysis with valuation method |
+| **Predictive Analytics** | 🔲 | AI-powered cash flow and revenue forecasting |
+| Cash Flow Prediction | 🔲 | 30/60/90 day cash position forecast |
+| Revenue Prediction | 🔲 | Pipeline-based revenue forecasting |
+| **AI Compliance** | 🔲 | AI contract interpretation for compliance |
+| Contract Analyzer | 🔲 | PDF upload with term extraction and risk flagging |
+
+#### Phase 7: Integrations & Automation
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Plaid Integration** | 🔲 | Real bank account connectivity via Plaid API |
+| Bank Link Token | 🔲 | Plaid Link frontend integration |
+| Transaction Sync | 🔲 | Automated bank transaction import |
+| **Scheduled Reports** | 🔲 | Auto-email financial report packages |
+| Report Scheduler | 🔲 | Configure daily/weekly/monthly report schedules |
+| PDF Report Generation | 🔲 | Generate reports as PDF attachments |
+| **Email Notifications** | 🔲 | Wire notifications to all approval workflows |
+| Invoice Notifications | 🔲 | Email customer on invoice sent |
+| Approval Notifications | 🔲 | Email on PO/Bill/Time-off approval/rejection |
+| Anomaly Alerts | 🔲 | Email finance team on detected anomalies |
+| **Third-Party Connectors** | 🔲 | Integration framework for CRM/Payroll/E-commerce |
+| Integration Hub | 🔲 | Available integrations management UI |
+| Salesforce Connector | 🔲 | Sync customers and opportunities |
+| Shopify Connector | 🔲 | Sync orders from e-commerce |
+| **Public REST API** | 🔲 | OpenAPI/Swagger documentation |
+| API Documentation | 🔲 | Interactive API docs at /api-docs |
+| API Key Management | 🔲 | Rate limiting and access control |
+
+#### Future Roadmap
+
+| Feature | Status | Description |
+|---------|--------|-------------|
 | Lease Accounting | 🔲 | ASC 842 ROU assets and liabilities |
 | FX Hedging | 🔲 | Currency hedge position tracking |
 | Benefits Administration | 🔲 | Employee benefits enrollment |
 | Performance Reviews | 🔲 | Review cycles and goals |
-| Contract Analysis | 🔲 | AI contract term extraction |
+
+---
+
+## Database Tables (Phase 5-7)
+
+### Phase 5 Tables
+
+| Table | Purpose |
+|-------|---------|
+| `allocation_rules` | Cost allocation rule definitions |
+| `allocation_rule_targets` | Distribution targets per rule |
+| `allocation_runs` | Allocation execution history |
+| `prepaid_expenses` | Prepaid expense master data |
+| `amortization_schedule` | Period-by-period amortization entries |
+
+### Phase 6 Tables
+
+| Table | Purpose |
+|-------|---------|
+| `inventory_movements` | Stock movement transactions |
+| `cash_flow_predictions` | AI-generated cash forecasts |
+| `revenue_predictions` | AI-generated revenue forecasts |
+
+### Phase 7 Tables
+
+| Table | Purpose |
+|-------|---------|
+| `bank_connections` | Plaid bank connection credentials |
+| `scheduled_reports` | Report schedule configuration |
+| `integrations` | Third-party integration configs |
+| `integration_sync_logs` | Integration sync history |
 
 ---
 
@@ -929,6 +1003,7 @@ supabase/
 |---------|------|-------------|
 | 1.0 | Dec 2025 | Initial release - Core ERP modules |
 | 2.0 | Jan 2026 | Phase 1-4 Advanced Features complete |
+| 3.0 | TBD | Phase 5-7 Financial Automation & Integrations |
 
 ### Phase 1-4 Summary (January 2026)
 
@@ -951,3 +1026,22 @@ supabase/
 - AI Transaction Categorizer with learning
 - Bank Institution Selector (Plaid-style)
 - Enhanced autonomous processing
+
+### Phase 5-7 Roadmap (Planned)
+
+**Phase 5 - Core Financial Automation**:
+- Allocations Engine with rule-based distribution
+- Prepaid Expenses & Amortization Schedules
+- Real-time Budget Variance tracking with GL integration
+
+**Phase 6 - Inventory & Predictions**:
+- Full Inventory COGS tracking with stock movements
+- AI Predictive Analytics (cash flow, revenue)
+- AI Contract Compliance Analyzer
+
+**Phase 7 - Integrations & Automation**:
+- Real Plaid bank feed integration
+- Scheduled email reports with PDF generation
+- Complete email notification wiring
+- Third-party connector framework (Salesforce, Shopify)
+- Public REST API with documentation
