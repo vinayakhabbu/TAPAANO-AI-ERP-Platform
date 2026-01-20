@@ -1,4 +1,7 @@
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Use a minimal interface to avoid version mismatches with SupabaseClient types
+interface SupabaseClientLike {
+  from: (table: string) => any;
+}
 
 export interface AgentRun {
   id: string;
@@ -32,7 +35,7 @@ export interface AgentRunStep {
  * Starts a new agent run and returns the run ID
  */
 export async function startAgentRun(
-  supabase: SupabaseClient,
+  supabase: SupabaseClientLike,
   orgId: string,
   runType: string,
   triggerSource: string,
@@ -63,7 +66,7 @@ export async function startAgentRun(
  * Logs a new step in an agent run
  */
 export async function logAgentStep(
-  supabase: SupabaseClient,
+  supabase: SupabaseClientLike,
   runId: string,
   stepNumber: number,
   stepType: string,
@@ -96,7 +99,7 @@ export async function logAgentStep(
  * Completes an agent step with output data and optional error
  */
 export async function completeAgentStep(
-  supabase: SupabaseClient,
+  supabase: SupabaseClientLike,
   stepId: string,
   startedAt: string,
   outputData?: Record<string, unknown>,
@@ -125,7 +128,7 @@ export async function completeAgentStep(
  * Completes an agent run with summary and optional error
  */
 export async function completeAgentRun(
-  supabase: SupabaseClient,
+  supabase: SupabaseClientLike,
   runId: string,
   resultSummary: string,
   errorMessage?: string
@@ -149,12 +152,12 @@ export async function completeAgentRun(
  * Helper class for managing agent run logging with automatic step tracking
  */
 export class AgentRunLogger {
-  private supabase: SupabaseClient;
+  private supabase: SupabaseClientLike;
   private runId: string | null = null;
   private currentStepNumber = 0;
   private stepStartTimes: Map<string, string> = new Map();
 
-  constructor(supabase: SupabaseClient) {
+  constructor(supabase: SupabaseClientLike) {
     this.supabase = supabase;
   }
 
