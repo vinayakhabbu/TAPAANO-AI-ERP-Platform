@@ -37,6 +37,7 @@ import {
   Bot,
   LineChart,
   Brain,
+  Clock,
 } from "lucide-react";
 import { useState } from "react";
 import { useFinancialReports } from "@/hooks/useFinancialReports";
@@ -48,6 +49,7 @@ import { FluxAnalysis } from "@/components/analytics/FluxAnalysis";
 import { AIReportBuilder } from "@/components/analytics/AIReportBuilder";
 import PredictiveAnalytics from "@/components/analytics/PredictiveAnalytics";
 import { ContractAnalyzer } from "@/components/compliance/ContractAnalyzer";
+import { ScheduledReportsManager } from "@/components/reports/ScheduledReportsManager";
 
 const FinancialReports = () => {
   const [periodStart, setPeriodStart] = useState(
@@ -263,6 +265,11 @@ const FinancialReports = () => {
               <Scale className="h-4 w-4" />
               <span className="hidden sm:inline">Contracts</span>
               <span className="sm:hidden">CTR</span>
+            </TabsTrigger>
+            <TabsTrigger value="scheduled" className="gap-2 text-xs sm:text-sm">
+              <Clock className="h-4 w-4" />
+              <span className="hidden sm:inline">Scheduled</span>
+              <span className="sm:hidden">SCHED</span>
             </TabsTrigger>
           </TabsList>
           <DropdownMenu>
@@ -696,6 +703,11 @@ const FinancialReports = () => {
         {/* Contract Analyzer Tab */}
         <TabsContent value="contracts">
           <ContractAnalyzer />
+        </TabsContent>
+
+        {/* Scheduled Reports Tab */}
+        <TabsContent value="scheduled">
+          <ScheduledReportsManager />
         </TabsContent>
       </Tabs>
     </AppLayout>
