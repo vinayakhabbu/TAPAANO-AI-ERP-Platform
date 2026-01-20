@@ -36,6 +36,7 @@ import {
   Sparkles,
   Bot,
   LineChart,
+  Brain,
 } from "lucide-react";
 import { useState } from "react";
 import { useFinancialReports } from "@/hooks/useFinancialReports";
@@ -45,6 +46,7 @@ import { exportIncomeStatement, exportBalanceSheet } from "@/lib/pdfExport";
 import { toast } from "@/hooks/use-toast";
 import { FluxAnalysis } from "@/components/analytics/FluxAnalysis";
 import { AIReportBuilder } from "@/components/analytics/AIReportBuilder";
+import PredictiveAnalytics from "@/components/analytics/PredictiveAnalytics";
 
 const FinancialReports = () => {
   const [periodStart, setPeriodStart] = useState(
@@ -250,6 +252,11 @@ const FinancialReports = () => {
               <Bot className="h-4 w-4" />
               <span className="hidden sm:inline">AI Report Builder</span>
               <span className="sm:hidden">AI</span>
+            </TabsTrigger>
+            <TabsTrigger value="predictions" className="gap-2 text-xs sm:text-sm">
+              <Brain className="h-4 w-4" />
+              <span className="hidden sm:inline">Predictions</span>
+              <span className="sm:hidden">Pred</span>
             </TabsTrigger>
           </TabsList>
           <DropdownMenu>
@@ -673,6 +680,11 @@ const FinancialReports = () => {
         {/* AI Report Builder Tab */}
         <TabsContent value="ai-builder">
           <AIReportBuilder />
+        </TabsContent>
+
+        {/* Predictions Tab */}
+        <TabsContent value="predictions">
+          <PredictiveAnalytics />
         </TabsContent>
       </Tabs>
     </AppLayout>

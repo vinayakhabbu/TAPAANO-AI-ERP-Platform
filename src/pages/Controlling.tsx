@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, TrendingUp, TrendingDown, Building2, Landmark, Target, FolderKanban, FileText, ClipboardList } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Building2, Landmark, Target, FolderKanban, FileText, ClipboardList, SplitSquareHorizontal } from 'lucide-react';
 import { useControlling } from '@/hooks/useControlling';
 import { useCODocuments, useInternalOrders } from '@/hooks/useCOIntegration';
 import CostCenterForm from '@/components/forms/CostCenterForm';
@@ -16,6 +16,7 @@ import CashFlowForecastForm from '@/components/forms/CashFlowForecastForm';
 import InternalOrderForm from '@/components/forms/InternalOrderForm';
 import CashFlowChart from '@/components/controlling/CashFlowChart';
 import BudgetVarianceChart from '@/components/controlling/BudgetVarianceChart';
+import AllocationRulesManager from '@/components/allocations/AllocationRulesManager';
 import { AppLayout } from '@/components/layout/AppLayout';
 
 const Controlling = () => {
@@ -136,6 +137,11 @@ const Controlling = () => {
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">CO Documents</span>
             <span className="sm:hidden">CO</span>
+          </TabsTrigger>
+          <TabsTrigger value="allocations" className="gap-2 text-xs sm:text-sm">
+            <SplitSquareHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Allocations</span>
+            <span className="sm:hidden">Alloc</span>
           </TabsTrigger>
         </TabsList>
 
@@ -575,6 +581,11 @@ const Controlling = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Allocations Tab */}
+        <TabsContent value="allocations" className="space-y-4">
+          <AllocationRulesManager />
         </TabsContent>
       </Tabs>
       </div>
