@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { AgentRunLogger } from "../_shared/agentRunLogger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,6 +82,10 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log("Anomaly detection request for org:", org_id, "user:", user.id);
+
+    // Initialize agent run logger
+    const logger = new AgentRunLogger(supabase);
+    await logger.start(org_id, "anomaly_detector", "manual", { user_id: user.id });
 
     const anomalies: Anomaly[] = [];
     const now = new Date();
@@ -295,15 +300,19 @@ serve(async (req) => {
 
     console.log(`Detected ${anomalies.length} anomalies`);
 
+    // Complete the agent run
+    const summary = {
+      total: anomalies.length,
+      critical: anomalies.filter(a => a.severity === "critical").length,
+      high: anomalies.filter(a => a.severity === "high").length,
+      medium: anomalies.filter(a => a.severity === "medium").length,
+      low: anomalies.filter(a => a.severity === "low").length,
+    };
+    await logger.complete(`Found ${anomalies.length} anomalies: ${summary.critical} critical, ${summary.high} high, ${summary.medium} medium, ${summary.low} low`);
+
     return new Response(JSON.stringify({
       anomalies,
-      summary: {
-        total: anomalies.length,
-        critical: anomalies.filter(a => a.severity === "critical").length,
-        high: anomalies.filter(a => a.severity === "high").length,
-        medium: anomalies.filter(a => a.severity === "medium").length,
-        low: anomalies.filter(a => a.severity === "low").length,
-      },
+      summary,
       scanned_at: now.toISOString(),
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
