@@ -259,6 +259,257 @@ export type Database = {
           },
         ]
       }
+      allocation_rule_targets: {
+        Row: {
+          created_at: string
+          formula: string | null
+          id: string
+          percentage: number
+          rule_id: string
+          target_account_id: string | null
+          target_cost_center_id: string | null
+          target_project_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          formula?: string | null
+          id?: string
+          percentage?: number
+          rule_id: string
+          target_account_id?: string | null
+          target_cost_center_id?: string | null
+          target_project_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          formula?: string | null
+          id?: string
+          percentage?: number
+          rule_id?: string
+          target_account_id?: string | null
+          target_cost_center_id?: string | null
+          target_project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allocation_rule_targets_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "allocation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_rule_targets_target_account_id_fkey"
+            columns: ["target_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_rule_targets_target_cost_center_id_fkey"
+            columns: ["target_cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_rule_targets_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      allocation_rules: {
+        Row: {
+          allocation_method: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          org_id: string
+          run_frequency: string
+          source_account_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          allocation_method?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          org_id: string
+          run_frequency?: string
+          source_account_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allocation_method?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          org_id?: string
+          run_frequency?: string
+          source_account_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allocation_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_rules_source_account_id_fkey"
+            columns: ["source_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      allocation_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          journal_entry_id: string | null
+          org_id: string
+          period_end: string
+          period_start: string
+          rule_id: string
+          run_date: string
+          source_amount: number
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          journal_entry_id?: string | null
+          org_id: string
+          period_end: string
+          period_start: string
+          rule_id: string
+          run_date?: string
+          source_amount?: number
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          journal_entry_id?: string | null
+          org_id?: string
+          period_end?: string
+          period_start?: string
+          rule_id?: string
+          run_date?: string
+          source_amount?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allocation_runs_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_runs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "allocation_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      amortization_schedule: {
+        Row: {
+          amount: number
+          created_at: string
+          cumulative_amount: number
+          id: string
+          journal_entry_id: string | null
+          period_date: string
+          posted_at: string | null
+          prepaid_expense_id: string
+          remaining_balance: number
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          cumulative_amount?: number
+          id?: string
+          journal_entry_id?: string | null
+          period_date: string
+          posted_at?: string | null
+          prepaid_expense_id: string
+          remaining_balance: number
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          cumulative_amount?: number
+          id?: string
+          journal_entry_id?: string | null
+          period_date?: string
+          posted_at?: string | null
+          prepaid_expense_id?: string
+          remaining_balance?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amortization_schedule_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "amortization_schedule_prepaid_expense_id_fkey"
+            columns: ["prepaid_expense_id"]
+            isOneToOne: false
+            referencedRelation: "prepaid_expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       asset_depreciation: {
         Row: {
           accumulated_depreciation: number
@@ -531,6 +782,76 @@ export type Database = {
           },
           {
             foreignKeyName: "bank_accounts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_connections: {
+        Row: {
+          access_token_encrypted: string | null
+          bank_account_id: string | null
+          connection_status: string
+          created_at: string
+          error_message: string | null
+          id: string
+          institution_id: string | null
+          institution_name: string | null
+          last_sync_at: string | null
+          org_id: string
+          plaid_item_id: string | null
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          bank_account_id?: string | null
+          connection_status?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          institution_id?: string | null
+          institution_name?: string | null
+          last_sync_at?: string | null
+          org_id: string
+          plaid_item_id?: string | null
+          provider?: string
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          bank_account_id?: string | null
+          connection_status?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          institution_id?: string | null
+          institution_name?: string | null
+          last_sync_at?: string | null
+          org_id?: string
+          plaid_item_id?: string | null
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_connections_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_connections_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_connections_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations_safe"
@@ -1511,6 +1832,73 @@ export type Database = {
           },
           {
             foreignKeyName: "cash_flow_forecasts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_flow_predictions: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          entity_id: string | null
+          factors: Json | null
+          forecast_date: string
+          id: string
+          model_version: string | null
+          org_id: string
+          predicted_balance: number
+          predicted_inflow: number
+          predicted_outflow: number
+          prediction_date: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          entity_id?: string | null
+          factors?: Json | null
+          forecast_date: string
+          id?: string
+          model_version?: string | null
+          org_id: string
+          predicted_balance?: number
+          predicted_inflow?: number
+          predicted_outflow?: number
+          prediction_date: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          entity_id?: string | null
+          factors?: Json | null
+          forecast_date?: string
+          id?: string
+          model_version?: string | null
+          org_id?: string
+          predicted_balance?: number
+          predicted_inflow?: number
+          predicted_outflow?: number
+          prediction_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_flow_predictions_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_flow_predictions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_flow_predictions_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations_safe"
@@ -3464,6 +3852,119 @@ export type Database = {
           },
         ]
       }
+      integration_sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_details: Json | null
+          id: string
+          integration_id: string
+          records_created: number | null
+          records_failed: number | null
+          records_processed: number | null
+          records_updated: number | null
+          started_at: string
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_details?: Json | null
+          id?: string
+          integration_id: string
+          records_created?: number | null
+          records_failed?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          started_at?: string
+          status?: string
+          sync_type: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_details?: Json | null
+          id?: string
+          integration_id?: string
+          records_created?: number | null
+          records_failed?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_sync_logs_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrations: {
+        Row: {
+          config: Json
+          created_at: string
+          credentials_encrypted: string | null
+          error_message: string | null
+          id: string
+          integration_type: string
+          is_active: boolean
+          last_sync_at: string | null
+          name: string
+          org_id: string
+          sync_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          credentials_encrypted?: string | null
+          error_message?: string | null
+          id?: string
+          integration_type: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          name: string
+          org_id: string
+          sync_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          credentials_encrypted?: string | null
+          error_message?: string | null
+          id?: string
+          integration_type?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          name?: string
+          org_id?: string
+          sync_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integrations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_orders: {
         Row: {
           code: string
@@ -3514,6 +4015,86 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          movement_date: string
+          movement_type: string
+          notes: string | null
+          org_id: string
+          product_id: string
+          quantity: number
+          reference_id: string | null
+          reference_type: string | null
+          total_cost: number
+          unit_cost: number
+          warehouse_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_date?: string
+          movement_type: string
+          notes?: string | null
+          org_id: string
+          product_id: string
+          quantity: number
+          reference_id?: string | null
+          reference_type?: string | null
+          total_cost?: number
+          unit_cost?: number
+          warehouse_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_date?: string
+          movement_type?: string
+          notes?: string | null
+          org_id?: string
+          product_id?: string
+          quantity?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          total_cost?: number
+          unit_cost?: number
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -5142,6 +5723,119 @@ export type Database = {
           },
         ]
       }
+      prepaid_expenses: {
+        Row: {
+          amortization_method: string
+          cost_center_id: string | null
+          created_at: string
+          description: string
+          end_date: string
+          entity_id: string
+          expense_account_id: string | null
+          id: string
+          notes: string | null
+          org_id: string
+          original_amount: number
+          prepaid_account_id: string | null
+          reference_number: string | null
+          remaining_amount: number
+          start_date: string
+          status: string
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          amortization_method?: string
+          cost_center_id?: string | null
+          created_at?: string
+          description: string
+          end_date: string
+          entity_id: string
+          expense_account_id?: string | null
+          id?: string
+          notes?: string | null
+          org_id: string
+          original_amount: number
+          prepaid_account_id?: string | null
+          reference_number?: string | null
+          remaining_amount: number
+          start_date: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          amortization_method?: string
+          cost_center_id?: string | null
+          created_at?: string
+          description?: string
+          end_date?: string
+          entity_id?: string
+          expense_account_id?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string
+          original_amount?: number
+          prepaid_account_id?: string | null
+          reference_number?: string | null
+          remaining_amount?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prepaid_expenses_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prepaid_expenses_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prepaid_expenses_expense_account_id_fkey"
+            columns: ["expense_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prepaid_expenses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prepaid_expenses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prepaid_expenses_prepaid_account_id_fkey"
+            columns: ["prepaid_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prepaid_expenses_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_goods_receipts: {
         Row: {
           created_at: string
@@ -6124,6 +6818,63 @@ export type Database = {
           },
         ]
       }
+      revenue_predictions: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          factors: Json | null
+          forecast_period: string
+          id: string
+          model_version: string | null
+          org_id: string
+          predicted_pipeline_value: number
+          predicted_revenue: number
+          prediction_date: string
+          weighted_pipeline: number
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          factors?: Json | null
+          forecast_period: string
+          id?: string
+          model_version?: string | null
+          org_id: string
+          predicted_pipeline_value?: number
+          predicted_revenue?: number
+          prediction_date: string
+          weighted_pipeline?: number
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          factors?: Json | null
+          forecast_period?: string
+          id?: string
+          model_version?: string | null
+          org_id?: string
+          predicted_pipeline_value?: number
+          predicted_revenue?: number
+          prediction_date?: string
+          weighted_pipeline?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_predictions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_predictions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_order_lines: {
         Row: {
           account_id: string | null
@@ -6308,6 +7059,72 @@ export type Database = {
           },
           {
             foreignKeyName: "sales_targets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_reports: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          org_id: string
+          recipients: string[]
+          report_config: Json
+          report_type: string
+          schedule_day: number | null
+          schedule_frequency: string
+          schedule_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          org_id: string
+          recipients?: string[]
+          report_config?: Json
+          report_type: string
+          schedule_day?: number | null
+          schedule_frequency?: string
+          schedule_time?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          org_id?: string
+          recipients?: string[]
+          report_config?: Json
+          report_type?: string
+          schedule_day?: number | null
+          schedule_frequency?: string
+          schedule_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_reports_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_reports_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations_safe"
