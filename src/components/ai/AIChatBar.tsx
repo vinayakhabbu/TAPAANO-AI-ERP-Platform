@@ -182,7 +182,7 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
             role: m.role,
             content: m.content,
           })),
-          org_id: orgId,
+          org_id: orgId || null,
         },
       });
 
@@ -347,11 +347,10 @@ export function AIChatBar({ collapsed, onToggle }: AIChatBarProps) {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={orgId ? "Ask Agent River anything..." : "Sign in to chat"}
-                disabled={!orgId}
+                placeholder="Ask Agent River anything..."
                 className="h-10 w-full rounded-lg border border-border bg-muted/50 pl-3 pr-10 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
               />
-              <Button type="submit" size="icon" disabled={!input.trim() || isLoading || !orgId} className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2">
+              <Button type="submit" size="icon" disabled={!input.trim() || isLoading} className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2">
                 <Send className="h-3.5 w-3.5" />
               </Button>
             </form>
