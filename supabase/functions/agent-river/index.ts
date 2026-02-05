@@ -1913,42 +1913,57 @@ serve(async (req) => {
   }
 
   try {
-    // Validate authentication and get verified org_id
+    // Validate authentication and get verified org_id (optional - allow unauthenticated)
     const { user, org_id, error: authError } = await validateAuthAndGetOrgId(req);
-    
-    if (authError || !org_id) {
-      return new Response(
-        JSON.stringify({ error: authError || 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     const { messages } = await req.json();
-    console.log('Agent River request - messages:', messages.length, 'org_id:', org_id, 'user:', user.id);
+    console.log('Agent River request - messages:', messages.length, 'org_id:', org_id || 'none', 'user:', user?.id || 'anonymous');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user's OpenAI key from their organization (using verified org_id)
+    // Get API key - try user's org key first, then fall back to system key
     let apiKey: string | null = null;
-    const { data: orgData } = await supabase
-      .from('organizations')
-      .select('openai_api_key')
-      .eq('id', org_id)
-      .single();
     
-    if (orgData?.openai_api_key) {
-      apiKey = orgData.openai_api_key;
-      console.log('Using user-provided OpenAI API key');
+    if (org_id) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('openai_api_key')
+        .eq('id', org_id)
+        .single();
+      
+      if (orgData?.openai_api_key) {
+        apiKey = orgData.openai_api_key;
+        console.log('Using user-provided OpenAI API key');
+      }
+    }
+
+    // Fall back to system key
+    if (!apiKey) {
+      apiKey = Deno.env.get("OPENAI_API_KEY") || null;
+      if (apiKey) {
+        console.log('Using system OpenAI API key');
+      }
     }
 
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY not configured. Please add your OpenAI API key in Settings > API Keys.');
     }
 
-    const apiMessages = [
-      { role: 'system', content: AGENT_RIVER_SYSTEM },
+    // For unauthenticated users, use a simpler system prompt
+    const systemPrompt = org_id 
+      ? AGENT_RIVER_SYSTEM 
+      : `You are Agent River, an AI assistant for the TAPAANO ERP system. 
+You can answer general questions about ERP systems, finance, accounting, inventory, HR, and business processes.
+However, to access organization-specific data (like invoices, customers, inventory levels, etc.), the user needs to sign in first.
+If asked about specific data, politely explain that sign-in is required to access that information.`;
+
+    const apiMessages: any[] = [
+      { role: 'system', content: systemPrompt },
       ...messages
     ];
+
+    // For unauthenticated users, don't use tools - just chat
+    const useTools = !!org_id;
 
     // Initial orchestrator call
     let response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1960,8 +1975,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: apiMessages,
-        tools: ORCHESTRATOR_TOOLS,
-        tool_choice: 'auto',
+        ...(useTools ? { tools: ORCHESTRATOR_TOOLS, tool_choice: 'auto' } : {}),
         max_completion_tokens: 3000,
       }),
     });
@@ -1978,7 +1992,7 @@ serve(async (req) => {
     let agentsUsed: string[] = [];
 
     // Process orchestrator tool calls (sub-agent delegations)
-    while (assistantMessage.tool_calls) {
+    while (useTools && assistantMessage.tool_calls) {
       const toolResults = [];
 
       for (const toolCall of assistantMessage.tool_calls) {
