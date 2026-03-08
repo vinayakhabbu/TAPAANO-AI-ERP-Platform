@@ -9,6 +9,7 @@ import { useControlling } from "./useControlling";
 import { useEmployees, useDepartments, usePayrollRuns } from "./useHRPayroll";
 import { useTaxSummary } from "./useTaxManagement";
 import { useExchangeRates, useCurrencyRevaluations } from "./useCurrency";
+import { useInvestorMetrics } from "./useInvestorMetrics";
 
 export function useDashboardStats() {
   const { stats: arStats, isLoading: arLoading } = useReceivables();
