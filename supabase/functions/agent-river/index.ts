@@ -1755,10 +1755,50 @@ async function executeSubAgentTool(toolName: string, args: any, supabase: any): 
 }
 
 // ============================================================================
+// LOVABLE AI GATEWAY HELPER
+// ============================================================================
+
+const LOVABLE_AI_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+
+async function callLovableAI(messages: any[], tools?: any[], toolChoice?: string): Promise<any> {
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!lovableKey) throw new Error("LOVABLE_API_KEY not configured");
+
+  const body: any = {
+    model: 'google/gemini-3-flash-preview',
+    messages,
+    max_tokens: 3000,
+  };
+  if (tools && tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = toolChoice || 'auto';
+  }
+
+  const response = await fetch(LOVABLE_AI_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${lovableKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Lovable AI error:', response.status, errorText);
+    if (response.status === 429) throw new Error('Rate limit exceeded. Please try again in a moment.');
+    if (response.status === 402) throw new Error('AI usage limit reached. Please add credits to your workspace.');
+    throw new Error(`AI service error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// ============================================================================
 // SUB-AGENT EXECUTION
 // ============================================================================
 
-async function executeSubAgent(agentName: string, task: string, supabase: any, apiKey: string): Promise<{ response: string; toolCalls: number }> {
+async function executeSubAgent(agentName: string, task: string, supabase: any): Promise<{ response: string; toolCalls: number }> {
   const agent = SUB_AGENTS[agentName as keyof typeof SUB_AGENTS];
   if (!agent) {
     return { response: `Unknown agent: ${agentName}`, toolCalls: 0 };
@@ -1766,7 +1806,7 @@ async function executeSubAgent(agentName: string, task: string, supabase: any, a
 
   console.log(`Executing sub-agent: ${agentName} with task: ${task}`);
 
-  const messages = [
+  const messages: any[] = [
     { role: 'system', content: agent.prompt },
     { role: 'user', content: task }
   ];
@@ -1774,22 +1814,7 @@ async function executeSubAgent(agentName: string, task: string, supabase: any, a
   let toolCallCount = 0;
 
   // Initial call with tools
-  let response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages,
-      tools: agent.tools,
-      tool_choice: 'auto',
-      max_completion_tokens: 2000,
-    }),
-  });
-
-  let data = await response.json();
+  let data = await callLovableAI(messages, agent.tools, 'auto');
   let assistantMessage = data.choices[0].message;
 
   // Process tool calls
@@ -1810,22 +1835,7 @@ async function executeSubAgent(agentName: string, task: string, supabase: any, a
     messages.push(assistantMessage);
     messages.push(...toolResults);
 
-    response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages,
-        tools: agent.tools,
-        tool_choice: 'auto',
-        max_completion_tokens: 2000,
-      }),
-    });
-
-    data = await response.json();
+    data = await callLovableAI(messages, agent.tools, 'auto');
     assistantMessage = data.choices[0].message;
   }
 
