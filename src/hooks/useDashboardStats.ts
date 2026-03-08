@@ -45,6 +45,9 @@ export function useDashboardStats() {
   const { data: exchangeRates, isLoading: isLoadingRates } = useExchangeRates();
   const { data: revaluations, isLoading: isLoadingRevaluations } = useCurrencyRevaluations();
 
+  // Investor Metrics
+  const investorMetrics = useInvestorMetrics();
+
   // Calculate service stats
   const activeContracts = serviceContracts?.filter(c => c.status === 'active').length || 0;
   const openServiceCalls = serviceCalls?.filter(c => c.status === 'open' || c.status === 'in_progress').length || 0;
