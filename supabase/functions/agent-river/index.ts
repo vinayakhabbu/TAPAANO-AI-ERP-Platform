@@ -1924,40 +1924,12 @@ serve(async (req) => {
 
   try {
     // Validate authentication and get verified org_id (optional - allow unauthenticated)
-    const { user, org_id, error: authError } = await validateAuthAndGetOrgId(req);
+    const { user, org_id } = await validateAuthAndGetOrgId(req);
 
     const { messages } = await req.json();
     console.log('Agent River request - messages:', messages.length, 'org_id:', org_id || 'none', 'user:', user?.id || 'anonymous');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get API key - try user's org key first, then fall back to system key
-    let apiKey: string | null = null;
-    
-    if (org_id) {
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('openai_api_key')
-        .eq('id', org_id)
-        .single();
-      
-      if (orgData?.openai_api_key) {
-        apiKey = orgData.openai_api_key;
-        console.log('Using user-provided OpenAI API key');
-      }
-    }
-
-    // Fall back to system key
-    if (!apiKey) {
-      apiKey = Deno.env.get("OPENAI_API_KEY") || null;
-      if (apiKey) {
-        console.log('Using system OpenAI API key');
-      }
-    }
-
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY not configured. Please add your OpenAI API key in Settings > API Keys.');
-    }
 
     // For unauthenticated users, use a simpler system prompt
     const systemPrompt = org_id 
@@ -1975,28 +1947,12 @@ If asked about specific data, politely explain that sign-in is required to acces
     // For unauthenticated users, don't use tools - just chat
     const useTools = !!org_id;
 
-    // Initial orchestrator call
-    let response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: apiMessages,
-        ...(useTools ? { tools: ORCHESTRATOR_TOOLS, tool_choice: 'auto' } : {}),
-        max_completion_tokens: 3000,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    let data = await response.json();
+    // Initial orchestrator call via Lovable AI
+    let data = await callLovableAI(
+      apiMessages,
+      useTools ? ORCHESTRATOR_TOOLS : undefined,
+      useTools ? 'auto' : undefined
+    );
     let assistantMessage = data.choices[0].message;
     let totalToolCalls = 0;
     let agentsUsed: string[] = [];
@@ -2008,7 +1964,7 @@ If asked about specific data, politely explain that sign-in is required to acces
       for (const toolCall of assistantMessage.tool_calls) {
         totalToolCalls++;
         const args = JSON.parse(toolCall.function.arguments || '{}');
-        const result = await executeOrchestratorTool(toolCall.function.name, args, supabase, apiKey);
+        const result = await executeOrchestratorTool(toolCall.function.name, args, supabase, '');
         
         try {
           const parsed = JSON.parse(result);
@@ -2026,22 +1982,7 @@ If asked about specific data, politely explain that sign-in is required to acces
       apiMessages.push(assistantMessage);
       apiMessages.push(...toolResults);
 
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: apiMessages,
-          tools: ORCHESTRATOR_TOOLS,
-          tool_choice: 'auto',
-          max_completion_tokens: 3000,
-        }),
-      });
-
-      data = await response.json();
+      data = await callLovableAI(apiMessages, ORCHESTRATOR_TOOLS, 'auto');
       assistantMessage = data.choices[0].message;
     }
 
