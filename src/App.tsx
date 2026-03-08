@@ -65,6 +65,7 @@ function AppRoutes() {
         <Route path="/currency" element={<Currency />} />
         <Route path="/tax" element={<TaxManagement />} />
         <Route path="/hr" element={<HRPayroll />} />
+        <Route path="/metrics" element={<InvestorMetrics />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

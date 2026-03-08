@@ -222,6 +222,18 @@ const Index = () => {
               { label: "", value: "" },
             ]}
           />
+          <ModuleSummaryCard
+            title="Investor Metrics"
+            href="/metrics"
+            icon={LineChart}
+            accentColor="text-revenue"
+            stats={[
+              { label: "MRR", value: formatCurrency(stats.metrics?.currentMrr ?? 0), highlight: true },
+              { label: "ARR", value: formatCurrency(stats.metrics?.arr ?? 0) },
+              { label: "NRR", value: `${stats.metrics?.nrr ?? 100}%` },
+              { label: "Churn", value: `${stats.metrics?.grossChurnRate ?? 0}%` },
+            ]}
+          />
         </div>
       </div>
 
