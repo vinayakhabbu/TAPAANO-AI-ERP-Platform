@@ -1,0 +1,1 @@
+CREATE POLICY "Organization members can update their own org" ON public.organizations FOR UPDATE USING (id IN (SELECT org_id FROM public.profiles WHERE id = auth.uid())) WITH CHECK (id IN (SELECT org_id FROM public.profiles WHERE id = auth.uid()))
