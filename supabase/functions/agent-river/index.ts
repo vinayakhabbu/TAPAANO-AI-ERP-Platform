@@ -1868,7 +1868,7 @@ async function executeOrchestratorTool(toolName: string, args: any, supabase: an
     return JSON.stringify({ error: `Unknown orchestrator tool: ${toolName}` });
   }
 
-  const result = await executeSubAgent(agentName, args.task, supabase, apiKey);
+  const result = await executeSubAgent(agentName, args.task, supabase);
   return JSON.stringify({
     agent: agentName,
     response: result.response,
