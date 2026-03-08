@@ -163,6 +163,13 @@ export function useDashboardStats() {
       totalGainLoss,
       rateCount: exchangeRates?.length || 0,
     },
+    // Investor Metrics
+    metrics: {
+      currentMrr: investorMetrics.currentMrr,
+      arr: investorMetrics.arr,
+      nrr: investorMetrics.nrr,
+      grossChurnRate: investorMetrics.grossChurnRate,
+    },
     isLoading,
   };
 }
