@@ -4436,6 +4436,78 @@ export type Database = {
           },
         ]
       }
+      investor_metrics_snapshots: {
+        Row: {
+          active_customers: number | null
+          arr: number | null
+          churned_customers: number | null
+          churned_mrr: number | null
+          contraction_mrr: number | null
+          created_at: string | null
+          expansion_mrr: number | null
+          gross_churn_rate: number | null
+          id: string
+          mrr: number | null
+          new_customers: number | null
+          new_mrr: number | null
+          nrr: number | null
+          org_id: string
+          period_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          active_customers?: number | null
+          arr?: number | null
+          churned_customers?: number | null
+          churned_mrr?: number | null
+          contraction_mrr?: number | null
+          created_at?: string | null
+          expansion_mrr?: number | null
+          gross_churn_rate?: number | null
+          id?: string
+          mrr?: number | null
+          new_customers?: number | null
+          new_mrr?: number | null
+          nrr?: number | null
+          org_id: string
+          period_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          active_customers?: number | null
+          arr?: number | null
+          churned_customers?: number | null
+          churned_mrr?: number | null
+          contraction_mrr?: number | null
+          created_at?: string | null
+          expansion_mrr?: number | null
+          gross_churn_rate?: number | null
+          id?: string
+          mrr?: number | null
+          new_customers?: number | null
+          new_mrr?: number | null
+          nrr?: number | null
+          org_id?: string
+          period_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investor_metrics_snapshots_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investor_metrics_snapshots_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_paid: number

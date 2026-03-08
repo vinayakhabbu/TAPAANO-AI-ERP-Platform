@@ -22,7 +22,8 @@ import {
   PieChart,
   Users,
   Calculator,
-  Coins
+  Coins,
+  LineChart
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -219,6 +220,18 @@ const Index = () => {
               { label: "Cost Centers", value: stats.controlling.activeCostCenters },
               { label: "Budget Total", value: formatCurrency(stats.controlling.totalBudgetAmount), highlight: true },
               { label: "", value: "" },
+            ]}
+          />
+          <ModuleSummaryCard
+            title="Investor Metrics"
+            href="/metrics"
+            icon={LineChart}
+            accentColor="text-revenue"
+            stats={[
+              { label: "MRR", value: formatCurrency(stats.metrics?.currentMrr ?? 0), highlight: true },
+              { label: "ARR", value: formatCurrency(stats.metrics?.arr ?? 0) },
+              { label: "NRR", value: `${stats.metrics?.nrr ?? 100}%` },
+              { label: "Churn", value: `${stats.metrics?.grossChurnRate ?? 0}%` },
             ]}
           />
         </div>

@@ -23,6 +23,7 @@ import {
   Coins,
   Calculator,
   Users,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -71,6 +72,7 @@ const navCategories = [
       { icon: BarChart3, label: "Financial Reports", href: "/reports" },
       { icon: CalendarCheck, label: "Period Close", href: "/close" },
       { icon: Scale, label: "Decision Desk", href: "/decisions" },
+      { icon: TrendingUp, label: "Investor Metrics", href: "/metrics" },
     ],
   },
 ];

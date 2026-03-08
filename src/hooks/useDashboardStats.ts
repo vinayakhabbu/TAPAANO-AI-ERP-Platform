@@ -9,6 +9,7 @@ import { useControlling } from "./useControlling";
 import { useEmployees, useDepartments, usePayrollRuns } from "./useHRPayroll";
 import { useTaxSummary } from "./useTaxManagement";
 import { useExchangeRates, useCurrencyRevaluations } from "./useCurrency";
+import { useInvestorMetrics } from "./useInvestorMetrics";
 
 export function useDashboardStats() {
   const { stats: arStats, isLoading: arLoading } = useReceivables();
@@ -43,6 +44,9 @@ export function useDashboardStats() {
   // Multi-Currency
   const { data: exchangeRates, isLoading: isLoadingRates } = useExchangeRates();
   const { data: revaluations, isLoading: isLoadingRevaluations } = useCurrencyRevaluations();
+
+  // Investor Metrics
+  const investorMetrics = useInvestorMetrics();
 
   // Calculate service stats
   const activeContracts = serviceContracts?.filter(c => c.status === 'active').length || 0;
@@ -158,6 +162,13 @@ export function useDashboardStats() {
       activeCurrencies,
       totalGainLoss,
       rateCount: exchangeRates?.length || 0,
+    },
+    // Investor Metrics
+    metrics: {
+      currentMrr: investorMetrics.currentMrr,
+      arr: investorMetrics.arr,
+      nrr: investorMetrics.nrr,
+      grossChurnRate: investorMetrics.grossChurnRate,
     },
     isLoading,
   };
