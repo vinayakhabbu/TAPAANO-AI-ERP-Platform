@@ -71,6 +71,7 @@ const navCategories = [
       { icon: BarChart3, label: "Financial Reports", href: "/reports" },
       { icon: CalendarCheck, label: "Period Close", href: "/close" },
       { icon: Scale, label: "Decision Desk", href: "/decisions" },
+      { icon: TrendingUp, label: "Investor Metrics", href: "/metrics" },
     ],
   },
 ];

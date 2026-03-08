@@ -22,7 +22,8 @@ import {
   PieChart,
   Users,
   Calculator,
-  Coins
+  Coins,
+  LineChart
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 

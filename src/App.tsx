@@ -25,6 +25,7 @@ import DecisionDesk from "./pages/DecisionDesk";
 import Currency from "./pages/Currency";
 import TaxManagement from "./pages/TaxManagement";
 import HRPayroll from "./pages/HRPayroll";
+import InvestorMetrics from "./pages/InvestorMetrics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
