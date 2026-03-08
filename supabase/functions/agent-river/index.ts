@@ -1846,7 +1846,7 @@ async function executeSubAgent(agentName: string, task: string, supabase: any): 
 // ORCHESTRATOR TOOL EXECUTION
 // ============================================================================
 
-async function executeOrchestratorTool(toolName: string, args: any, supabase: any, apiKey: string): Promise<string> {
+async function executeOrchestratorTool(toolName: string, args: any, supabase: any, _apiKey?: string): Promise<string> {
   const agentMap: Record<string, string> = {
     'call_crm_agent': 'crm_agent',
     'call_finance_agent': 'finance_agent',
