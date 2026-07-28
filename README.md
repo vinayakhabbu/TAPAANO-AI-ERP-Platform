@@ -182,6 +182,6 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](./LICE
 
 ## Acknowledgments
 
-- Built with [Lovable](https://lovable.dev)
+
 - UI components from [shadcn/ui](https://ui.shadcn.com)
 - Backend powered by [Supabase](https://supabase.com)
