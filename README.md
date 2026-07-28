@@ -156,9 +156,6 @@ npm run lint
 
 ## Deployment
 
-### Lovable (Recommended)
-
-Click **Share → Publish** in the Lovable editor.
 
 ### Self-Hosting
 
