@@ -45,7 +45,7 @@ A comprehensive, multi-tenant Enterprise Resource Planning platform built with m
 ### Prerequisites
 
 - Node.js 18+ and npm
-- A Supabase project (or use Lovable Cloud)
+- A Supabase project 
 - OpenAI API key (optional, for AI features)
 
 ### Installation
