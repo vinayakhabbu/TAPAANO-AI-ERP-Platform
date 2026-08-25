@@ -1,29 +1,24 @@
-import { useState, useEffect } from "react";
-import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { addDays, format } from "date-fns";
+import { Plus, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Plus } from "lucide-react";
-import { toast } from "sonner";
-import { addDays, format } from "date-fns";
-import { CURRENCIES, useLatestRates } from "@/hooks/useCurrency";
-import { useTaxCodesWithRates } from "@/hooks/useTransactionDefaults";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 interface InvoiceFormProps {
   trigger?: React.ReactNode;
@@ -31,173 +26,124 @@ interface InvoiceFormProps {
   defaultShipmentId?: string;
 }
 
+const today = () => format(new Date(), "yyyy-MM-dd");
+const defaultDueDate = () => format(addDays(new Date(), 30), "yyyy-MM-dd");
+
 export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }: InvoiceFormProps) {
-  const [open, setOpen] = useState(false);
-  const [customerId, setCustomerId] = useState("");
-  const [salesOrderId, setSalesOrderId] = useState(defaultSalesOrderId || "");
-  const [shipmentId, setShipmentId] = useState(defaultShipmentId || "");
-  const [dueDate, setDueDate] = useState(format(addDays(new Date(), 30), "yyyy-MM-dd"));
-  const [subtotal, setSubtotal] = useState("");
-  const [taxCodeId, setTaxCodeId] = useState("");
-  const [currency, setCurrency] = useState("USD");
-  const [notes, setNotes] = useState("");
+  void defaultSalesOrderId;
+  void defaultShipmentId;
+
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [entityId, setEntityId] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [issueDate, setIssueDate] = useState(today);
+  const [dueDate, setDueDate] = useState(defaultDueDate);
+  const [description, setDescription] = useState("");
+  const [quantity, setQuantity] = useState("1.0000");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [notes, setNotes] = useState("");
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
-  const { data: customers = [] } = useQuery({
-    queryKey: ["customers"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("id, name");
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
+  const ready = Boolean(user?.id && profile?.org_id);
   const { data: entities = [] } = useQuery({
-    queryKey: ["entities"],
+    queryKey: ["invoice-entities", user?.id, profile?.org_id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("entities").select("id, name, currency");
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const { data: shippedOrders = [] } = useQuery({
-    queryKey: ["shipped-sales-orders"],
-    queryFn: async () => {
+      if (!user?.id || !profile?.org_id) return [];
       const { data, error } = await supabase
-        .from("sales_orders")
-        .select(`id, so_number, customer_id, total, customers (name)`)
-        .eq("status", "shipped");
+        .from("entities")
+        .select("id, name, currency")
+        .eq("org_id", profile.org_id)
+        .order("name");
       if (error) throw error;
-      return data || [];
+      return data ?? [];
     },
+    enabled: ready,
   });
-
-  const { data: orderShipments = [] } = useQuery({
-    queryKey: ["shipments-for-order", salesOrderId],
+  const { data: customers = [] } = useQuery({
+    queryKey: ["invoice-customers", user?.id, profile?.org_id],
     queryFn: async () => {
-      if (!salesOrderId) return [];
+      if (!user?.id || !profile?.org_id) return [];
       const { data, error } = await supabase
-        .from("shipments")
-        .select("id, shipment_number, ship_date")
-        .eq("sales_order_id", salesOrderId);
+        .from("customers")
+        .select("id, name")
+        .eq("org_id", profile.org_id)
+        .order("name");
       if (error) throw error;
-      return data || [];
+      return data ?? [];
     },
-    enabled: !!salesOrderId,
+    enabled: ready,
   });
 
-  const { data: taxCodes = [] } = useTaxCodesWithRates();
-  const salesTaxCodes = taxCodes.filter(tc => tc.tax_type === "sales" || tc.tax_type === "vat_output");
-  
-  const { data: latestRates = [] } = useLatestRates();
-  
-  // Get exchange rate for selected currency
-  const getExchangeRate = () => {
-    if (currency === "USD") return 1;
-    const rate = latestRates.find(r => r.from_currency === currency && r.to_currency === "USD");
-    return rate?.rate || 1;
-  };
+  const selectedEntity = entities.find((entity) => entity.id === entityId);
+  const lineTotal = useMemo(() => {
+    const quantityNumber = Number(quantity);
+    const priceNumber = Number(unitPrice);
+    return Number.isFinite(quantityNumber) && Number.isFinite(priceNumber)
+      ? (quantityNumber * priceNumber).toFixed(2)
+      : "0.00";
+  }, [quantity, unitPrice]);
 
-  // Get tax rate from selected tax code
-  const getTaxRate = () => {
-    if (!taxCodeId) return 0;
-    const taxCode = taxCodes.find(tc => tc.id === taxCodeId);
-    return taxCode?.currentRate || 0;
+  const reset = () => {
+    setEntityId("");
+    setCustomerId("");
+    setInvoiceNumber("");
+    setIssueDate(today());
+    setDueDate(defaultDueDate());
+    setDescription("");
+    setQuantity("1.0000");
+    setUnitPrice("");
+    setNotes("");
+    setIdempotencyKey(crypto.randomUUID());
   };
 
   useEffect(() => {
-    if (salesOrderId && salesOrderId !== "manual") {
-      const selectedOrder = shippedOrders.find((o) => o.id === salesOrderId);
-      if (selectedOrder) {
-        setCustomerId(selectedOrder.customer_id);
-        setSubtotal(selectedOrder.total.toString());
-      }
-    }
-  }, [salesOrderId, shippedOrders]);
+    setOpen(false);
+    reset();
+  }, [user?.id, profile?.org_id]);
 
-  useEffect(() => {
-    if (orderShipments.length > 0 && !shipmentId) {
-      setShipmentId(orderShipments[0].id);
-    }
-  }, [orderShipments, shipmentId]);
-
-  const mutation = useMutation({
+  const postInvoice = useMutation({
     mutationFn: async () => {
-      const { data: profile } = await supabase.from("profiles").select("org_id").single();
-      if (!profile?.org_id) throw new Error("No organization found");
-
-      const entityId = entities[0]?.id;
-      if (!entityId) throw new Error("No entity found");
-
-      const subtotalNum = parseFloat(subtotal) || 0;
-      const taxRate = getTaxRate();
-      const tax = subtotalNum * (taxRate / 100);
-      const total = subtotalNum + tax;
-      const exchangeRate = getExchangeRate();
-      const functionalTotal = total * exchangeRate;
-
-      const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-      const actualSalesOrderId = salesOrderId === "manual" ? null : salesOrderId;
-      
-      const { error } = await supabase.from("invoices").insert({
-        org_id: profile.org_id,
-        entity_id: entityId,
-        customer_id: customerId,
-        invoice_number: invoiceNumber,
-        due_date: dueDate,
-        subtotal: subtotalNum,
-        tax,
-        total,
-        notes: notes || null,
-        status: "draft",
-        sales_order_id: actualSalesOrderId || null,
-        shipment_id: actualSalesOrderId ? (shipmentId || null) : null,
-        tax_code_id: taxCodeId || null,
-        currency: currency,
-        exchange_rate: exchangeRate,
-        functional_total: functionalTotal,
-      });
-
-      if (error) throw error;
-
-      if (actualSalesOrderId) {
-        await supabase
-          .from("sales_orders")
-          .update({ status: "invoiced" })
-          .eq("id", salesOrderId);
+      if (!ready || !selectedEntity) throw new Error("A current user, organization, and entity are required.");
+      if (!customerId || !invoiceNumber.trim() || !description.trim()) {
+        throw new Error("Entity, customer, invoice number, and description are required.");
       }
+      const exactDecimal = /^\d+(?:\.\d{1,4})?$/;
+      if (!exactDecimal.test(quantity) || !exactDecimal.test(unitPrice)) {
+        throw new Error("Quantity and unit price must be positive decimals with at most four places.");
+      }
+
+      const lines: Json = [{
+        description: description.trim(),
+        quantity,
+        unit_price: unitPrice,
+      }];
+      const { data, error } = await supabase.rpc("post_customer_invoice", {
+        p_entity_id: selectedEntity.id,
+        p_customer_id: customerId,
+        p_invoice_number: invoiceNumber.trim(),
+        p_issue_date: issueDate,
+        p_due_date: dueDate,
+        p_currency: selectedEntity.currency,
+        p_tax: 0,
+        p_notes: notes.trim() || null,
+        p_lines: lines,
+        p_idempotency_key: idempotencyKey,
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices-with-customers"] });
-      queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["shipped-sales-orders"] });
-      toast.success("Invoice created successfully");
+      queryClient.invalidateQueries({ queryKey: ["posted-invoice-history", user?.id, profile?.org_id] });
+      queryClient.invalidateQueries({ queryKey: ["journal-history", user?.id, profile?.org_id] });
+      toast.success("Invoice and journal posted atomically");
       setOpen(false);
-      resetForm();
+      reset();
     },
-    onError: (error) => {
-      toast.error("Failed to create invoice: " + error.message);
-    },
+    onError: (error: Error) => toast.error(error.message),
   });
-
-  const resetForm = () => {
-    setCustomerId("");
-    setSalesOrderId(defaultSalesOrderId || "");
-    setShipmentId(defaultShipmentId || "");
-    setDueDate(format(addDays(new Date(), 30), "yyyy-MM-dd"));
-    setSubtotal("");
-    setTaxCodeId("");
-    setCurrency("USD");
-    setNotes("");
-  };
-
-  const subtotalNum = parseFloat(subtotal) || 0;
-  const taxRate = getTaxRate();
-  const tax = subtotalNum * (taxRate / 100);
-  const total = subtotalNum + tax;
-  const exchangeRate = getExchangeRate();
-  const functionalTotal = total * exchangeRate;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -205,155 +151,80 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
         {trigger || (
           <Button className="gap-2">
             <Plus className="h-4 w-4" />
-            New Invoice
+            Post supported invoice
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Create Invoice</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" />
+            Post customer invoice
+          </DialogTitle>
+          <DialogDescription>
+            Supported boundary: one line, zero tax, entity functional currency. The invoice, line, event, period link, and balanced journal commit together.
+          </DialogDescription>
         </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutation.mutate();
-          }}
-          className="space-y-4"
-        >
+        <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postInvoice.mutate(); }}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Entity</Label>
+              <Select value={entityId} onValueChange={setEntityId}>
+                <SelectTrigger><SelectValue placeholder="Select entity" /></SelectTrigger>
+                <SelectContent>{entities.map((entity) => (
+                  <SelectItem key={entity.id} value={entity.id}>{entity.name} ({entity.currency})</SelectItem>
+                ))}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Customer</Label>
+              <Select value={customerId} onValueChange={setCustomerId}>
+                <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
+                <SelectContent>{customers.map((customer) => (
+                  <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
+                ))}</SelectContent>
+              </Select>
+            </div>
+          </div>
           <div className="space-y-2">
-            <Label>From Sales Order (optional)</Label>
-            <Select value={salesOrderId} onValueChange={setSalesOrderId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select shipped order to invoice..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="manual">— Manual Invoice —</SelectItem>
-                {shippedOrders.map((so) => (
-                  <SelectItem key={so.id} value={so.id}>
-                    {so.so_number} - {so.customers?.name} (${so.total.toLocaleString()})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Invoice number</Label>
+            <Input value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} maxLength={80} required />
           </div>
-
-          {salesOrderId && salesOrderId !== "manual" && orderShipments.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Shipment</Label>
-              <Select value={shipmentId} onValueChange={setShipmentId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select shipment..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {orderShipments.map((sh) => (
-                    <SelectItem key={sh.id} value={sh.id}>
-                      {sh.shipment_number} - {format(new Date(sh.ship_date), "MMM d, yyyy")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Issue date</Label>
+              <Input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} required />
             </div>
-          )}
-
+            <div className="space-y-2">
+              <Label>Due date</Label>
+              <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} required />
+            </div>
+          </div>
           <div className="space-y-2">
-            <Label>Customer *</Label>
-            <Select 
-              value={customerId} 
-              onValueChange={setCustomerId} 
-              disabled={salesOrderId !== "manual" && !!salesOrderId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Description</Label>
+            <Input value={description} onChange={(event) => setDescription(event.target.value)} required />
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label>Currency</Label>
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.code} - {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Quantity</Label>
+              <Input inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label>Due Date *</Label>
-              <Input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                required
-              />
+              <Label>Unit price</Label>
+              <Input inputMode="decimal" value={unitPrice} onChange={(event) => setUnitPrice(event.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Calculated total</Label>
+              <Input value={`${selectedEntity?.currency ?? "—"} ${lineTotal}`} readOnly />
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Subtotal *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={subtotal}
-                onChange={(e) => setSubtotal(e.target.value)}
-                disabled={salesOrderId !== "manual" && !!salesOrderId}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Tax Code</Label>
-              <Select value={taxCodeId} onValueChange={setTaxCodeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select tax code" />
-                </SelectTrigger>
-                <SelectContent>
-                  {salesTaxCodes.map((tc) => (
-                    <SelectItem key={tc.id} value={tc.id}>
-                      {tc.code} ({tc.currentRate}%)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label>Notes</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
           </div>
-
-          <div className="border-t pt-4 space-y-1 text-right">
-            <p className="text-sm text-muted-foreground">Subtotal: {currency} {subtotalNum.toFixed(2)}</p>
-            <p className="text-sm text-muted-foreground">Tax ({taxRate}%): {currency} {tax.toFixed(2)}</p>
-            <p className="text-lg font-semibold">Total: {currency} {total.toFixed(2)}</p>
-            {currency !== "USD" && (
-              <p className="text-xs text-muted-foreground">
-                ≈ USD {functionalTotal.toFixed(2)} @ {exchangeRate.toFixed(4)}
-              </p>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!customerId || !subtotal || mutation.isPending}>
-              {mutation.isPending ? "Creating..." : "Create Invoice"}
-            </Button>
-          </div>
+          <Button type="submit" className="w-full" disabled={!ready || postInvoice.isPending}>
+            {postInvoice.isPending ? "Posting…" : "Post invoice and journal"}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

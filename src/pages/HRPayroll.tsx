@@ -15,7 +15,6 @@ import {
   usePayrollPeriods, 
   usePayrollRuns,
   useCreatePayrollRun,
-  usePostPayrollToGL,
   PAY_FREQUENCIES 
 } from "@/hooks/useHRPayroll";
 import { useTimeOffRequests, useApproveTimeOffRequest, useRejectTimeOffRequest } from "@/hooks/useTimeOff";
@@ -50,7 +49,6 @@ export default function HRPayroll() {
   const { data: documents = [], isLoading: loadingDocuments } = useEmployeeDocuments();
   
   const createPayrollRun = useCreatePayrollRun();
-  const postToGL = usePostPayrollToGL();
   const generatePayslips = useGeneratePayslips();
   const approveTimeOff = useApproveTimeOffRequest();
   const rejectTimeOff = useRejectTimeOffRequest();
@@ -557,10 +555,10 @@ export default function HRPayroll() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => postToGL.mutate(run.id)}
-                                  disabled={postToGL.isPending}
+                                  disabled
+                                  title="Payroll posting is unavailable pending an atomic payroll-to-GL workflow"
                                 >
-                                  Post to GL
+                                  GL posting unavailable
                                 </Button>
                               )}
                               {run.status === "posted" && !payslips.some(p => p.payroll_run_id === run.id) && (

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Vendor {
@@ -10,179 +11,196 @@ export interface Vendor {
   payment_terms: number | null;
 }
 
-export interface Bill {
+export interface PostedSupplierBill {
   id: string;
-  bill_number: string;
-  vendor_id: string;
-  vendor?: Vendor;
-  issue_date: string;
-  due_date: string;
-  subtotal: number;
-  tax: number;
+  billNumber: string;
+  vendorName: string;
+  issueDate: string;
+  dueDate: string;
   total: number;
-  amount_paid: number;
-  status: "draft" | "pending" | "paid" | "overdue" | "cancelled";
-  purchase_order_id: string | null;
-  goods_receipt_id: string | null;
-  match_status: string | null;
+  currency: string;
+  journalEntryId: string;
 }
 
-export interface PurchaseOrder {
+export interface PostedSupplierCredit {
   id: string;
-  po_number: string;
-  vendor_id: string;
-  vendor?: Vendor;
-  order_date: string;
-  expected_delivery_date: string | null;
-  status: "draft" | "pending_approval" | "approved" | "partially_received" | "received" | "cancelled";
-  subtotal: number;
-  tax: number;
+  originalBillId: string;
+  creditNoteNumber: string;
+  issueDate: string;
   total: number;
-  notes: string | null;
+  currency: string;
+  journalEntryId: string;
 }
 
-export interface GoodsReceipt {
+export interface PostedSupplierPayment {
   id: string;
-  receipt_number: string;
-  purchase_order_id: string;
-  receipt_date: string;
-  notes: string | null;
-}
-
-export interface PaymentRun {
-  id: string;
-  run_number: string;
-  run_date: string;
-  status: "draft" | "pending_approval" | "approved" | "processing" | "completed" | "failed";
-  total_amount: number;
-  payment_method: string | null;
+  billId: string;
+  paymentNumber: string;
+  paymentDate: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  journalEntryId: string;
 }
 
 export const useVendors = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["vendors"],
+    queryKey: ["vendors", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
         .from("vendors")
-        .select("*")
+        .select("id, name, email, phone, address, payment_terms")
+        .eq("org_id", orgId)
         .order("name");
-      
       if (error) throw error;
       return data as Vendor[];
     },
+    enabled: Boolean(user?.id && orgId),
   });
 };
 
 export const useBills = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["bills"],
+    queryKey: ["legacy-bill-history", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
         .from("bills")
-        .select(`
-          *,
-          vendor:vendors(*)
-        `)
-        .order("due_date", { ascending: true });
-      
+        .select("id, bill_number, issue_date, due_date, total, currency, status, vendors(name)")
+        .eq("org_id", orgId)
+        .eq("accounting_status", "UNVERIFIED_LEGACY")
+        .order("issue_date", { ascending: false });
       if (error) throw error;
-      return data as (Bill & { vendor: Vendor })[];
+      return data ?? [];
     },
+    enabled: Boolean(user?.id && orgId),
   });
 };
 
-export const usePurchaseOrders = () => {
+export const usePostedSupplierBills = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["purchase_orders"],
+    queryKey: ["posted-supplier-bill-history", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
-        .from("purchase_orders")
-        .select(`
-          *,
-          vendor:vendors(*)
-        `)
-        .order("order_date", { ascending: false });
-      
+        .from("bills")
+        .select("id, bill_number, issue_date, due_date, total, currency, journal_entry_id, vendors(name)")
+        .eq("org_id", orgId)
+        .eq("accounting_status", "POSTED")
+        .not("journal_entry_id", "is", null)
+        .order("issue_date", { ascending: false });
       if (error) throw error;
-      return data as (PurchaseOrder & { vendor: Vendor })[];
+      return (data ?? []).map((bill): PostedSupplierBill => ({
+        id: bill.id,
+        billNumber: bill.bill_number,
+        vendorName: bill.vendors?.name ?? "Unknown vendor",
+        issueDate: bill.issue_date,
+        dueDate: bill.due_date,
+        total: bill.total,
+        currency: bill.currency ?? "",
+        journalEntryId: bill.journal_entry_id as string,
+      }));
     },
+    enabled: Boolean(user?.id && orgId),
   });
 };
 
-export const useGoodsReceipts = () => {
+export const usePostedSupplierCredits = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["goods_receipts"],
+    queryKey: ["posted-supplier-credit-history", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
-        .from("goods_receipts")
-        .select("*")
-        .order("receipt_date", { ascending: false });
-      
+        .from("supplier_bill_credit_notes")
+        .select("id, original_bill_id, credit_note_number, issue_date, total, currency, journal_entry_id")
+        .eq("org_id", orgId)
+        .order("issue_date", { ascending: false });
       if (error) throw error;
-      return data as GoodsReceipt[];
+      return (data ?? []).map((credit): PostedSupplierCredit => ({
+        id: credit.id,
+        originalBillId: credit.original_bill_id,
+        creditNoteNumber: credit.credit_note_number,
+        issueDate: credit.issue_date,
+        total: credit.total,
+        currency: credit.currency,
+        journalEntryId: credit.journal_entry_id,
+      }));
     },
+    enabled: Boolean(user?.id && orgId),
+  });
+};
+
+export const usePostedSupplierPayments = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
+  return useQuery({
+    queryKey: ["posted-supplier-payment-history", user?.id, orgId],
+    queryFn: async () => {
+      if (!user?.id || !orgId) return [];
+      const { data, error } = await supabase
+        .from("supplier_payments")
+        .select("id, bill_id, payment_number, payment_date, amount, currency, payment_reference, journal_entry_id")
+        .eq("org_id", orgId)
+        .order("payment_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((payment): PostedSupplierPayment => ({
+        id: payment.id,
+        billId: payment.bill_id,
+        paymentNumber: payment.payment_number,
+        paymentDate: payment.payment_date,
+        amount: payment.amount,
+        currency: payment.currency,
+        reference: payment.payment_reference,
+        journalEntryId: payment.journal_entry_id,
+      }));
+    },
+    enabled: Boolean(user?.id && orgId),
   });
 };
 
 export const usePaymentRuns = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["payment_runs"],
+    queryKey: ["legacy-payment-run-history", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
         .from("payment_runs")
-        .select("*")
+        .select("id, run_number, run_date, status")
+        .eq("org_id", orgId)
         .order("run_date", { ascending: false });
-      
       if (error) throw error;
-      return data as PaymentRun[];
+      return data ?? [];
     },
+    enabled: Boolean(user?.id && orgId),
   });
 };
 
 export const usePayablesSummary = () => {
-  const { data: bills = [], isLoading: billsLoading } = useBills();
-  const { data: vendors = [], isLoading: vendorsLoading } = useVendors();
-  const { data: purchaseOrders = [], isLoading: posLoading } = usePurchaseOrders();
-  const { data: paymentRuns = [], isLoading: runsLoading } = usePaymentRuns();
-
-  const today = new Date();
-  const weekFromNow = new Date(today);
-  weekFromNow.setDate(today.getDate() + 7);
-
-  const totalAP = bills
-    .filter(b => b.status !== "paid" && b.status !== "cancelled")
-    .reduce((sum, b) => sum + (b.total - b.amount_paid), 0);
-
-  const dueThisWeek = bills
-    .filter(b => {
-      const dueDate = new Date(b.due_date);
-      return b.status !== "paid" && b.status !== "cancelled" && 
-             dueDate >= today && dueDate <= weekFromNow;
-    })
-    .reduce((sum, b) => sum + (b.total - b.amount_paid), 0);
-
-  const overdue = bills
-    .filter(b => {
-      const dueDate = new Date(b.due_date);
-      return b.status !== "paid" && b.status !== "cancelled" && dueDate < today;
-    })
-    .reduce((sum, b) => sum + (b.total - b.amount_paid), 0);
-
-  const openPOs = purchaseOrders.filter(
-    po => po.status !== "received" && po.status !== "cancelled"
-  ).length;
-
-  const pendingPaymentRuns = paymentRuns.filter(
-    pr => pr.status === "pending_approval" || pr.status === "approved"
-  ).length;
-
+  const vendors = useVendors();
+  const bills = useBills();
+  const postedBills = usePostedSupplierBills();
+  const postedCredits = usePostedSupplierCredits();
+  const postedPayments = usePostedSupplierPayments();
+  const paymentRuns = usePaymentRuns();
   return {
-    totalAP,
-    dueThisWeek,
-    overdue,
-    vendorCount: vendors.length,
-    openPOs,
-    pendingPaymentRuns,
-    isLoading: billsLoading || vendorsLoading || posLoading || runsLoading,
+    vendorCount: vendors.data?.length ?? 0,
+    billHeaderCount: bills.data?.length ?? 0,
+    postedBillCount: postedBills.data?.length ?? 0,
+    postedCreditCount: postedCredits.data?.length ?? 0,
+    postedPaymentCount: postedPayments.data?.length ?? 0,
+    paymentRunHistoryCount: paymentRuns.data?.length ?? 0,
+    isLoading: vendors.isLoading || bills.isLoading || postedBills.isLoading
+      || postedCredits.isLoading || postedPayments.isLoading || paymentRuns.isLoading,
   };
 };

@@ -1,4 +1,5 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, createContext, useContext, ReactNode, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,6 +16,7 @@ interface AuthContextType {
   profile: Profile | null;
   orgId: string | null;
   loading: boolean;
+  signingOut: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -24,26 +26,33 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   orgId: null,
   loading: true,
+  signingOut: false,
   signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
+  const identityEpoch = useRef(0);
+  const currentUserId = useRef<string | null>(null);
+  const signingOutRef = useRef(false);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
+        if (signingOutRef.current && session) return;
+        const epoch = ++identityEpoch.current;
+        currentUserId.current = session?.user.id ?? null;
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Fetch profile with setTimeout to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
-            fetchProfile(session.user.id);
+            void fetchProfile(session.user.id, epoch);
           }, 0);
         } else {
           setProfile(null);
@@ -51,12 +60,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
+    const initialEpoch = identityEpoch.current;
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (signingOutRef.current || identityEpoch.current !== initialEpoch) return;
+      const epoch = ++identityEpoch.current;
+      currentUserId.current = session?.user.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        void fetchProfile(session.user.id, epoch);
+      } else {
+        setProfile(null);
       }
       setLoading(false);
     });
@@ -64,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, epoch: number) => {
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -77,17 +91,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setProfile(data);
+      if (identityEpoch.current === epoch && currentUserId.current === userId) {
+        setProfile(data);
+      }
     } catch (error) {
       console.error("Error fetching profile:", error);
     }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    if (signingOutRef.current) return;
+    signingOutRef.current = true;
+    setSigningOut(true);
+    ++identityEpoch.current;
+    currentUserId.current = null;
     setUser(null);
     setSession(null);
     setProfile(null);
+
+    try {
+      await queryClient.cancelQueries();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } finally {
+      try {
+        await queryClient.cancelQueries();
+      } finally {
+        queryClient.clear();
+        signingOutRef.current = false;
+        setSigningOut(false);
+      }
+    }
   };
 
   return (
@@ -98,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         orgId: profile?.org_id ?? null,
         loading,
+        signingOut,
         signOut,
       }}
     >

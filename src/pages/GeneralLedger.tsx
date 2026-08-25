@@ -24,11 +24,10 @@ import {
   FolderOpen,
   BookOpen,
   GitMerge,
+  Lock,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAccounts, useJournalEntries, useAccountBalances } from "@/hooks/useGeneralLedger";
-import { useJournalEntryApproval } from "@/hooks/useApprovals";
-import { ApprovalActions } from "@/components/ApprovalActions";
 import { format } from "date-fns";
 import { MultiBookAccounting } from "@/components/accounting/MultiBookAccounting";
 import { IntercompanyElimination } from "@/components/consolidation/IntercompanyElimination";
@@ -53,9 +52,6 @@ const GeneralLedger = () => {
   const { data: journalEntries, isLoading: entriesLoading } = useJournalEntries();
   const { data: balances } = useAccountBalances();
   
-  // Journal entry approval
-  const journalApproval = useJournalEntryApproval();
-
   const toggleAccount = (id: string) => {
     setExpandedAccounts((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -220,7 +216,7 @@ const GeneralLedger = () => {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input placeholder="Search accounts..." className="w-64 pl-9" />
                 </div>
-                <Button className="gap-2">
+                <Button className="gap-2" disabled title="Account maintenance is unavailable during control recovery">
                   <Plus className="h-4 w-4" />
                   New Account
                 </Button>
@@ -316,7 +312,7 @@ const GeneralLedger = () => {
             <div className="flex items-center justify-between border-b border-border p-4">
               <div>
                 <h3 className="text-lg font-semibold text-foreground">Journal Entries</h3>
-                <p className="text-sm text-muted-foreground">Manual adjustments and entries</p>
+                <p className="text-sm text-muted-foreground">Immutable posted-journal history</p>
               </div>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="icon">
@@ -325,9 +321,9 @@ const GeneralLedger = () => {
                 <Button variant="outline" size="icon">
                   <Download className="h-4 w-4" />
                 </Button>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  New Entry
+                <Button className="gap-2" disabled title="Use only an audited workflow-specific posting path">
+                  <Lock className="h-4 w-4" />
+                  Posting unavailable
                 </Button>
               </div>
             </div>
@@ -390,14 +386,7 @@ const GeneralLedger = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <ApprovalActions
-                            documentType="journal_entry"
-                            documentId={entry.id}
-                            currentStatus={entry.status}
-                            onPost={(rationale) => journalApproval.mutate({ id: entry.id, action: "post", rationale })}
-                            onReverse={(rationale) => journalApproval.mutate({ id: entry.id, action: "reverse", rationale })}
-                            isLoading={journalApproval.isPending}
-                          />
+                          <span className="text-xs text-muted-foreground">Read-only</span>
                         </TableCell>
                       </TableRow>
                     );

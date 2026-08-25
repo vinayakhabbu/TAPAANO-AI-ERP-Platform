@@ -1,0 +1,339 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { PGlite } from "@electric-sql/pglite";
+
+const journalMigrationUrl = new URL("../supabase/migrations/20260825010000_recovery_journal_periods.sql", import.meta.url);
+const containmentMigrationUrl = new URL("../supabase/migrations/20260825040000_recovery_ap_payment_containment.sql", import.meta.url);
+const supplierBillMigrationUrl = new URL("../supabase/migrations/20260825110000_recovery_supplier_bill.sql", import.meta.url);
+const supplierCreditMigrationUrl = new URL("../supabase/migrations/20260825120000_recovery_supplier_bill_credit.sql", import.meta.url);
+const supplierPaymentMigrationUrl = new URL("../supabase/migrations/20260825130000_recovery_supplier_payment.sql", import.meta.url);
+
+const ids = {
+  orgA: "00000000-0000-4000-8000-000000000001", orgB: "00000000-0000-4000-8000-000000000002",
+  entityA: "10000000-0000-4000-8000-000000000001", entityB: "10000000-0000-4000-8000-000000000002",
+  adminA: "20000000-0000-4000-8000-000000000001", userA: "20000000-0000-4000-8000-000000000002",
+  adminB: "20000000-0000-4000-8000-000000000003",
+  apA: "30000000-0000-4000-8000-000000000001", expenseA: "30000000-0000-4000-8000-000000000002",
+  assetA: "30000000-0000-4000-8000-000000000003", apB: "30000000-0000-4000-8000-000000000004",
+  expenseB: "30000000-0000-4000-8000-000000000005",
+  cashA: "30000000-0000-4000-8000-000000000006", cashB: "30000000-0000-4000-8000-000000000007",
+  vendorA: "40000000-0000-4000-8000-000000000001", vendorB: "40000000-0000-4000-8000-000000000002",
+  legacyBillA: "50000000-0000-4000-8000-000000000001",
+};
+
+const fixture = `
+  CREATE SCHEMA auth;
+  CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN;
+  CREATE TYPE public.app_role AS ENUM ('admin','moderator','user','viewer');
+  CREATE TYPE public.account_type AS ENUM ('asset','liability','equity','revenue','expense');
+  CREATE TYPE public.journal_status AS ENUM ('draft','posted','reversed');
+  CREATE TYPE public.bill_status AS ENUM ('draft','pending','paid','overdue','cancelled');
+  CREATE TABLE auth.users (id uuid PRIMARY KEY);
+  CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
+    SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
+  $$;
+  CREATE TABLE public.organizations (id uuid PRIMARY KEY, name text NOT NULL);
+  CREATE TABLE public.entities (id uuid PRIMARY KEY, org_id uuid NOT NULL REFERENCES public.organizations(id), name text NOT NULL, currency text NOT NULL DEFAULT 'USD');
+  CREATE TABLE public.profiles (id uuid PRIMARY KEY REFERENCES auth.users(id), org_id uuid REFERENCES public.organizations(id), role text);
+  CREATE TABLE public.user_roles (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id), role public.app_role NOT NULL, UNIQUE(user_id,role));
+  CREATE TABLE public.accounts (id uuid PRIMARY KEY, org_id uuid NOT NULL REFERENCES public.organizations(id), code text NOT NULL, name text NOT NULL, account_type public.account_type NOT NULL, is_active boolean NOT NULL DEFAULT true, UNIQUE(org_id,code));
+  CREATE TABLE public.vendors (id uuid PRIMARY KEY, org_id uuid NOT NULL REFERENCES public.organizations(id), name text NOT NULL, payment_terms integer DEFAULT 30);
+  CREATE TABLE public.bills (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id uuid NOT NULL REFERENCES public.organizations(id),
+    entity_id uuid NOT NULL REFERENCES public.entities(id), vendor_id uuid NOT NULL REFERENCES public.vendors(id),
+    bill_number text NOT NULL, issue_date date NOT NULL, due_date date NOT NULL,
+    subtotal numeric(15,2) NOT NULL DEFAULT 0, tax numeric(15,2) NOT NULL DEFAULT 0,
+    total numeric(15,2) NOT NULL DEFAULT 0, amount_paid numeric(15,2) NOT NULL DEFAULT 0,
+    status public.bill_status NOT NULL DEFAULT 'draft', notes text, currency varchar(3) DEFAULT 'USD',
+    exchange_rate numeric(18,8) DEFAULT 1, functional_total numeric(18,4),
+    purchase_order_id uuid, goods_receipt_id uuid, match_status text DEFAULT 'unmatched', tax_code_id uuid,
+    created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE(org_id,bill_number)
+  );
+  CREATE TABLE public.bank_accounts (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id uuid NOT NULL, entity_id uuid NOT NULL, name text NOT NULL);
+  CREATE TABLE public.payment_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id uuid NOT NULL, entity_id uuid NOT NULL, bank_account_id uuid, run_number text NOT NULL, run_date date NOT NULL, total_amount numeric NOT NULL, status text NOT NULL DEFAULT 'draft');
+  CREATE TABLE public.payment_run_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), payment_run_id uuid NOT NULL, bill_id uuid NOT NULL, amount numeric NOT NULL);
+  CREATE TABLE public.journal_entries (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id uuid NOT NULL REFERENCES public.organizations(id), entity_id uuid NOT NULL REFERENCES public.entities(id),
+    entry_number text NOT NULL, entry_date date NOT NULL, memo text, status public.journal_status NOT NULL DEFAULT 'draft',
+    created_by uuid REFERENCES auth.users(id), posted_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE(org_id,entry_number)
+  );
+  CREATE TABLE public.journal_lines (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), journal_entry_id uuid NOT NULL REFERENCES public.journal_entries(id) ON DELETE CASCADE,
+    account_id uuid NOT NULL REFERENCES public.accounts(id), debit numeric(15,2) NOT NULL DEFAULT 0, credit numeric(15,2) NOT NULL DEFAULT 0, memo text, created_at timestamptz NOT NULL DEFAULT now()
+  );
+  CREATE OR REPLACE FUNCTION public.get_user_org_id() RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT org_id FROM public.profiles WHERE id=auth.uid() $$;
+  CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid,_role public.app_role) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id=_user_id AND role=_role) $$;
+  INSERT INTO public.organizations VALUES ('${ids.orgA}','Org A'),('${ids.orgB}','Org B');
+  INSERT INTO public.entities VALUES ('${ids.entityA}','${ids.orgA}','Entity A','USD'),('${ids.entityB}','${ids.orgB}','Entity B','USD');
+  INSERT INTO auth.users VALUES ('${ids.adminA}'),('${ids.userA}'),('${ids.adminB}');
+  INSERT INTO public.profiles VALUES ('${ids.adminA}','${ids.orgA}','admin'),('${ids.userA}','${ids.orgA}','user'),('${ids.adminB}','${ids.orgB}','admin');
+  INSERT INTO public.user_roles(user_id,role) VALUES ('${ids.adminA}','admin'),('${ids.userA}','user'),('${ids.adminB}','admin');
+  INSERT INTO public.accounts VALUES
+    ('${ids.apA}','${ids.orgA}','2100','Accounts Payable','liability',true),('${ids.expenseA}','${ids.orgA}','5000','Operating Expense','expense',true),
+    ('${ids.assetA}','${ids.orgA}','1000','Asset','asset',true),('${ids.apB}','${ids.orgB}','2100','Accounts Payable','liability',true),
+    ('${ids.expenseB}','${ids.orgB}','5000','Operating Expense','expense',true),
+    ('${ids.cashA}','${ids.orgA}','1010','Cash Clearing','asset',true),('${ids.cashB}','${ids.orgB}','1010','Cash Clearing','asset',true);
+  INSERT INTO public.vendors VALUES ('${ids.vendorA}','${ids.orgA}','Vendor A',30),('${ids.vendorB}','${ids.orgB}','Vendor B',30);
+  INSERT INTO public.bills(id,org_id,entity_id,vendor_id,bill_number,issue_date,due_date,subtotal,tax,total,amount_paid,status,currency,exchange_rate,functional_total)
+    VALUES ('${ids.legacyBillA}','${ids.orgA}','${ids.entityA}','${ids.vendorA}','LEGACY-BILL','2026-08-01','2026-08-31',50,0,50,0,'draft','USD',1,50);
+`;
+
+async function createDb({ supplierBill = true, supplierCredit = false, supplierPayment = false } = {}) {
+  const db = new PGlite();
+  await db.exec(fixture);
+  await db.exec(await readFile(journalMigrationUrl,"utf8"));
+  await db.exec(await readFile(containmentMigrationUrl,"utf8"));
+  const supplierBillMigration = await readFile(supplierBillMigrationUrl,"utf8");
+  if (supplierBill) await db.exec(supplierBillMigration);
+  let supplierCreditMigration = null;
+  if (supplierCredit || supplierPayment) {
+    supplierCreditMigration = await readFile(supplierCreditMigrationUrl,"utf8");
+    await db.exec(supplierCreditMigration);
+  }
+  let supplierPaymentMigration = null;
+  if (supplierPayment) {
+    supplierPaymentMigration = await readFile(supplierPaymentMigrationUrl,"utf8");
+    await db.exec(supplierPaymentMigration);
+  }
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`);
+  return { db, supplierBillMigration, supplierCreditMigration, supplierPaymentMigration };
+}
+
+const billLines = JSON.stringify([
+  { description:"Hosting", quantity:"2.0000", unit_price:"40.1250" },
+  { description:"Support", quantity:"1.0000", unit_price:"19.7500" },
+]);
+
+async function prepare(db, entityId=ids.entityA, apId=ids.apA, expenseId=ids.expenseA, key="ap-control-v1") {
+  await db.exec(`SELECT public.create_accounting_period('${entityId}','2026-08-01','2026-08-31','period:${entityId}')`);
+  await db.exec(`SELECT public.configure_entity_supplier_bill_accounts('${entityId}','${apId}','${expenseId}','${key}')`);
+}
+
+async function postBill(db, number, key, overrides={}) {
+  const entityId=overrides.entityId ?? ids.entityA;
+  const vendorId=overrides.vendorId ?? ids.vendorA;
+  const currency=overrides.currency ?? "USD";
+  const tax=overrides.tax ?? 0;
+  const result=await db.query(`SELECT public.post_supplier_bill('${entityId}','${vendorId}','${number}','2026-08-25','2026-09-24','${currency}',${tax},null,'${billLines}'::jsonb,'${key}') AS id`);
+  return result.rows[0].id;
+}
+
+test("supplier-bill migration replays and removes hostile grants, policies, and overloads", async()=>{
+  const {db,supplierBillMigration}=await createDb();
+  await db.exec(`GRANT INSERT,UPDATE,DELETE ON public.bills,public.bill_lines,public.entity_supplier_bill_account_controls TO authenticated,service_role; CREATE POLICY hostile_bill_all ON public.bill_lines FOR ALL TO authenticated USING(true) WITH CHECK(true); CREATE FUNCTION public.post_supplier_bill(uuid,text) RETURNS uuid LANGUAGE sql SECURITY DEFINER AS 'SELECT $1';`);
+  await db.exec(supplierBillMigration);
+  for(const table of ["bills","bill_lines","entity_supplier_bill_account_controls"]){
+    const grants=await db.query(`SELECT has_table_privilege('authenticated','public.${table}','SELECT') AS auth_read,has_table_privilege('authenticated','public.${table}','UPDATE') AS auth_update,has_table_privilege('service_role','public.${table}','INSERT') AS service_insert`);
+    assert.deepEqual(grants.rows[0],{auth_read:true,auth_update:false,service_insert:false},table);
+  }
+  const overloads=await db.query(`SELECT count(*)::int AS count FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='post_supplier_bill' AND (p.prokind<>'f' OR oidvectortypes(p.proargtypes)<>'uuid, uuid, text, date, date, text, numeric, text, jsonb, text')`);
+  assert.equal(overloads.rows[0].count,0);
+  await db.close();
+});
+
+test("supplier bill atomically creates exact immutable bill-line-event-journal evidence",async()=>{
+  const {db,supplierBillMigration}=await createDb(); await prepare(db);
+  const billId=await postBill(db,"BILL-1001","bill:1001");
+  const graph=await db.query(`SELECT bill.accounting_status,bill.subtotal::text,bill.tax::text,bill.total::text,bill.amount_paid::text,bill.status::text,bill.currency,event.source_type,event.source_id=bill.id AS event_source_matches,journal.status::text AS journal_status,journal.source_module,(SELECT count(*)::int FROM public.bill_lines line WHERE line.bill_id=bill.id) AS line_count,(SELECT sum(line.debit)::text FROM public.journal_lines line WHERE line.journal_entry_id=journal.id) AS debit,(SELECT sum(line.credit)::text FROM public.journal_lines line WHERE line.journal_entry_id=journal.id) AS credit FROM public.bills bill JOIN public.accounting_events event ON event.id=bill.accounting_event_id JOIN public.journal_entries journal ON journal.id=bill.journal_entry_id WHERE bill.id='${billId}'`);
+  assert.deepEqual(graph.rows[0],{accounting_status:"POSTED",subtotal:"100.00",tax:"0.00",total:"100.00",amount_paid:"0.00",status:"pending",currency:"USD",source_type:"supplier_bill",event_source_matches:true,journal_status:"posted",source_module:"ap",line_count:2,debit:"100.00",credit:"100.00"});
+  const legacy=await db.query(`SELECT accounting_status,accounting_event_id,journal_entry_id FROM public.bills WHERE id='${ids.legacyBillA}'`);
+  assert.deepEqual(legacy.rows[0],{accounting_status:"UNVERIFIED_LEGACY",accounting_event_id:null,journal_entry_id:null});
+  await db.exec(supplierBillMigration); await db.query(`SELECT public.validate_supplier_bill_graph('${billId}')`);
+  for(const sql of [`UPDATE public.bills SET total=1 WHERE id='${billId}'`,`DELETE FROM public.bill_lines WHERE bill_id='${billId}'`,`TRUNCATE public.entity_supplier_bill_account_controls CASCADE`]) await assert.rejects(db.exec(sql),/supplier bill|immutable|trusted/i);
+  await db.close();
+});
+
+test("supplier bill retry remains safe after close and account retirement",async()=>{
+  const {db}=await createDb(); await prepare(db); const first=await postBill(db,"BILL-RETRY","bill:retry");
+  const period=await db.query(`SELECT id FROM public.accounting_periods WHERE entity_id='${ids.entityA}'`);
+  await db.exec(`SELECT public.transition_accounting_period('${period.rows[0].id}','HARD_CLOSED','closed after bill')`);
+  await db.exec(`UPDATE public.accounts SET is_active=false WHERE id IN ('${ids.apA}','${ids.expenseA}')`);
+  assert.equal(first,await postBill(db,"BILL-RETRY","bill:retry")); await db.close();
+});
+
+test("supplier bill controls enforce tenant, account purpose, and actor authorization",async()=>{
+  const {db}=await createDb();
+  await assert.rejects(db.query(`SELECT public.configure_entity_supplier_bill_accounts('${ids.entityA}','${ids.apB}','${ids.expenseA}','cross')`),/payable|organization|tenant/i);
+  await assert.rejects(db.query(`SELECT public.configure_entity_supplier_bill_accounts('${ids.entityA}','${ids.assetA}','${ids.expenseA}','wrong-ap')`),/liability|payable/i);
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.userA}',false)`);
+  await assert.rejects(db.query(`SELECT public.configure_entity_supplier_bill_accounts('${ids.entityA}','${ids.apA}','${ids.expenseA}','user')`),/admin|moderator|authorized/i);
+  await db.close();
+});
+
+test("tax, FX, foreign vendor, and general reversal fail atomically",async()=>{
+  const {db}=await createDb(); await prepare(db);
+  await assert.rejects(postBill(db,"BILL-TAX","bill:tax",{tax:1}),/zero.tax|tax/i);
+  await assert.rejects(postBill(db,"BILL-FX","bill:fx",{currency:"EUR"}),/functional currency|cross.currency/i);
+  await assert.rejects(postBill(db,"BILL-CROSS","bill:cross",{vendorId:ids.vendorB}),/vendor|organization|tenant/i);
+  const billId=await postBill(db,"BILL-GUARD","bill:guard"); const journal=await db.query(`SELECT journal_entry_id FROM public.bills WHERE id='${billId}'`);
+  await assert.rejects(db.query(`SELECT public.reverse_posted_journal('${journal.rows[0].journal_entry_id}','2026-08-26','Bypass','reverse:bill')`),/supplier bill|vendor credit|bill reversal/i);
+  const residue=await db.query(`SELECT count(*)::int AS count FROM public.bills WHERE accounting_status='POSTED'`); assert.equal(residue.rows[0].count,1); await db.close();
+});
+
+test("supplier-bill RPCs hide foreign targets and protect event/journal links",async()=>{
+  const {db}=await createDb(); await prepare(db); const billId=await postBill(db,"BILL-HIDE","bill:hide");
+  const links=await db.query(`SELECT accounting_event_id,journal_entry_id FROM public.bills WHERE id='${billId}'`);
+  for(const sql of [`UPDATE public.accounting_events SET source_id=NULL WHERE id='${links.rows[0].accounting_event_id}'`,`UPDATE public.journal_entries SET accounting_event_id=NULL WHERE id='${links.rows[0].journal_entry_id}'`]) await assert.rejects(db.exec(sql),/supplier bill|immutable|trusted/i);
+  const missing="ffffffff-ffff-4fff-8fff-ffffffffffff";
+  for(const entityId of [ids.entityB,missing]){
+    await assert.rejects(db.query(`SELECT public.configure_entity_supplier_bill_accounts('${entityId}','${ids.apA}','${ids.expenseA}','hidden:${entityId}')`),/entity not found or unavailable/);
+    await assert.rejects(postBill(db,"BILL-HIDDEN",`bill:hidden:${entityId}`,{entityId}),/entity not found or unavailable/);
+  }
+  await db.close();
+});
+
+async function postBillCredit(db,billId,number,key,overrides={}) {
+  const creditDate=overrides.creditDate ?? "2026-08-26";
+  const reason=overrides.reason ?? `Full correction ${number}`;
+  const result=await db.query(`SELECT public.post_supplier_bill_credit('${billId}','${number}','${creditDate}','${reason}','${key}') AS id`);
+  return result.rows[0].id;
+}
+
+test("supplier-credit migration replays and removes hostile grants, policies, and overloads",async()=>{
+  const {db,supplierCreditMigration}=await createDb({supplierCredit:true});
+  await db.exec(`GRANT INSERT,UPDATE,DELETE ON public.supplier_bill_credit_notes,public.supplier_bill_credit_note_lines TO authenticated,service_role; CREATE POLICY hostile_supplier_credit_all ON public.supplier_bill_credit_notes FOR ALL TO authenticated USING(true) WITH CHECK(true); CREATE FUNCTION public.post_supplier_bill_credit(uuid,text) RETURNS uuid LANGUAGE sql SECURITY DEFINER AS 'SELECT $1';`);
+  await db.exec(supplierCreditMigration);
+  for(const table of ["supplier_bill_credit_notes","supplier_bill_credit_note_lines"]){
+    const grants=await db.query(`SELECT has_table_privilege('authenticated','public.${table}','SELECT') AS auth_read,has_table_privilege('authenticated','public.${table}','UPDATE') AS auth_update,has_table_privilege('service_role','public.${table}','INSERT') AS service_insert`);
+    assert.deepEqual(grants.rows[0],{auth_read:true,auth_update:false,service_insert:false},table);
+  }
+  const overloads=await db.query(`SELECT count(*)::int AS count FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='post_supplier_bill_credit' AND (p.prokind<>'f' OR oidvectortypes(p.proargtypes)<>'uuid, text, date, text, text')`);
+  assert.equal(overloads.rows[0].count,0); await db.close();
+});
+
+test("full supplier credit atomically copies bill evidence and posts an exact reversal",async()=>{
+  const {db,supplierCreditMigration}=await createDb({supplierCredit:true}); await prepare(db);
+  const billId=await postBill(db,"BILL-CREDIT","bill:credit");
+  const creditId=await postBillCredit(db,billId,"VC-1001","vendor-credit:1001");
+  const graph=await db.query(`SELECT credit.total::text,credit.currency,credit.original_bill_id,event.source_type,event.source_id=credit.id AS event_source_matches,journal.status::text AS journal_status,journal.source_module,journal.reversal_of_id=bill.journal_entry_id AS reverses_bill,bill_journal.reversed_by_id=journal.id AS bill_links_credit,(SELECT count(*)::int FROM public.supplier_bill_credit_note_lines line WHERE line.credit_note_id=credit.id) AS line_count,(SELECT sum(line.debit)::text FROM public.journal_lines line WHERE line.journal_entry_id=journal.id) AS debit,(SELECT sum(line.credit)::text FROM public.journal_lines line WHERE line.journal_entry_id=journal.id) AS credit_total FROM public.supplier_bill_credit_notes credit JOIN public.bills bill ON bill.id=credit.original_bill_id JOIN public.accounting_events event ON event.id=credit.accounting_event_id JOIN public.journal_entries journal ON journal.id=credit.journal_entry_id JOIN public.journal_entries bill_journal ON bill_journal.id=bill.journal_entry_id WHERE credit.id='${creditId}'`);
+  assert.deepEqual(graph.rows[0],{total:"100.00",currency:"USD",original_bill_id:billId,source_type:"supplier_bill_credit",event_source_matches:true,journal_status:"posted",source_module:"ap_credit",reverses_bill:true,bill_links_credit:true,line_count:2,debit:"100.00",credit_total:"100.00"});
+  await db.exec(supplierCreditMigration); await db.query(`SELECT public.validate_supplier_bill_credit_graph('${creditId}')`);
+  await db.close();
+});
+
+test("supplier credit retry remains safe after period close and account retirement",async()=>{
+  const {db}=await createDb({supplierCredit:true}); await prepare(db);
+  const billId=await postBill(db,"BILL-CREDIT-RETRY","bill:credit-retry");
+  const first=await postBillCredit(db,billId,"VC-RETRY","vendor-credit:retry");
+  const period=await db.query(`SELECT id FROM public.accounting_periods WHERE entity_id='${ids.entityA}'`);
+  await db.exec(`SELECT public.transition_accounting_period('${period.rows[0].id}','HARD_CLOSED','closed after credit')`);
+  await db.exec(`UPDATE public.accounts SET is_active=false WHERE id IN ('${ids.apA}','${ids.expenseA}')`);
+  assert.equal(first,await postBillCredit(db,billId,"VC-RETRY","vendor-credit:retry")); await db.close();
+});
+
+test("supplier credit requires authorized actor and OPEN period with atomic rollback",async()=>{
+  const {db}=await createDb({supplierCredit:true}); await prepare(db);
+  const billId=await postBill(db,"BILL-CREDIT-DENY","bill:credit-deny");
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.userA}',false)`);
+  await assert.rejects(postBillCredit(db,billId,"VC-DENY","vendor-credit:deny"),/admin|moderator|authorized/i);
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`);
+  await assert.rejects(postBillCredit(db,billId,"VC-NOPERIOD","vendor-credit:no-period",{creditDate:"2026-09-25"}),/OPEN accounting period/i);
+  const residue=await db.query(`SELECT count(*)::int AS count FROM public.supplier_bill_credit_notes`); assert.equal(residue.rows[0].count,0); await db.close();
+});
+
+test("one posted bill permits one full credit and rejects legacy or conflicting requests",async()=>{
+  const {db}=await createDb({supplierCredit:true}); await prepare(db);
+  await assert.rejects(postBillCredit(db,ids.legacyBillA,"VC-LEGACY","vendor-credit:legacy"),/posted supplier bill not found or unavailable/);
+  const billId=await postBill(db,"BILL-CREDIT-ONE","bill:credit-one");
+  const first=await postBillCredit(db,billId,"VC-ONE","vendor-credit:one");
+  assert.equal(first,await postBillCredit(db,billId,"VC-ONE","vendor-credit:one"));
+  await assert.rejects(postBillCredit(db,billId,"VC-TWO","vendor-credit:two"),/already has a full supplier credit|already corrected/i);
+  await assert.rejects(postBillCredit(db,billId,"VC-CHANGED","vendor-credit:one"),/idempotency key conflicts/i);
+  await db.close();
+});
+
+test("supplier-credit graph is owner-immutable and cannot be reversed out of band",async()=>{
+  const {db}=await createDb({supplierCredit:true}); await prepare(db);
+  const billId=await postBill(db,"BILL-CREDIT-GUARD","bill:credit-guard");
+  const creditId=await postBillCredit(db,billId,"VC-GUARD","vendor-credit:guard");
+  const links=await db.query(`SELECT accounting_event_id,journal_entry_id FROM public.supplier_bill_credit_notes WHERE id='${creditId}'`);
+  for(const sql of [`UPDATE public.supplier_bill_credit_notes SET total=1 WHERE id='${creditId}'`,`DELETE FROM public.supplier_bill_credit_note_lines WHERE credit_note_id='${creditId}'`,`UPDATE public.accounting_events SET source_id=NULL WHERE id='${links.rows[0].accounting_event_id}'`,`UPDATE public.journal_entries SET accounting_event_id=NULL WHERE id='${links.rows[0].journal_entry_id}'`,`TRUNCATE public.supplier_bill_credit_notes CASCADE`]) await assert.rejects(db.exec(sql),/supplier|credit|immutable|trusted/i);
+  await assert.rejects(db.query(`SELECT public.reverse_posted_journal('${links.rows[0].journal_entry_id}','2026-08-27','Bypass','reverse:vendor-credit')`),/supplier credit|reversal is unavailable|vendor credit|only an original posted journal/i);
+  await assert.rejects(db.exec(`INSERT INTO public.journal_entries(org_id,entity_id,entry_number,entry_date,status,created_by,reversal_of_id) VALUES('${ids.orgA}','${ids.entityA}','OWNER-BYPASS','2026-08-27','posted','${ids.adminA}','${links.rows[0].journal_entry_id}')`),/supplier credit|reversal is unavailable|immutable/i);
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminB}',false)`);
+  await prepare(db,ids.entityB,ids.apB,ids.expenseB,"org-b-ap-control");
+  const foreignBill=await postBill(db,"BILL-ORG-B","bill:org-b",{entityId:ids.entityB,vendorId:ids.vendorB});
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`);
+  const missing="ffffffff-ffff-4fff-8fff-ffffffffffff";
+  for(const target of [foreignBill,ids.legacyBillA,missing]) await assert.rejects(postBillCredit(db,target,"VC-HIDDEN",`vendor-credit:hidden:${target}`),/posted supplier bill not found or unavailable/);
+  await db.close();
+});
+
+async function configureSupplierPayment(db,entityId=ids.entityA,cashId=ids.cashA,key="supplier-payment-control-v1") {
+  await db.exec(`SELECT public.configure_entity_supplier_payment_accounts('${entityId}','${cashId}','${key}')`);
+}
+
+async function postSupplierPayment(db,billId,number,key,overrides={}) {
+  const paymentDate=overrides.paymentDate ?? "2026-08-27";
+  const currency=overrides.currency ?? "USD";
+  const reference=overrides.reference ?? `Manual supplier payment ${number}`;
+  const result=await db.query(`SELECT public.post_supplier_payment('${billId}','${number}','${paymentDate}','${currency}','${reference}','${key}') AS id`);
+  return result.rows[0].id;
+}
+
+test("supplier-payment migration replays and removes hostile grants, policies, and overloads",async()=>{
+  const {db,supplierPaymentMigration}=await createDb({supplierPayment:true});
+  await db.exec(`GRANT INSERT,UPDATE,DELETE ON public.supplier_payments,public.entity_supplier_payment_controls TO authenticated,service_role; CREATE POLICY hostile_supplier_payment_all ON public.supplier_payments FOR ALL TO authenticated USING(true) WITH CHECK(true); CREATE FUNCTION public.post_supplier_payment(uuid,text) RETURNS uuid LANGUAGE sql SECURITY DEFINER AS 'SELECT $1';`);
+  await db.exec(supplierPaymentMigration);
+  for(const table of ["supplier_payments","entity_supplier_payment_controls"]){
+    const grants=await db.query(`SELECT has_table_privilege('authenticated','public.${table}','SELECT') AS auth_read,has_table_privilege('authenticated','public.${table}','UPDATE') AS auth_update,has_table_privilege('service_role','public.${table}','INSERT') AS service_insert`);
+    assert.deepEqual(grants.rows[0],{auth_read:true,auth_update:false,service_insert:false},table);
+  }
+  const overloads=await db.query(`SELECT count(*)::int AS count FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='post_supplier_payment' AND (p.prokind<>'f' OR oidvectortypes(p.proargtypes)<>'uuid, text, date, text, text, text')`);
+  assert.equal(overloads.rows[0].count,0); await db.close();
+});
+
+test("full supplier payment derives the bill amount and atomically posts AP and cash clearing",async()=>{
+  const {db,supplierPaymentMigration}=await createDb({supplierPayment:true}); await prepare(db); await configureSupplierPayment(db);
+  const billId=await postBill(db,"BILL-PAY","bill:pay");
+  const paymentId=await postSupplierPayment(db,billId,"PAY-1001","supplier-payment:1001");
+  const graph=await db.query(`SELECT payment.amount::text,payment.currency,payment.bill_id,event.source_type,event.source_id=payment.id AS event_source_matches,journal.status::text AS journal_status,journal.source_module,bill.amount_paid::text AS bill_amount_paid,bill.status::text AS bill_status,(SELECT count(*)::int FROM public.journal_lines line WHERE line.journal_entry_id=journal.id) AS line_count,(SELECT sum(line.debit)::text FROM public.journal_lines line WHERE line.journal_entry_id=journal.id) AS debit,(SELECT sum(line.credit)::text FROM public.journal_lines line WHERE line.journal_entry_id=journal.id) AS credit FROM public.supplier_payments payment JOIN public.bills bill ON bill.id=payment.bill_id JOIN public.accounting_events event ON event.id=payment.accounting_event_id JOIN public.journal_entries journal ON journal.id=payment.journal_entry_id WHERE payment.id='${paymentId}'`);
+  assert.deepEqual(graph.rows[0],{amount:"100.00",currency:"USD",bill_id:billId,source_type:"supplier_payment",event_source_matches:true,journal_status:"posted",source_module:"ap_payment",bill_amount_paid:"0.00",bill_status:"pending",line_count:2,debit:"100.00",credit:"100.00"});
+  const signature=await db.query(`SELECT oidvectortypes(p.proargtypes) AS arguments FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='post_supplier_payment'`);
+  assert.deepEqual(signature.rows,[{arguments:"uuid, text, date, text, text, text"}]);
+  await db.exec(supplierPaymentMigration); await db.query(`SELECT public.validate_supplier_payment_graph('${paymentId}')`); await db.close();
+});
+
+test("supplier payment retry remains safe after period close and account retirement",async()=>{
+  const {db}=await createDb({supplierPayment:true}); await prepare(db); await configureSupplierPayment(db);
+  const billId=await postBill(db,"BILL-PAY-RETRY","bill:pay-retry"); const first=await postSupplierPayment(db,billId,"PAY-RETRY","supplier-payment:retry");
+  const period=await db.query(`SELECT id FROM public.accounting_periods WHERE entity_id='${ids.entityA}'`);
+  await db.exec(`SELECT public.transition_accounting_period('${period.rows[0].id}','HARD_CLOSED','closed after payment')`);
+  await db.exec(`UPDATE public.accounts SET is_active=false WHERE id IN ('${ids.apA}','${ids.cashA}')`);
+  assert.equal(first,await postSupplierPayment(db,billId,"PAY-RETRY","supplier-payment:retry")); await db.close();
+});
+
+test("supplier payment control requires same-tenant active cash asset and authorized actor",async()=>{
+  const {db}=await createDb({supplierPayment:true}); await prepare(db);
+  await assert.rejects(configureSupplierPayment(db,ids.entityA,ids.cashB,"cross-cash"),/cash|organization|tenant/i);
+  await assert.rejects(configureSupplierPayment(db,ids.entityA,ids.expenseA,"expense-cash"),/cash|asset/i);
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.userA}',false)`);
+  await assert.rejects(configureSupplierPayment(db,ids.entityA,ids.cashA,"user-cash"),/admin|moderator|authorized/i); await db.close();
+});
+
+test("supplier payment and full credit are mutually exclusive and unsupported requests roll back",async()=>{
+  const {db}=await createDb({supplierPayment:true}); await prepare(db); await configureSupplierPayment(db);
+  const paidBill=await postBill(db,"BILL-PAID","bill:paid"); await postSupplierPayment(db,paidBill,"PAY-ONE","supplier-payment:one");
+  await assert.rejects(postSupplierPayment(db,paidBill,"PAY-TWO","supplier-payment:two"),/already has a full supplier payment|already resolved/i);
+  await assert.rejects(postBillCredit(db,paidBill,"VC-AFTER-PAY","vendor-credit:after-pay"),/payment|resolved/i);
+  const creditedBill=await postBill(db,"BILL-CREDITED-PAY","bill:credited-pay"); await postBillCredit(db,creditedBill,"VC-FIRST","vendor-credit:first-pay");
+  await assert.rejects(postSupplierPayment(db,creditedBill,"PAY-AFTER-CREDIT","supplier-payment:after-credit"),/credit|resolved/i);
+  const openBill=await postBill(db,"BILL-PAY-DENY","bill:pay-deny");
+  await assert.rejects(postSupplierPayment(db,openBill,"PAY-FX","supplier-payment:fx",{currency:"EUR"}),/functional currency|currency/i);
+  await assert.rejects(postSupplierPayment(db,openBill,"PAY-EARLY","supplier-payment:early",{paymentDate:"2026-08-24"}),/precede|date/i);
+  await db.close();
+});
+
+test("supplier-payment graph is tenant-hidden, owner-immutable, and not generally reversible",async()=>{
+  const {db}=await createDb({supplierPayment:true}); await prepare(db); await configureSupplierPayment(db);
+  const billId=await postBill(db,"BILL-PAY-GUARD","bill:pay-guard"); const paymentId=await postSupplierPayment(db,billId,"PAY-GUARD","supplier-payment:guard");
+  const links=await db.query(`SELECT accounting_event_id,journal_entry_id FROM public.supplier_payments WHERE id='${paymentId}'`);
+  for(const sql of [`UPDATE public.supplier_payments SET amount=1 WHERE id='${paymentId}'`,`DELETE FROM public.supplier_payments WHERE id='${paymentId}'`,`UPDATE public.accounting_events SET source_id=NULL WHERE id='${links.rows[0].accounting_event_id}'`,`UPDATE public.journal_entries SET accounting_event_id=NULL WHERE id='${links.rows[0].journal_entry_id}'`,`TRUNCATE public.entity_supplier_payment_controls CASCADE`]) await assert.rejects(db.exec(sql),/supplier payment|immutable|trusted/i);
+  await assert.rejects(db.query(`SELECT public.reverse_posted_journal('${links.rows[0].journal_entry_id}','2026-08-28','Bypass','reverse:supplier-payment')`),/supplier payment|reversal is unavailable/i);
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminB}',false)`); await prepare(db,ids.entityB,ids.apB,ids.expenseB,"org-b-pay-control"); await configureSupplierPayment(db,ids.entityB,ids.cashB,"org-b-cash-control");
+  const foreignBill=await postBill(db,"BILL-PAY-ORG-B","bill:pay-org-b",{entityId:ids.entityB,vendorId:ids.vendorB});
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`); const missing="ffffffff-ffff-4fff-8fff-ffffffffffff";
+  for(const target of [foreignBill,ids.legacyBillA,missing]) await assert.rejects(postSupplierPayment(db,target,"PAY-HIDDEN",`supplier-payment:hidden:${target}`),/posted supplier bill not found or unavailable/);
+  await db.close();
+});

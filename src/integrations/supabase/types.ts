@@ -14,6 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounting_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          entity_id: string
+          event_type: string
+          id: string
+          idempotency_key: string
+          journal_entry_id: string | null
+          org_id: string
+          payload_hash: string
+          source_id: string | null
+          source_type: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      accounting_period_events: {
+        Row: {
+          accounting_period_id: string
+          actor_id: string
+          created_at: string
+          entity_id: string
+          from_status: string | null
+          id: string
+          org_id: string
+          period_version: number
+          reason: string
+          to_status: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      accounting_periods: {
+        Row: {
+          created_at: string
+          created_by: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          org_id: string
+          period_end: string
+          period_start: string
+          status: "OPEN" | "SOFT_CLOSED" | "HARD_CLOSED"
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      entity_invoice_account_controls: {
+        Row: {
+          ar_account_id: string
+          configured_at: string
+          configured_by: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          org_id: string
+          revenue_account_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      entity_customer_receipt_controls: {
+        Row: {
+          ar_account_id: string
+          cash_account_id: string
+          configured_at: string
+          configured_by: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          invoice_account_control_id: string
+          org_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      entity_supplier_bill_account_controls: {
+        Row: {
+          ap_account_id: string
+          configured_at: string
+          configured_by: string
+          entity_id: string
+          expense_account_id: string
+          id: string
+          idempotency_key: string
+          org_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      entity_supplier_payment_controls: {
+        Row: {
+          ap_account_id: string
+          cash_account_id: string
+          configured_at: string
+          configured_by: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          org_id: string
+          supplier_bill_account_control_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       accounts: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -29,34 +145,8 @@ export type Database = {
           parent_id: string | null
           updated_at: string
         }
-        Insert: {
-          account_type: Database["public"]["Enums"]["account_type"]
-          code: string
-          controlling_category?: string | null
-          created_at?: string
-          default_cost_center_id?: string | null
-          default_internal_order_id?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          org_id: string
-          parent_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          account_type?: Database["public"]["Enums"]["account_type"]
-          code?: string
-          controlling_category?: string | null
-          created_at?: string
-          default_cost_center_id?: string | null
-          default_internal_order_id?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          org_id?: string
-          parent_id?: string | null
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "accounts_default_cost_center_id_fkey"
@@ -673,28 +763,8 @@ export type Database = {
           org_id: string
           updated_at: string
         }
-        Insert: {
-          created_at?: string
-          decision_type: string
-          enabled?: boolean
-          id?: string
-          max_auto_approval_amount?: number
-          min_precedent_count?: number
-          min_precedent_similarity?: number
-          org_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          decision_type?: string
-          enabled?: boolean
-          id?: string
-          max_auto_approval_amount?: number
-          min_precedent_count?: number
-          min_precedent_similarity?: number
-          org_id?: string
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "auto_approval_configs_org_id_fkey"
@@ -714,50 +784,18 @@ export type Database = {
       }
       bank_accounts: {
         Row: {
-          account_id: string | null
-          account_number: string | null
           bank_name: string | null
           created_at: string
           currency: string
-          current_balance: number
           entity_id: string
           id: string
           is_active: boolean
           name: string
           org_id: string
-          routing_number: string | null
           updated_at: string
         }
-        Insert: {
-          account_id?: string | null
-          account_number?: string | null
-          bank_name?: string | null
-          created_at?: string
-          currency?: string
-          current_balance?: number
-          entity_id: string
-          id?: string
-          is_active?: boolean
-          name: string
-          org_id: string
-          routing_number?: string | null
-          updated_at?: string
-        }
-        Update: {
-          account_id?: string | null
-          account_number?: string | null
-          bank_name?: string | null
-          created_at?: string
-          currency?: string
-          current_balance?: number
-          entity_id?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-          org_id?: string
-          routing_number?: string | null
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "bank_accounts_account_id_fkey"
@@ -790,51 +828,9 @@ export type Database = {
         ]
       }
       bank_connections: {
-        Row: {
-          access_token_encrypted: string | null
-          bank_account_id: string | null
-          connection_status: string
-          created_at: string
-          error_message: string | null
-          id: string
-          institution_id: string | null
-          institution_name: string | null
-          last_sync_at: string | null
-          org_id: string
-          plaid_item_id: string | null
-          provider: string
-          updated_at: string
-        }
-        Insert: {
-          access_token_encrypted?: string | null
-          bank_account_id?: string | null
-          connection_status?: string
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          institution_id?: string | null
-          institution_name?: string | null
-          last_sync_at?: string | null
-          org_id: string
-          plaid_item_id?: string | null
-          provider?: string
-          updated_at?: string
-        }
-        Update: {
-          access_token_encrypted?: string | null
-          bank_account_id?: string | null
-          connection_status?: string
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          institution_id?: string | null
-          institution_name?: string | null
-          last_sync_at?: string | null
-          org_id?: string
-          plaid_item_id?: string | null
-          provider?: string
-          updated_at?: string
-        }
+        Row: never
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "bank_connections_bank_account_id_fkey"
@@ -860,51 +856,9 @@ export type Database = {
         ]
       }
       bank_feed_connections: {
-        Row: {
-          auto_import: boolean
-          bank_account_id: string
-          connection_metadata: Json | null
-          connection_status: string
-          created_at: string
-          error_message: string | null
-          id: string
-          last_sync_at: string | null
-          last_sync_status: string | null
-          org_id: string
-          provider: string
-          sync_frequency: string
-          updated_at: string
-        }
-        Insert: {
-          auto_import?: boolean
-          bank_account_id: string
-          connection_metadata?: Json | null
-          connection_status?: string
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          last_sync_at?: string | null
-          last_sync_status?: string | null
-          org_id: string
-          provider?: string
-          sync_frequency?: string
-          updated_at?: string
-        }
-        Update: {
-          auto_import?: boolean
-          bank_account_id?: string
-          connection_metadata?: Json | null
-          connection_status?: string
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          last_sync_at?: string | null
-          last_sync_status?: string | null
-          org_id?: string
-          provider?: string
-          sync_frequency?: string
-          updated_at?: string
-        }
+        Row: never
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "bank_feed_connections_bank_account_id_fkey"
@@ -930,57 +884,9 @@ export type Database = {
         ]
       }
       bank_statement_imports: {
-        Row: {
-          bank_account_id: string
-          created_at: string
-          duplicate_transactions: number
-          error_message: string | null
-          file_name: string
-          file_type: string
-          id: string
-          import_date: string
-          imported_by: string | null
-          imported_transactions: number
-          org_id: string
-          statement_end_date: string | null
-          statement_start_date: string | null
-          status: string
-          total_transactions: number
-        }
-        Insert: {
-          bank_account_id: string
-          created_at?: string
-          duplicate_transactions?: number
-          error_message?: string | null
-          file_name: string
-          file_type: string
-          id?: string
-          import_date?: string
-          imported_by?: string | null
-          imported_transactions?: number
-          org_id: string
-          statement_end_date?: string | null
-          statement_start_date?: string | null
-          status?: string
-          total_transactions?: number
-        }
-        Update: {
-          bank_account_id?: string
-          created_at?: string
-          duplicate_transactions?: number
-          error_message?: string | null
-          file_name?: string
-          file_type?: string
-          id?: string
-          import_date?: string
-          imported_by?: string | null
-          imported_transactions?: number
-          org_id?: string
-          statement_end_date?: string | null
-          statement_start_date?: string | null
-          status?: string
-          total_transactions?: number
-        }
+        Row: never
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "bank_statement_imports_bank_account_id_fkey"
@@ -1007,56 +913,16 @@ export type Database = {
       }
       bank_transactions: {
         Row: {
-          amount: number
           bank_account_id: string
           created_at: string
           description: string | null
           id: string
-          import_id: string | null
-          journal_entry_id: string | null
-          matched_bill_id: string | null
-          matched_invoice_id: string | null
-          matched_rule_id: string | null
           org_id: string
-          status: Database["public"]["Enums"]["transaction_status"]
-          suggested_account_id: string | null
           transaction_date: string
           updated_at: string
         }
-        Insert: {
-          amount: number
-          bank_account_id: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          import_id?: string | null
-          journal_entry_id?: string | null
-          matched_bill_id?: string | null
-          matched_invoice_id?: string | null
-          matched_rule_id?: string | null
-          org_id: string
-          status?: Database["public"]["Enums"]["transaction_status"]
-          suggested_account_id?: string | null
-          transaction_date: string
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          bank_account_id?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          import_id?: string | null
-          journal_entry_id?: string | null
-          matched_bill_id?: string | null
-          matched_invoice_id?: string | null
-          matched_rule_id?: string | null
-          org_id?: string
-          status?: Database["public"]["Enums"]["transaction_status"]
-          suggested_account_id?: string | null
-          transaction_date?: string
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "bank_transactions_bank_account_id_fkey"
@@ -1198,6 +1064,9 @@ export type Database = {
       }
       bills: {
         Row: {
+          account_control_id: string | null
+          accounting_event_id: string | null
+          accounting_status: "UNVERIFIED_LEGACY" | "POSTED"
           amount_paid: number
           bill_number: string
           created_at: string
@@ -1209,10 +1078,13 @@ export type Database = {
           goods_receipt_id: string | null
           id: string
           issue_date: string
+          journal_entry_id: string | null
           match_status: string | null
           notes: string | null
           org_id: string
           purchase_order_id: string | null
+          posted_at: string | null
+          posted_by: string | null
           status: Database["public"]["Enums"]["bill_status"]
           subtotal: number
           tax: number
@@ -1221,54 +1093,8 @@ export type Database = {
           updated_at: string
           vendor_id: string
         }
-        Insert: {
-          amount_paid?: number
-          bill_number: string
-          created_at?: string
-          currency?: string | null
-          due_date: string
-          entity_id: string
-          exchange_rate?: number | null
-          functional_total?: number | null
-          goods_receipt_id?: string | null
-          id?: string
-          issue_date?: string
-          match_status?: string | null
-          notes?: string | null
-          org_id: string
-          purchase_order_id?: string | null
-          status?: Database["public"]["Enums"]["bill_status"]
-          subtotal?: number
-          tax?: number
-          tax_code_id?: string | null
-          total?: number
-          updated_at?: string
-          vendor_id: string
-        }
-        Update: {
-          amount_paid?: number
-          bill_number?: string
-          created_at?: string
-          currency?: string | null
-          due_date?: string
-          entity_id?: string
-          exchange_rate?: number | null
-          functional_total?: number | null
-          goods_receipt_id?: string | null
-          id?: string
-          issue_date?: string
-          match_status?: string | null
-          notes?: string | null
-          org_id?: string
-          purchase_order_id?: string | null
-          status?: Database["public"]["Enums"]["bill_status"]
-          subtotal?: number
-          tax?: number
-          tax_code_id?: string | null
-          total?: number
-          updated_at?: string
-          vendor_id?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "bills_entity_id_fkey"
@@ -1320,6 +1146,92 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bill_lines: {
+        Row: {
+          bill_id: string
+          created_at: string
+          description: string
+          entity_id: string
+          expense_account_id: string
+          id: string
+          line_number: number
+          line_total: number
+          org_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      supplier_bill_credit_notes: {
+        Row: {
+          account_control_id: string
+          accounting_event_id: string
+          credit_note_number: string
+          currency: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          issue_date: string
+          journal_entry_id: string
+          org_id: string
+          original_bill_id: string
+          payload_hash: string
+          posted_at: string
+          posted_by: string
+          reason: string
+          total: number
+          vendor_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      supplier_bill_credit_note_lines: {
+        Row: {
+          created_at: string
+          credit_note_id: string
+          description: string
+          entity_id: string
+          expense_account_id: string
+          id: string
+          line_number: number
+          line_total: number
+          org_id: string
+          original_bill_id: string
+          original_bill_line_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      supplier_payments: {
+        Row: {
+          account_control_id: string
+          accounting_event_id: string
+          amount: number
+          bill_id: string
+          currency: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          journal_entry_id: string
+          org_id: string
+          payload_hash: string
+          payment_date: string
+          payment_number: string
+          payment_reference: string
+          posted_at: string
+          posted_by: string
+          vendor_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
       }
       bin_locations: {
         Row: {
@@ -2451,6 +2363,82 @@ export type Database = {
           },
         ]
       }
+      customer_credit_note_lines: {
+        Row: {
+          created_at: string
+          credit_note_id: string
+          description: string
+          entity_id: string
+          id: string
+          line_number: number
+          line_total: number
+          org_id: string
+          original_invoice_id: string
+          original_invoice_line_id: string
+          quantity: number
+          revenue_account_id: string
+          unit_price: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      customer_credit_notes: {
+        Row: {
+          account_control_id: string
+          accounting_event_id: string
+          credit_note_number: string
+          currency: string
+          customer_id: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          issue_date: string
+          journal_entry_id: string
+          org_id: string
+          original_invoice_id: string
+          payload_hash: string
+          posted_at: string
+          posted_by: string
+          reason: string
+          total: number
+        }
+        Insert: never
+        Update: never
+        Relationships: [
+          {
+            foreignKeyName: "customer_credit_notes_org_invoice_fkey"
+            columns: ["org_id", "entity_id", "original_invoice_id"]
+            isOneToOne: true
+            referencedRelation: "invoices"
+            referencedColumns: ["org_id", "entity_id", "id"]
+          },
+        ]
+      }
+      customer_receipts: {
+        Row: {
+          account_control_id: string
+          accounting_event_id: string
+          amount: number
+          currency: string
+          customer_id: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          invoice_id: string
+          journal_entry_id: string
+          org_id: string
+          payload_hash: string
+          posted_at: string
+          posted_by: string
+          receipt_date: string
+          receipt_number: string
+          receipt_reference: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
@@ -2464,30 +2452,8 @@ export type Database = {
           phone: string | null
           updated_at: string
         }
-        Insert: {
-          address?: string | null
-          created_at?: string
-          credit_limit?: number | null
-          email?: string | null
-          id?: string
-          name: string
-          org_id: string
-          payment_terms?: number | null
-          phone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          created_at?: string
-          credit_limit?: number | null
-          email?: string | null
-          id?: string
-          name?: string
-          org_id?: string
-          payment_terms?: number | null
-          phone?: string | null
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "customers_org_id_fkey"
@@ -3383,22 +3349,8 @@ export type Database = {
           org_id: string
           updated_at: string
         }
-        Insert: {
-          created_at?: string
-          currency?: string
-          id?: string
-          name: string
-          org_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          id?: string
-          name?: string
-          org_id?: string
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "entities_org_id_fkey"
@@ -4508,8 +4460,29 @@ export type Database = {
           },
         ]
       }
+      invoice_lines: {
+        Row: {
+          created_at: string
+          description: string
+          entity_id: string
+          id: string
+          invoice_id: string
+          line_number: number
+          line_total: number
+          org_id: string
+          quantity: number
+          revenue_account_id: string
+          unit_price: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       invoices: {
         Row: {
+          account_control_id: string | null
+          accounting_event_id: string | null
+          accounting_status: "UNVERIFIED_LEGACY" | "POSTED"
           amount_paid: number
           created_at: string
           currency: string | null
@@ -4521,8 +4494,11 @@ export type Database = {
           id: string
           invoice_number: string
           issue_date: string
+          journal_entry_id: string | null
           notes: string | null
           org_id: string
+          posted_at: string | null
+          posted_by: string | null
           sales_order_id: string | null
           shipment_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
@@ -4532,52 +4508,8 @@ export type Database = {
           total: number
           updated_at: string
         }
-        Insert: {
-          amount_paid?: number
-          created_at?: string
-          currency?: string | null
-          customer_id: string
-          due_date: string
-          entity_id: string
-          exchange_rate?: number | null
-          functional_total?: number | null
-          id?: string
-          invoice_number: string
-          issue_date?: string
-          notes?: string | null
-          org_id: string
-          sales_order_id?: string | null
-          shipment_id?: string | null
-          status?: Database["public"]["Enums"]["invoice_status"]
-          subtotal?: number
-          tax?: number
-          tax_code_id?: string | null
-          total?: number
-          updated_at?: string
-        }
-        Update: {
-          amount_paid?: number
-          created_at?: string
-          currency?: string | null
-          customer_id?: string
-          due_date?: string
-          entity_id?: string
-          exchange_rate?: number | null
-          functional_total?: number | null
-          id?: string
-          invoice_number?: string
-          issue_date?: string
-          notes?: string | null
-          org_id?: string
-          sales_order_id?: string | null
-          shipment_id?: string | null
-          status?: Database["public"]["Enums"]["invoice_status"]
-          subtotal?: number
-          tax?: number
-          tax_code_id?: string | null
-          total?: number
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "invoices_customer_id_fkey"
@@ -4632,6 +4564,8 @@ export type Database = {
       }
       journal_entries: {
         Row: {
+          accounting_event_id: string | null
+          accounting_period_id: string | null
           created_at: string
           created_by: string | null
           entity_id: string
@@ -4641,38 +4575,14 @@ export type Database = {
           memo: string | null
           org_id: string
           posted_at: string | null
+          reversal_of_id: string | null
+          reversed_by_id: string | null
           source_module: string | null
           status: Database["public"]["Enums"]["journal_status"]
           updated_at: string
         }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          entity_id: string
-          entry_date?: string
-          entry_number: string
-          id?: string
-          memo?: string | null
-          org_id: string
-          posted_at?: string | null
-          source_module?: string | null
-          status?: Database["public"]["Enums"]["journal_status"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          entity_id?: string
-          entry_date?: string
-          entry_number?: string
-          id?: string
-          memo?: string | null
-          org_id?: string
-          posted_at?: string | null
-          source_module?: string | null
-          status?: Database["public"]["Enums"]["journal_status"]
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "journal_entries_entity_id_fkey"
@@ -4705,38 +4615,17 @@ export type Database = {
           credit: number
           debit: number
           id: string
+          entity_id: string
           internal_order_id: string | null
           journal_entry_id: string
+          line_number: number
           memo: string | null
+          org_id: string
           profit_center_id: string | null
           wbs_element_id: string | null
         }
-        Insert: {
-          account_id: string
-          cost_center_id?: string | null
-          created_at?: string
-          credit?: number
-          debit?: number
-          id?: string
-          internal_order_id?: string | null
-          journal_entry_id: string
-          memo?: string | null
-          profit_center_id?: string | null
-          wbs_element_id?: string | null
-        }
-        Update: {
-          account_id?: string
-          cost_center_id?: string | null
-          created_at?: string
-          credit?: number
-          debit?: number
-          id?: string
-          internal_order_id?: string | null
-          journal_entry_id?: string
-          memo?: string | null
-          profit_center_id?: string | null
-          wbs_element_id?: string | null
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "journal_lines_account_id_fkey"
@@ -4769,66 +4658,9 @@ export type Database = {
         ]
       }
       matching_rules: {
-        Row: {
-          auto_reconcile: boolean
-          created_at: string
-          description: string | null
-          field_to_match: string
-          id: string
-          is_active: boolean
-          last_matched_at: string | null
-          match_amount_max: number | null
-          match_amount_min: number | null
-          match_count: number
-          match_pattern: string
-          name: string
-          org_id: string
-          priority: number
-          rule_type: string
-          target_account_id: string | null
-          target_cost_center_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          auto_reconcile?: boolean
-          created_at?: string
-          description?: string | null
-          field_to_match?: string
-          id?: string
-          is_active?: boolean
-          last_matched_at?: string | null
-          match_amount_max?: number | null
-          match_amount_min?: number | null
-          match_count?: number
-          match_pattern: string
-          name: string
-          org_id: string
-          priority?: number
-          rule_type?: string
-          target_account_id?: string | null
-          target_cost_center_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          auto_reconcile?: boolean
-          created_at?: string
-          description?: string | null
-          field_to_match?: string
-          id?: string
-          is_active?: boolean
-          last_matched_at?: string | null
-          match_amount_max?: number | null
-          match_amount_min?: number | null
-          match_count?: number
-          match_pattern?: string
-          name?: string
-          org_id?: string
-          priority?: number
-          rule_type?: string
-          target_account_id?: string | null
-          target_cost_center_id?: string | null
-          updated_at?: string
-        }
+        Row: never
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "matching_rules_org_id_fkey"
@@ -5073,23 +4905,10 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          openai_api_key: string | null
           updated_at: string
         }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          openai_api_key?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          openai_api_key?: string | null
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: []
       }
       payment_run_items: {
@@ -5097,23 +4916,13 @@ export type Database = {
           amount: number
           bill_id: string
           created_at: string
+          entity_id: string
           id: string
+          org_id: string
           payment_run_id: string
         }
-        Insert: {
-          amount?: number
-          bill_id: string
-          created_at?: string
-          id?: string
-          payment_run_id: string
-        }
-        Update: {
-          amount?: number
-          bill_id?: string
-          created_at?: string
-          id?: string
-          payment_run_id?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "payment_run_items_bill_id_fkey"
@@ -5149,40 +4958,8 @@ export type Database = {
           total_amount: number
           updated_at: string
         }
-        Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          bank_account_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          entity_id: string
-          id?: string
-          org_id: string
-          payment_method?: string | null
-          processed_at?: string | null
-          run_date?: string
-          run_number: string
-          status?: Database["public"]["Enums"]["payment_run_status"]
-          total_amount?: number
-          updated_at?: string
-        }
-        Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          bank_account_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          entity_id?: string
-          id?: string
-          org_id?: string
-          payment_method?: string | null
-          processed_at?: string | null
-          run_date?: string
-          run_number?: string
-          status?: Database["public"]["Enums"]["payment_run_status"]
-          total_amount?: number
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "payment_runs_bank_account_id_fkey"
@@ -5662,66 +5439,9 @@ export type Database = {
         ]
       }
       positive_pay_checks: {
-        Row: {
-          amount: number
-          bank_account_id: string
-          bill_id: string | null
-          check_number: string
-          created_at: string
-          exception_reason: string | null
-          id: string
-          issue_date: string
-          org_id: string
-          payee_name: string
-          payment_run_id: string | null
-          presented_amount: number | null
-          presented_date: string | null
-          resolved_at: string | null
-          resolved_by: string | null
-          status: string
-          updated_at: string
-          void_date: string | null
-        }
-        Insert: {
-          amount: number
-          bank_account_id: string
-          bill_id?: string | null
-          check_number: string
-          created_at?: string
-          exception_reason?: string | null
-          id?: string
-          issue_date: string
-          org_id: string
-          payee_name: string
-          payment_run_id?: string | null
-          presented_amount?: number | null
-          presented_date?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status?: string
-          updated_at?: string
-          void_date?: string | null
-        }
-        Update: {
-          amount?: number
-          bank_account_id?: string
-          bill_id?: string | null
-          check_number?: string
-          created_at?: string
-          exception_reason?: string | null
-          id?: string
-          issue_date?: string
-          org_id?: string
-          payee_name?: string
-          payment_run_id?: string | null
-          presented_amount?: number | null
-          presented_date?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status?: string
-          updated_at?: string
-          void_date?: string | null
-        }
+        Row: never
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "positive_pay_checks_bank_account_id_fkey"
@@ -6351,26 +6071,12 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
-          org_id: string | null
-          role: string | null
+          org_id: string
+          role: Database["public"]["Enums"]["app_role"]
           updated_at: string
         }
-        Insert: {
-          created_at?: string
-          display_name?: string | null
-          id: string
-          org_id?: string | null
-          role?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          display_name?: string | null
-          id?: string
-          org_id?: string | null
-          role?: string | null
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "profiles_org_id_fkey"
@@ -8352,22 +8058,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          org_id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
-        Insert: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
+        Insert: never
+        Update: never
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_profile_identity_fkey"
+            columns: ["org_id", "user_id", "role"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["org_id", "id", "role"]
+          },
+        ]
       }
       vendors: {
         Row: {
@@ -8381,28 +8086,8 @@ export type Database = {
           phone: string | null
           updated_at: string
         }
-        Insert: {
-          address?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name: string
-          org_id: string
-          payment_terms?: number | null
-          phone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name?: string
-          org_id?: string
-          payment_terms?: number | null
-          phone?: string | null
-          updated_at?: string
-        }
+        Insert: never
+        Update: never
         Relationships: [
           {
             foreignKeyName: "vendors_org_id_fkey"
@@ -8618,8 +8303,47 @@ export type Database = {
       }
     }
     Functions: {
-      apply_matching_rules: {
-        Args: { p_transaction_id: string }
+      configure_entity_supplier_bill_accounts: {
+        Args: {
+          p_ap_account_id: string
+          p_entity_id: string
+          p_expense_account_id: string
+          p_idempotency_key: string
+        }
+        Returns: string
+      }
+      configure_entity_supplier_payment_accounts: {
+        Args: {
+          p_cash_account_id: string
+          p_entity_id: string
+          p_idempotency_key: string
+        }
+        Returns: string
+      }
+      configure_entity_customer_receipt_accounts: {
+        Args: {
+          p_cash_account_id: string
+          p_entity_id: string
+          p_idempotency_key: string
+        }
+        Returns: string
+      }
+      configure_entity_invoice_accounts: {
+        Args: {
+          p_ar_account_id: string
+          p_entity_id: string
+          p_idempotency_key: string
+          p_revenue_account_id: string
+        }
+        Returns: string
+      }
+      create_accounting_period: {
+        Args: {
+          p_entity_id: string
+          p_idempotency_key: string
+          p_period_end: string
+          p_period_start: string
+        }
         Returns: string
       }
       calculate_tax: {
@@ -8693,6 +8417,98 @@ export type Database = {
         }
         Returns: string
       }
+      post_manual_journal: {
+        Args: {
+          p_entity_id: string
+          p_entry_date: string
+          p_entry_number: string
+          p_idempotency_key: string
+          p_lines: Json
+          p_memo: string | null
+        }
+        Returns: string
+      }
+      post_customer_invoice: {
+        Args: {
+          p_currency: string
+          p_customer_id: string
+          p_due_date: string
+          p_entity_id: string
+          p_idempotency_key: string
+          p_invoice_number: string
+          p_issue_date: string
+          p_lines: Json
+          p_notes: string | null
+          p_tax: number
+        }
+        Returns: string
+      }
+      post_customer_credit_note: {
+        Args: {
+          p_credit_date: string
+          p_credit_note_number: string
+          p_idempotency_key: string
+          p_invoice_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      post_customer_receipt: {
+        Args: {
+          p_currency: string
+          p_idempotency_key: string
+          p_invoice_id: string
+          p_receipt_date: string
+          p_receipt_number: string
+          p_reference: string
+        }
+        Returns: string
+      }
+      post_supplier_bill: {
+        Args: {
+          p_bill_number: string
+          p_currency: string
+          p_due_date: string
+          p_entity_id: string
+          p_idempotency_key: string
+          p_issue_date: string
+          p_lines: Json
+          p_notes: string | null
+          p_tax: number
+          p_vendor_id: string
+        }
+        Returns: string
+      }
+      post_supplier_bill_credit: {
+        Args: {
+          p_bill_id: string
+          p_credit_date: string
+          p_credit_note_number: string
+          p_idempotency_key: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      post_supplier_payment: {
+        Args: {
+          p_bill_id: string
+          p_currency: string
+          p_idempotency_key: string
+          p_payment_date: string
+          p_payment_number: string
+          p_reference: string
+        }
+        Returns: string
+      }
+      reverse_posted_journal: {
+        Args: {
+          p_idempotency_key: string
+          p_journal_entry_id: string
+          p_reason: string
+          p_reversal_date: string
+        }
+        Returns: string
+      }
       search_precedents_by_text: {
         Args: {
           p_decision_type?: string
@@ -8710,6 +8526,14 @@ export type Database = {
           reason_codes: string[]
           relevance: number
         }[]
+      }
+      transition_accounting_period: {
+        Args: {
+          p_period_id: string
+          p_reason: string
+          p_to_status: string
+        }
+        Returns: string
       }
     }
     Enums: {
