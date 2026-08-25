@@ -99,6 +99,21 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      entity_supplier_bill_account_controls: {
+        Row: {
+          ap_account_id: string
+          configured_at: string
+          configured_by: string
+          entity_id: string
+          expense_account_id: string
+          id: string
+          idempotency_key: string
+          org_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       accounts: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -1033,6 +1048,9 @@ export type Database = {
       }
       bills: {
         Row: {
+          account_control_id: string | null
+          accounting_event_id: string | null
+          accounting_status: "UNVERIFIED_LEGACY" | "POSTED"
           amount_paid: number
           bill_number: string
           created_at: string
@@ -1044,10 +1062,13 @@ export type Database = {
           goods_receipt_id: string | null
           id: string
           issue_date: string
+          journal_entry_id: string | null
           match_status: string | null
           notes: string | null
           org_id: string
           purchase_order_id: string | null
+          posted_at: string | null
+          posted_by: string | null
           status: Database["public"]["Enums"]["bill_status"]
           subtotal: number
           tax: number
@@ -1109,6 +1130,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bill_lines: {
+        Row: {
+          bill_id: string
+          created_at: string
+          description: string
+          entity_id: string
+          expense_account_id: string
+          id: string
+          line_number: number
+          line_total: number
+          org_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
       }
       bin_locations: {
         Row: {
@@ -8180,6 +8219,15 @@ export type Database = {
       }
     }
     Functions: {
+      configure_entity_supplier_bill_accounts: {
+        Args: {
+          p_ap_account_id: string
+          p_entity_id: string
+          p_expense_account_id: string
+          p_idempotency_key: string
+        }
+        Returns: string
+      }
       configure_entity_customer_receipt_accounts: {
         Args: {
           p_cash_account_id: string
@@ -8321,6 +8369,21 @@ export type Database = {
           p_receipt_date: string
           p_receipt_number: string
           p_reference: string
+        }
+        Returns: string
+      }
+      post_supplier_bill: {
+        Args: {
+          p_bill_number: string
+          p_currency: string
+          p_due_date: string
+          p_entity_id: string
+          p_idempotency_key: string
+          p_issue_date: string
+          p_lines: Json
+          p_notes: string | null
+          p_tax: number
+          p_vendor_id: string
         }
         Returns: string
       }

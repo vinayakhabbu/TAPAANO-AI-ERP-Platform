@@ -19,8 +19,9 @@ change, Edge deployment, or application deployment has been performed.
   and period controls; authenticated-session isolation; atomic customer-invoice
   posting; credential/autonomy, AP/payment, banking and residual-schema
   containment; immutable accounting masters; tenant-bound identity/RBAC; exact
-  full credits; and server-derived manual full customer receipts.
-- Next dependency: controlled supplier-bill posting and the remaining
+  full credits; server-derived manual full customer receipts; and atomic direct
+  supplier-bill posting.
+- Next dependency: controlled full supplier-bill correction and the remaining
   source-to-subledger-to-GL vertical slices.
 
 ## Acceptance rules
@@ -295,3 +296,47 @@ Build the first controlled supplier-bill posting slice: zero tax, entity
 functional currency, immutable AP/expense controls, exact lines, and one atomic
 bill → event → OPEN period → balanced journal graph. Approval, matching,
 payment execution, tax, FX, and legacy-bill promotion remain fail closed.
+
+## Recovery checkpoint 13 — atomic supplier-bill posting
+
+### Supported boundary
+
+One admin/moderator RPC posts a direct supplier bill with exact line inputs,
+zero tax, and the entity functional currency. It atomically creates immutable
+bill lines, a canonical accounting event, an OPEN-period link, and a balanced
+expense/AP journal using a one-time immutable entity account-control mapping.
+
+Approval, matching, PO/goods-receipt conversion, tax, FX, credits, aging,
+payment, and settlement remain unavailable. Legacy bill and payment rows remain
+frozen `UNVERIFIED_LEGACY` preservation metadata and are never mixed into the
+verified, journal-linked posted-bill view.
+
+### Verification
+
+- Supplier-bill database scenarios: **6/6**, including replay and hostile
+  grants/policies/overloads, exact immutable bill-line-event-period-journal
+  reconciliation, retry after close/account retirement, tenant non-enumeration,
+  account-purpose/role checks, unsupported tax/FX rollback, and owner-level
+  graph/reversal protection.
+- Aggregate recovery regressions: **79/79**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the known **86 legacy errors and 8 warnings**
+  outside this slice.
+- Production build still fails after three transformed modules in the native
+  Rollup/stacker runtime before application code is transformed.
+
+### Residual deployment evidence
+
+- All eleven recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Real concurrent posting/retry, period-close contention, managed constraint
+  trigger timing, RLS/grants, PostgREST schema refresh, and Realtime publication
+  require staging proof.
+- No migration, function deployment, merge, or production action has occurred.
+
+### Next dependency
+
+Build a controlled full supplier-bill correction workflow that copies the
+immutable bill evidence and posts an exact-offset vendor credit in an OPEN
+period. Partial credits, refunds, supplier payments, matching, tax, and FX remain
+fail closed.

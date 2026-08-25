@@ -9,7 +9,7 @@
 TAPAANO is a multi-tenant ERP prototype built with React and Supabase. The
 current verified accounting slice supports deterministic journals, controlled
 accounting periods, exact reversals, and a narrow atomic customer-invoice
-posting workflow. Other module screens may preserve historical/prototype data
+and supplier-bill posting workflow. Other module screens may preserve historical/prototype data
 but must not be treated as authoritative accounting output.
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
@@ -25,7 +25,8 @@ but must not be treated as authoritative accounting output.
   idempotent manual posting; exact-offset reversal; OPEN/SOFT_CLOSED/
   HARD_CLOSED period enforcement; and zero-tax, same-functional-currency
   customer invoice posting, exact full credit notes, and server-derived manual
-  full receipts through atomic database RPCs.
+  full receipts, plus zero-tax functional-currency supplier-bill posting,
+  through atomic database RPCs.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
@@ -34,6 +35,7 @@ but must not be treated as authoritative accounting output.
   unavailable pending a controlled onboarding workflow.
 - **Unavailable or unverified:** partial receipts, overpayments, refunds,
   customer aging/collections, tax and FX invoice posting, AP/payment execution,
+  supplier-bill credits, approval, matching, tax and FX posting,
   bank matching/reconciliation, inventory and production posting, payroll
   posting, consolidation, and authoritative financial reporting.
 
@@ -128,7 +130,8 @@ Key tables include:
 
 ## Security status
 
-- The recovered journal, period, invoice/credit-posting, identity, accounting-master,
+- The recovered journal, period, invoice/credit/receipt and supplier-bill posting,
+  identity, accounting-master,
   AP/payment, banking, credential, and listed residual-schema migrations enforce
   their bounded tenant, role, immutability, balance, lineage, and idempotency
   properties in PostgreSQL and have disposable-database regression coverage.

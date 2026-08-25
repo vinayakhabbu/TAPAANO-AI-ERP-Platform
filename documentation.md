@@ -26,12 +26,15 @@ The current recovery branch supports only these authoritative workflows:
 6. One manual full-receipt workflow: the server derives the exact invoice total
    and atomically posts cash-clearing debit and AR credit in an OPEN period.
    This is not bank-match or reconciliation evidence.
-7. Existing-user authentication with immutable tenant membership and one
+7. One direct supplier-bill workflow: admin/moderator, zero tax, entity
+   functional currency, exact lines, immutable entity AP/expense controls, and
+   atomic bill → event → period → posted-journal creation.
+8. Existing-user authentication with immutable tenant membership and one
    tenant-bound role assignment.
 
 All verified accounting writes occur through controlled PostgreSQL routines.
 The browser has no physical-table write contract for journals, periods,
-invoices, invoice lines, accounting events, accounting masters, or roles.
+invoices, invoice/bill lines, bills, accounting events, accounting masters, or roles.
 
 ## Fail-closed and preservation boundaries
 
@@ -41,7 +44,9 @@ The following are unavailable or read-only preservation metadata:
   autonomous approval, scheduled report delivery, and direct notifications.
 - Partial receipts, overpayments, refunds, aging, collections, tax and
   cross-currency invoice posting, and bank-verified settlement evidence.
-- AP posting, approvals, payment runs, payment execution, and payment matching.
+- Supplier-bill credits, AP approval/matching, PO/receipt conversion, payment
+  runs, payment execution, and payment matching. Legacy bill/payment rows remain
+  unverified preservation metadata.
 - Bank connections, imports, matching, reconciliation, positive pay, balances,
   and bank-account credentials.
 - Accounting-master and organization maintenance.

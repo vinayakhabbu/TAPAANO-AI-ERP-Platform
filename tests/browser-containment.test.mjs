@@ -221,15 +221,27 @@ test("legacy AP/payment tables are read-only and cannot produce accounting assur
   assert.doesNotMatch(hook, /totalAP|dueThisWeek|overdue|amount_paid/);
 
   const page = await readFile(path.join(root, "pages/Payables.tsx"), "utf8");
-  assert.match(page, /AP posting and payment execution are unavailable/);
-  assert.match(page, /not a subledger, aging report,[\s\S]*?or proof of payment/);
+  assert.match(page, /Supplier-bill posting boundary/);
+  assert.match(page, /Payment execution remains unavailable/);
   assert.doesNotMatch(page, /Total AP|Due This Week|3-Way Matched|Process Payment/);
+
+  const billForm = await readFile(path.join(root, "components/forms/BillForm.tsx"), "utf8");
+  assert.match(billForm, /rpc\(\s*["']post_supplier_bill["']/);
+  assert.match(billForm, /p_tax:\s*0/);
+  assert.match(billForm, /p_currency:\s*selectedEntity\.currency/);
+  for (const argument of ["p_entity_id", "p_vendor_id", "p_bill_number", "p_issue_date", "p_due_date", "p_lines", "p_idempotency_key"]) {
+    assert.match(billForm, new RegExp(`${argument}:`));
+  }
+
+  assert.match(hook, /queryKey:\s*\["posted-supplier-bill-history",\s*user\?\.id,\s*orgId\]/);
+  assert.match(hook, /from\("bills"\)[\s\S]{0,420}?\.eq\("org_id",\s*orgId\)[\s\S]{0,180}?\.eq\("accounting_status",\s*"POSTED"\)/);
+  assert.match(hook, /\.not\("journal_entry_id",\s*"is",\s*null\)/);
 
   const dashboard = await readFile(path.join(root, "pages/Index.tsx"), "utf8");
   assert.doesNotMatch(dashboard, /Total Payables|Total AP|Due Soon/);
 
   const types = await readFile(path.join(root, "integrations/supabase/types.ts"), "utf8");
-  for (const table of ["bills", "payment_run_items", "payment_runs"]) {
+  for (const table of ["bills", "bill_lines", "entity_supplier_bill_account_controls", "payment_run_items", "payment_runs"]) {
     const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
     assert.match(types, contract, `${table} must expose a read-only browser contract`);
   }
