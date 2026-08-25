@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 interface NotificationPayload {
   type: "approval" | "time_off_request" | "time_off_response";
   recipientEmail: string;
@@ -8,19 +6,12 @@ interface NotificationPayload {
   details: Record<string, string>;
 }
 
+/**
+ * Outbound delivery is intentionally unavailable. The helper remains while
+ * callers are migrated so operational mutations never imply an email was sent.
+ */
 export const sendNotification = async (payload: NotificationPayload): Promise<void> => {
-  try {
-    const { error } = await supabase.functions.invoke("send-notification", {
-      body: payload,
-    });
-    
-    if (error) {
-      console.error("Failed to send notification:", error);
-    }
-  } catch (err) {
-    // Silently fail - notifications are non-blocking
-    console.error("Notification error:", err);
-  }
+  void payload;
 };
 
 export const notifyTimeOffRequest = async (
@@ -30,21 +21,9 @@ export const notifyTimeOffRequest = async (
   startDate: string,
   endDate: string,
   leaveType: string,
-  days: number
+  days: number,
 ): Promise<void> => {
-  await sendNotification({
-    type: "time_off_request",
-    recipientEmail: managerEmail,
-    recipientName: managerName,
-    subject: `Time Off Request from ${employeeName}`,
-    details: {
-      "Employee": employeeName,
-      "Type": leaveType,
-      "Start Date": startDate,
-      "End Date": endDate,
-      "Days Requested": String(days),
-    },
-  });
+  void [employeeName, managerEmail, managerName, startDate, endDate, leaveType, days];
 };
 
 export const notifyTimeOffResponse = async (
@@ -53,20 +32,9 @@ export const notifyTimeOffResponse = async (
   status: "Approved" | "Rejected",
   startDate: string,
   endDate: string,
-  leaveType: string
+  leaveType: string,
 ): Promise<void> => {
-  await sendNotification({
-    type: "time_off_response",
-    recipientEmail: employeeEmail,
-    recipientName: employeeName,
-    subject: `Time Off Request ${status}`,
-    details: {
-      status,
-      "Type": leaveType,
-      "Start Date": startDate,
-      "End Date": endDate,
-    },
-  });
+  void [employeeEmail, employeeName, status, startDate, endDate, leaveType];
 };
 
 export const notifyApprovalRequired = async (
@@ -75,17 +43,7 @@ export const notifyApprovalRequired = async (
   documentType: string,
   documentNumber: string,
   amount: string,
-  requestedBy: string
+  requestedBy: string,
 ): Promise<void> => {
-  await sendNotification({
-    type: "approval",
-    recipientEmail: approverEmail,
-    recipientName: approverName,
-    subject: `${documentType} Requires Your Approval`,
-    details: {
-      "Document": documentNumber,
-      "Amount": amount,
-      "Requested By": requestedBy,
-    },
-  });
+  void [approverEmail, approverName, documentType, documentNumber, amount, requestedBy];
 };

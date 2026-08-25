@@ -1,40 +1,42 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useBankAccounts = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["bank-accounts"],
+    queryKey: ["bank-account-metadata", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
         .from("bank_accounts")
-        .select("*")
-        .eq("is_active", true)
+        .select("id, org_id, entity_id, name, bank_name, currency, is_active, created_at, updated_at")
+        .eq("org_id", orgId)
         .order("name");
-
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
+    enabled: Boolean(user?.id && orgId),
   });
 };
 
 export const useBankTransactions = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["bank-transactions"],
+    queryKey: ["bank-transaction-metadata", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
         .from("bank_transactions")
-        .select(`
-          *,
-          bank_account:bank_accounts(name),
-          matched_invoice:invoices(invoice_number),
-          matched_bill:bills(bill_number),
-          suggested_account:accounts(name, code)
-        `)
+        .select("id, org_id, bank_account_id, transaction_date, description, created_at, updated_at")
+        .eq("org_id", orgId)
         .order("transaction_date", { ascending: false })
         .limit(50);
-
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
+    enabled: Boolean(user?.id && orgId),
   });
 };

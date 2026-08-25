@@ -5,17 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Sparkles, Mail, Lock, User, Building2 } from "lucide-react";
+import { Sparkles, Mail, Lock } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    displayName: "",
-    companyName: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,35 +20,17 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              display_name: formData.displayName,
-              company_name: formData.companyName,
-            },
-          },
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
 
-        if (error) throw error;
-        toast.success("Account created! You can now sign in.");
-        setIsSignUp(false);
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (error) throw error;
-        toast.success("Welcome back!");
-        navigate("/");
-      }
-    } catch (error: any) {
+      if (error) throw error;
+      toast.success("Welcome back!");
+      navigate("/");
+    } catch (error: unknown) {
       console.error("Auth error:", error);
-      toast.error(error.message || "Authentication failed");
+      toast.error(error instanceof Error ? error.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -72,50 +51,14 @@ const Auth = () => {
         {/* Form Card */}
         <div className="rounded-xl border border-border bg-card p-8">
           <h2 className="mb-6 text-xl font-semibold text-foreground">
-            {isSignUp ? "Create your account" : "Sign in to your account"}
+            Sign in to your account
           </h2>
 
+          <p className="mb-6 text-sm text-muted-foreground">
+            Self-service registration is unavailable while controlled tenant onboarding is being built.
+          </p>
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">Your Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="displayName"
-                      type="text"
-                      placeholder="John Doe"
-                      value={formData.displayName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, displayName: e.target.value })
-                      }
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Company Name</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="companyName"
-                      type="text"
-                      placeholder="Acme Corp"
-                      value={formData.companyName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, companyName: e.target.value })
-                      }
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -154,21 +97,9 @@ const Auth = () => {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
+              {loading ? "Please wait..." : "Sign In"}
             </Button>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-muted-foreground hover:text-primary"
-            >
-              {isSignUp
-                ? "Already have an account? Sign in"
-                : "Don't have an account? Sign up"}
-            </button>
-          </div>
         </div>
       </div>
     </div>

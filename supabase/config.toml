@@ -1,13 +1,25 @@
 project_id = "hmjfkdyxrapbteowszvg"
 
 [functions.global-search]
-verify_jwt = false
+verify_jwt = true
 
 [functions.agent-river]
-verify_jwt = false
+verify_jwt = true
 
 [functions.autonomous-approver]
-verify_jwt = false
+verify_jwt = true
 
 [functions.anomaly-detector]
-verify_jwt = false
+verify_jwt = true
+
+[functions.generate-embedding]
+verify_jwt = true
+
+[functions.precedent-search]
+verify_jwt = true
+
+[functions.process-scheduled-report]
+verify_jwt = true
+
+[functions.send-notification]
+verify_jwt = true

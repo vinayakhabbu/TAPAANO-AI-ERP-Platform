@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Vendor {
@@ -10,179 +11,71 @@ export interface Vendor {
   payment_terms: number | null;
 }
 
-export interface Bill {
-  id: string;
-  bill_number: string;
-  vendor_id: string;
-  vendor?: Vendor;
-  issue_date: string;
-  due_date: string;
-  subtotal: number;
-  tax: number;
-  total: number;
-  amount_paid: number;
-  status: "draft" | "pending" | "paid" | "overdue" | "cancelled";
-  purchase_order_id: string | null;
-  goods_receipt_id: string | null;
-  match_status: string | null;
-}
-
-export interface PurchaseOrder {
-  id: string;
-  po_number: string;
-  vendor_id: string;
-  vendor?: Vendor;
-  order_date: string;
-  expected_delivery_date: string | null;
-  status: "draft" | "pending_approval" | "approved" | "partially_received" | "received" | "cancelled";
-  subtotal: number;
-  tax: number;
-  total: number;
-  notes: string | null;
-}
-
-export interface GoodsReceipt {
-  id: string;
-  receipt_number: string;
-  purchase_order_id: string;
-  receipt_date: string;
-  notes: string | null;
-}
-
-export interface PaymentRun {
-  id: string;
-  run_number: string;
-  run_date: string;
-  status: "draft" | "pending_approval" | "approved" | "processing" | "completed" | "failed";
-  total_amount: number;
-  payment_method: string | null;
-}
-
 export const useVendors = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["vendors"],
+    queryKey: ["vendors", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
         .from("vendors")
-        .select("*")
+        .select("id, name, email, phone, address, payment_terms")
+        .eq("org_id", orgId)
         .order("name");
-      
       if (error) throw error;
       return data as Vendor[];
     },
+    enabled: Boolean(user?.id && orgId),
   });
 };
 
 export const useBills = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["bills"],
+    queryKey: ["legacy-bill-history", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
         .from("bills")
-        .select(`
-          *,
-          vendor:vendors(*)
-        `)
-        .order("due_date", { ascending: true });
-      
+        .select("id, bill_number, issue_date, due_date, total, currency, status, vendors(name)")
+        .eq("org_id", orgId)
+        .order("issue_date", { ascending: false });
       if (error) throw error;
-      return data as (Bill & { vendor: Vendor })[];
+      return data ?? [];
     },
-  });
-};
-
-export const usePurchaseOrders = () => {
-  return useQuery({
-    queryKey: ["purchase_orders"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("purchase_orders")
-        .select(`
-          *,
-          vendor:vendors(*)
-        `)
-        .order("order_date", { ascending: false });
-      
-      if (error) throw error;
-      return data as (PurchaseOrder & { vendor: Vendor })[];
-    },
-  });
-};
-
-export const useGoodsReceipts = () => {
-  return useQuery({
-    queryKey: ["goods_receipts"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("goods_receipts")
-        .select("*")
-        .order("receipt_date", { ascending: false });
-      
-      if (error) throw error;
-      return data as GoodsReceipt[];
-    },
+    enabled: Boolean(user?.id && orgId),
   });
 };
 
 export const usePaymentRuns = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ["payment_runs"],
+    queryKey: ["legacy-payment-run-history", user?.id, orgId],
     queryFn: async () => {
+      if (!user?.id || !orgId) return [];
       const { data, error } = await supabase
         .from("payment_runs")
-        .select("*")
+        .select("id, run_number, run_date, status")
+        .eq("org_id", orgId)
         .order("run_date", { ascending: false });
-      
       if (error) throw error;
-      return data as PaymentRun[];
+      return data ?? [];
     },
+    enabled: Boolean(user?.id && orgId),
   });
 };
 
 export const usePayablesSummary = () => {
-  const { data: bills = [], isLoading: billsLoading } = useBills();
-  const { data: vendors = [], isLoading: vendorsLoading } = useVendors();
-  const { data: purchaseOrders = [], isLoading: posLoading } = usePurchaseOrders();
-  const { data: paymentRuns = [], isLoading: runsLoading } = usePaymentRuns();
-
-  const today = new Date();
-  const weekFromNow = new Date(today);
-  weekFromNow.setDate(today.getDate() + 7);
-
-  const totalAP = bills
-    .filter(b => b.status !== "paid" && b.status !== "cancelled")
-    .reduce((sum, b) => sum + (b.total - b.amount_paid), 0);
-
-  const dueThisWeek = bills
-    .filter(b => {
-      const dueDate = new Date(b.due_date);
-      return b.status !== "paid" && b.status !== "cancelled" && 
-             dueDate >= today && dueDate <= weekFromNow;
-    })
-    .reduce((sum, b) => sum + (b.total - b.amount_paid), 0);
-
-  const overdue = bills
-    .filter(b => {
-      const dueDate = new Date(b.due_date);
-      return b.status !== "paid" && b.status !== "cancelled" && dueDate < today;
-    })
-    .reduce((sum, b) => sum + (b.total - b.amount_paid), 0);
-
-  const openPOs = purchaseOrders.filter(
-    po => po.status !== "received" && po.status !== "cancelled"
-  ).length;
-
-  const pendingPaymentRuns = paymentRuns.filter(
-    pr => pr.status === "pending_approval" || pr.status === "approved"
-  ).length;
-
+  const vendors = useVendors();
+  const bills = useBills();
+  const paymentRuns = usePaymentRuns();
   return {
-    totalAP,
-    dueThisWeek,
-    overdue,
-    vendorCount: vendors.length,
-    openPOs,
-    pendingPaymentRuns,
-    isLoading: billsLoading || vendorsLoading || posLoading || runsLoading,
+    vendorCount: vendors.data?.length ?? 0,
+    billHeaderCount: bills.data?.length ?? 0,
+    paymentRunHistoryCount: paymentRuns.data?.length ?? 0,
+    isLoading: vendors.isLoading || bills.isLoading || paymentRuns.isLoading,
   };
 };

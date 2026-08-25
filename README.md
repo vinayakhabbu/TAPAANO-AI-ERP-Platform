@@ -1,6 +1,16 @@
 # TAPAANO AI ERP Platform
 
-A comprehensive, multi-tenant Enterprise Resource Planning platform built with modern web technologies. Features end-to-end financial operations including Order-to-Cash (O2C), Procure-to-Pay (P2P), General Ledger, Banking, CRM, Production, Controlling, and Service Management with an integrated AI assistant called **Agent River**.
+> **Production-readiness warning:** this repository is under accounting and
+> authorization reconstruction. It is not ready for production deployment or
+> financial reliance. Unsupported workflows are intentionally disabled. See
+> [`LOOP.md`](./LOOP.md) for verified controls, test evidence, and remaining
+> risks.
+
+TAPAANO is a multi-tenant ERP prototype built with React and Supabase. The
+current verified accounting slice supports deterministic journals, controlled
+accounting periods, exact reversals, and a narrow atomic customer-invoice
+posting workflow. Other module screens may preserve historical/prototype data
+but must not be treated as authoritative accounting output.
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB.svg)
@@ -9,25 +19,28 @@ A comprehensive, multi-tenant Enterprise Resource Planning platform built with m
 
 ## Features
 
-### Core Modules
+### Current implementation status
 
-- **Dashboard** - Executive overview with KPIs, charts, and activity feed
-- **CRM** - Pipeline management, opportunities, customer insights, sales forecasting
-- **Accounts Receivable (O2C)** - Quotations, sales orders, shipments, invoices
-- **Accounts Payable (P2P)** - Purchase requisitions, POs, goods receipts, bills, payment runs
-- **Inventory** - Stock management, warehouses, bin locations, batch/serial tracking, cycle counts
-- **Production** - BOMs, production orders, work centers, capacity planning
-- **General Ledger** - Chart of accounts, journal entries, trial balance
-- **Banking** - Bank reconciliation, statement imports, matching rules, positive pay
-- **Controlling** - Cost centers, internal orders, budgets, fixed assets
-- **Service Management** - Contracts, warranties, service calls, field visits
-- **Period Close** - Month-end close task management
+- **Verified locally:** tenant-scoped posted-journal reads; balanced,
+  idempotent manual posting; exact-offset reversal; OPEN/SOFT_CLOSED/
+  HARD_CLOSED period enforcement; and zero-tax, same-functional-currency
+  customer invoice posting and exact full credit notes through atomic database
+  RPCs.
+- **Contained:** Agent River, model-backed search/embedding, autonomous
+  approval, anomaly detection, precedent search, scheduled reports, direct
+  notification delivery, legacy AP/payment execution, and banking execution.
+- **Authorization boundary:** existing profiles have one immutable,
+  tenant-bound role. Self-service registration and team/role administration are
+  unavailable pending a controlled onboarding workflow.
+- **Unavailable or unverified:** customer settlement and aging, tax and FX
+  invoice posting, partial credits/refunds, AP/payment execution, banking reconciliation,
+  inventory and production posting, payroll posting, consolidation, and
+  authoritative financial reporting.
 
-### AI-Powered Features
+### AI-powered features
 
-- **Agent River** - Unified AI assistant with specialized sub-agents for each module
-- Natural language queries across all business data
-- Context-aware responses based on current module
+AI and autonomous workflows are intentionally unavailable while their tenant,
+audit, credential, and side-effect boundaries are being rebuilt.
 
 ## Tech Stack
 
@@ -37,7 +50,7 @@ A comprehensive, multi-tenant Enterprise Resource Planning platform built with m
 | Styling  | Tailwind CSS, shadcn/ui                        |
 | State    | TanStack Query, React Hook Form                |
 | Backend  | Supabase (PostgreSQL, Auth, Edge Functions)    |
-| AI       | OpenAI GPT-4o-mini (BYOK - Bring Your Own Key) |
+| AI       | Disabled pending controlled reimplementation   |
 | Charts   | Recharts                                       |
 
 ## Getting Started
@@ -46,7 +59,6 @@ A comprehensive, multi-tenant Enterprise Resource Planning platform built with m
 
 - Node.js 18+ and npm
 - A Supabase project 
-- OpenAI API key (optional, for AI features)
 
 ### Installation
 
@@ -95,13 +107,6 @@ Key tables include:
 - `inventory_stock`, `inventory_transactions` (inventory)
 - `production_orders`, `bom_headers` (production)
 
-### OpenAI API Key (Optional)
-
-For AI features (Agent River), add your OpenAI API key in:
-**Settings → API Keys → OpenAI API Key**
-
-Your key is stored securely in the database and never exposed in code.
-
 ## Project Structure
 
 ```
@@ -121,12 +126,19 @@ Your key is stored securely in the database and never exposed in code.
 └── documentation.md    # Detailed documentation
 ```
 
-## Security
+## Security status
 
-- **Row Level Security (RLS)** - All data is isolated by organization
-- **Role-Based Access Control** - Admin, Moderator, User, Viewer roles
-- **Secure API Keys** - User API keys stored in database, not in code
-- **Auth** - Supabase Authentication with email/password
+- The recovered journal, period, invoice/credit-posting, identity, accounting-master,
+  AP/payment, banking, credential, and listed residual-schema migrations enforce
+  their bounded tenant, role, immutability, balance, lineage, and idempotency
+  properties in PostgreSQL and have disposable-database regression coverage.
+- Authenticated routes are guarded, financial query keys include the current
+  identity and organization, and sign-out cancels and clears cached tenant data.
+- Unsupported legacy tables covered by the residual lockdown are preservation
+  data only. Do not infer implementation correctness—or repository-wide
+  security for any unlisted object—from that containment.
+- No recovery migration or Edge containment change has been deployed by this
+  worktree.
 
 ## Documentation
 
@@ -152,6 +164,12 @@ npm run preview
 
 # Lint code
 npm run lint
+
+# Run containment/accounting regressions
+npm test
+
+# Type-check without emitting files
+npm run typecheck
 ```
 
 ## Deployment

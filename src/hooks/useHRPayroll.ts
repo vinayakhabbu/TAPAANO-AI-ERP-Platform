@@ -521,57 +521,10 @@ export const usePayrollItems = (runId?: string) => {
 };
 
 export const usePostPayrollToGL = () => {
-  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (runId: string) => {
-      const { data: run, error: runError } = await supabase
-        .from("payroll_runs")
-        .select("*")
-        .eq("id", runId)
-        .single();
-      if (runError) throw runError;
-
-      const { data: profile } = await supabase.from("profiles").select("org_id").single();
-      if (!profile?.org_id) throw new Error("No organization found");
-
-      const { data: entity } = await supabase.from("entities").select("id").limit(1).single();
-      if (!entity) throw new Error("No entity found");
-
-      // Create journal entry for payroll
-      const { data: je, error: jeError } = await supabase
-        .from("journal_entries")
-        .insert({
-          org_id: profile.org_id,
-          entity_id: entity.id,
-          entry_number: `JE-PR-${Date.now().toString().slice(-6)}`,
-          entry_date: new Date().toISOString().split("T")[0],
-          description: `Payroll - ${run.run_number}`,
-          status: "posted",
-          source: "payroll",
-          total_debit: run.total_employer_cost,
-          total_credit: run.total_employer_cost,
-        })
-        .select()
-        .single();
-      if (jeError) throw jeError;
-
-      // Update payroll run with journal entry
-      const { error: updateError } = await supabase
-        .from("payroll_runs")
-        .update({
-          status: "posted",
-          journal_entry_id: je.id,
-          posted_at: new Date().toISOString(),
-        })
-        .eq("id", runId);
-      if (updateError) throw updateError;
-
-      return je;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["payroll-runs"] });
-      queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
-      toast.success("Payroll posted to GL");
+    mutationFn: async (runId: string): Promise<never> => {
+      void runId;
+      throw new Error("Payroll posting is unavailable pending an atomic payroll-to-GL workflow.");
     },
     onError: (e: Error) => toast.error(e.message),
   });

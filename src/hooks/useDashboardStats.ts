@@ -62,9 +62,8 @@ export function useDashboardStats() {
   ).length || 0;
   const completedOrders = productionOrders?.filter(o => o.status === 'completed').length || 0;
 
-  // Calculate banking stats
-  const totalBankBalance = bankAccounts?.reduce((sum, acc) => sum + Number(acc.current_balance || 0), 0) || 0;
-  const activeBankAccounts = bankAccounts?.filter(acc => acc.is_active).length || 0;
+  // Bank records are preservation metadata only; no cash balance is inferred.
+  const bankAccountMetadataCount = bankAccounts?.length || 0;
 
   // Calculate controlling stats
   const approvedBudgets = budgets?.filter(b => b.status === 'approved').length || 0;
@@ -99,19 +98,15 @@ export function useDashboardStats() {
     },
     // Receivables
     receivables: {
-      totalAR: arStats.totalAR,
-      overdueAR: arStats.overdueAR,
+      postedInvoiceTotal: arStats.postedInvoiceTotal,
       customerCount: arStats.customerCount,
       invoiceCount: arStats.invoiceCount,
-      salesOrderCount: arStats.salesOrderCount,
     },
     // Payables
     payables: {
-      totalAP: apStats.totalAP || 0,
-      dueThisWeek: apStats.dueThisWeek || 0,
-      overdue: apStats.overdue || 0,
-      vendorCount: apStats.vendorCount || 0,
-      openPOs: apStats.openPOs || 0,
+      billHeaderCount: apStats.billHeaderCount,
+      paymentRunHistoryCount: apStats.paymentRunHistoryCount,
+      vendorCount: apStats.vendorCount,
     },
     // Service Management
     service: {
@@ -133,8 +128,7 @@ export function useDashboardStats() {
     },
     // Banking
     banking: {
-      totalBalance: totalBankBalance,
-      activeAccounts: activeBankAccounts,
+      accountMetadataCount: bankAccountMetadataCount,
     },
     // Controlling
     controlling: {
