@@ -22,6 +22,16 @@ export interface PostedSupplierBill {
   journalEntryId: string;
 }
 
+export interface PostedSupplierCredit {
+  id: string;
+  originalBillId: string;
+  creditNoteNumber: string;
+  issueDate: string;
+  total: number;
+  currency: string;
+  journalEntryId: string;
+}
+
 export const useVendors = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
@@ -91,6 +101,33 @@ export const usePostedSupplierBills = () => {
   });
 };
 
+export const usePostedSupplierCredits = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
+  return useQuery({
+    queryKey: ["posted-supplier-credit-history", user?.id, orgId],
+    queryFn: async () => {
+      if (!user?.id || !orgId) return [];
+      const { data, error } = await supabase
+        .from("supplier_bill_credit_notes")
+        .select("id, original_bill_id, credit_note_number, issue_date, total, currency, journal_entry_id")
+        .eq("org_id", orgId)
+        .order("issue_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((credit): PostedSupplierCredit => ({
+        id: credit.id,
+        originalBillId: credit.original_bill_id,
+        creditNoteNumber: credit.credit_note_number,
+        issueDate: credit.issue_date,
+        total: credit.total,
+        currency: credit.currency,
+        journalEntryId: credit.journal_entry_id,
+      }));
+    },
+    enabled: Boolean(user?.id && orgId),
+  });
+};
+
 export const usePaymentRuns = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
@@ -114,12 +151,15 @@ export const usePayablesSummary = () => {
   const vendors = useVendors();
   const bills = useBills();
   const postedBills = usePostedSupplierBills();
+  const postedCredits = usePostedSupplierCredits();
   const paymentRuns = usePaymentRuns();
   return {
     vendorCount: vendors.data?.length ?? 0,
     billHeaderCount: bills.data?.length ?? 0,
     postedBillCount: postedBills.data?.length ?? 0,
+    postedCreditCount: postedCredits.data?.length ?? 0,
     paymentRunHistoryCount: paymentRuns.data?.length ?? 0,
-    isLoading: vendors.isLoading || bills.isLoading || postedBills.isLoading || paymentRuns.isLoading,
+    isLoading: vendors.isLoading || bills.isLoading || postedBills.isLoading
+      || postedCredits.isLoading || paymentRuns.isLoading,
   };
 };

@@ -1,17 +1,19 @@
 import { AlertTriangle, FileCheck2, FileWarning, Landmark, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BillForm } from "@/components/forms/BillForm";
+import { SupplierBillCreditForm } from "@/components/forms/SupplierBillCreditForm";
 import { PaymentRunForm } from "@/components/forms/PaymentRunForm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useBills, usePayablesSummary, usePaymentRuns, usePostedSupplierBills } from "@/hooks/usePayables";
+import { useBills, usePayablesSummary, usePaymentRuns, usePostedSupplierBills, usePostedSupplierCredits } from "@/hooks/usePayables";
 
 const Payables = () => {
   const { data: bills = [], isLoading: billsLoading } = useBills();
   const { data: postedBills = [], isLoading: postedBillsLoading } = usePostedSupplierBills();
+  const { data: postedCredits = [] } = usePostedSupplierCredits();
   const { data: paymentRuns = [], isLoading: runsLoading } = usePaymentRuns();
   const summary = usePayablesSummary();
 
@@ -22,15 +24,17 @@ const Payables = () => {
         <AlertTitle>Supplier-bill posting boundary</AlertTitle>
         <AlertDescription>
           Direct, zero-tax bills in the entity&apos;s functional currency can post atomically to
-          a configured expense and AP control account. Payment execution remains unavailable,
-          as do approval, matching, PO/receipt conversion, tax, FX, credits, aging, and settlement.
+          a configured expense and AP control account. Full exact supplier credits are supported.
+          Payment execution remains unavailable, as do approval, matching, PO/receipt conversion,
+          tax, FX, partial credits, refunds, aging, and settlement.
           Legacy rows remain frozen metadata and are not included in verified posted history.
         </AlertDescription>
       </Alert>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {[
           ["Verified posted bills", summary.postedBillCount],
+          ["Full supplier credits", summary.postedCreditCount],
           ["Legacy bill headers", summary.billHeaderCount],
           ["Legacy payment-run headers", summary.paymentRunHistoryCount],
           ["Tenant vendor records", summary.vendorCount],
@@ -59,10 +63,10 @@ const Payables = () => {
             <BillForm />
           </div>
           <Table>
-            <TableHeader><TableRow><TableHead>Bill</TableHead><TableHead>Vendor</TableHead><TableHead>Issue date</TableHead><TableHead>Due date</TableHead><TableHead className="text-right">Posted total</TableHead><TableHead>Evidence</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Bill</TableHead><TableHead>Vendor</TableHead><TableHead>Issue date</TableHead><TableHead>Due date</TableHead><TableHead className="text-right">Posted total</TableHead><TableHead>Evidence</TableHead><TableHead>Resolution</TableHead></TableRow></TableHeader>
             <TableBody>
-              {postedBillsLoading ? <TableRow><TableCell colSpan={6}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
-                : postedBills.length === 0 ? <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No verified posted supplier bills.</TableCell></TableRow>
+              {postedBillsLoading ? <TableRow><TableCell colSpan={7}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
+                : postedBills.length === 0 ? <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No verified posted supplier bills.</TableCell></TableRow>
                 : postedBills.map((bill) => (
                   <TableRow key={bill.id}>
                     <TableCell className="font-mono">{bill.billNumber}</TableCell>
@@ -71,6 +75,13 @@ const Payables = () => {
                     <TableCell>{bill.dueDate}</TableCell>
                     <TableCell className="text-right font-mono">{bill.currency || "—"} {bill.total.toLocaleString()}</TableCell>
                     <TableCell><Badge variant="outline" className="gap-1"><ShieldCheck className="h-3 w-3" />Journal linked</Badge></TableCell>
+                    <TableCell>
+                      {postedCredits.find((credit) => credit.originalBillId === bill.id) ? (
+                        <Badge variant="secondary">Full supplier credit posted</Badge>
+                      ) : (
+                        <SupplierBillCreditForm billId={bill.id} billNumber={bill.billNumber} billIssueDate={bill.issueDate} />
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
             </TableBody>

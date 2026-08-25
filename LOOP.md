@@ -20,8 +20,8 @@ change, Edge deployment, or application deployment has been performed.
   posting; credential/autonomy, AP/payment, banking and residual-schema
   containment; immutable accounting masters; tenant-bound identity/RBAC; exact
   full credits; server-derived manual full customer receipts; and atomic direct
-  supplier-bill posting.
-- Next dependency: controlled full supplier-bill correction and the remaining
+  supplier-bill posting with exact full supplier credits.
+- Next dependency: controlled full supplier payment and the remaining
   source-to-subledger-to-GL vertical slices.
 
 ## Acceptance rules
@@ -340,3 +340,49 @@ Build a controlled full supplier-bill correction workflow that copies the
 immutable bill evidence and posts an exact-offset vendor credit in an OPEN
 period. Partial credits, refunds, supplier payments, matching, tax, and FX remain
 fail closed.
+
+## Recovery checkpoint 14 — atomic full supplier credits
+
+### Supported boundary
+
+One admin/moderator RPC fully credits a verified zero-tax,
+functional-currency supplier bill. PostgreSQL copies every immutable bill line,
+creates a separate credit document and canonical accounting event, links an OPEN
+period, and posts an exact AP-debit/expense-credit offset while linking it as the
+original bill journal's only reversal. The original bill remains unchanged.
+
+The browser submits no amount, line, or account. Partial credits, refunds,
+supplier payments, approval, matching, tax, FX, and bank reconciliation remain
+unavailable. Posted bill totals remain gross historical totals and are not
+presented as outstanding payables.
+
+### Verification
+
+- Supplier bill/credit database scenarios: **12/12**, including hostile replay,
+  exact copied-line/event/period/reversal reconciliation, safe retry after close
+  and account retirement, authorized-actor and OPEN-period rollback, one-credit
+  enforcement, tenant target non-enumeration, owner immutability, and rejection
+  of generic or direct second reversals.
+- Aggregate recovery regressions: **85/85**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the known **86 legacy errors and 8 warnings**
+  outside this slice.
+- Production build still fails after three transformed modules in the native
+  Rollup/stacker runtime before application code is transformed.
+
+### Residual deployment evidence
+
+- All twelve recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Real concurrent credit requests, period-close contention, managed constraint
+  trigger timing, RLS/grants, PostgREST schema refresh, and Realtime publication
+  require staging proof.
+- No migration, function deployment, merge, or production action has occurred.
+
+### Next dependency
+
+Build a manual full supplier-payment workflow where PostgreSQL derives the exact
+uncorrected bill total, posts AP debit and a purpose-specific cash-clearing
+credit atomically in an OPEN period, and presents no bank-reconciliation claim.
+Partial payments, overpayments, refunds, payment runs, matching, tax, and FX
+remain fail closed.

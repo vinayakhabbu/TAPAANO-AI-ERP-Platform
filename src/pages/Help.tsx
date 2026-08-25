@@ -11,9 +11,10 @@ export default function Help() {
         <AlertDescription>
           Authoritative behavior is limited to deterministic journals, accounting periods,
           exact reversal, and the supported atomic customer-invoice, full-credit, and manual
-          full-receipt workflows, plus direct zero-tax functional-currency supplier-bill posting.
-          Agent River, autonomous approvals, search, notifications, supplier-bill credits,
-          AP approval/matching/payment execution, bank matching/reconciliation,
+          full-receipt workflows, plus direct zero-tax functional-currency supplier-bill posting
+          and exact full supplier credits. Agent River, autonomous approvals, search,
+          notifications, partial supplier credits/refunds, AP approval/matching/payment execution,
+          bank matching/reconciliation,
           tax, FX, inventory/production posting, payroll posting, forecasts, and financial
           reports are unavailable or unverified. See LOOP.md for executable evidence and staging requirements.
         </AlertDescription>

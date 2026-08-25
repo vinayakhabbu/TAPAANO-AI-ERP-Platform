@@ -245,6 +245,25 @@ test("legacy AP/payment tables are read-only and cannot produce accounting assur
     const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
     assert.match(types, contract, `${table} must expose a read-only browser contract`);
   }
+
+  for (const file of await sourceFiles(root)) {
+    const source = await readFile(file, "utf8");
+    const supplierCreditWrite = /from\s*\(\s*["']supplier_bill_credit_note(?:s|_lines)["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
+    assert.doesNotMatch(source, supplierCreditWrite, file);
+  }
+  const creditForm = await readFile(path.join(root, "components/forms/SupplierBillCreditForm.tsx"), "utf8");
+  assert.match(creditForm, /rpc\(\s*["']post_supplier_bill_credit["']/);
+  for (const argument of ["p_bill_id", "p_credit_note_number", "p_credit_date", "p_reason", "p_idempotency_key"]) {
+    assert.match(creditForm, new RegExp(`${argument}:`));
+  }
+  assert.doesNotMatch(creditForm, /p_(?:amount|total|lines|account_id):/);
+  assert.match(hook, /queryKey:\s*\["posted-supplier-credit-history",\s*user\?\.id,\s*orgId\]/);
+  assert.match(hook, /from\("supplier_bill_credit_notes"\)[\s\S]{0,320}?\.eq\("org_id",\s*orgId\)/);
+  assert.match(page, /Full supplier credit posted/);
+  for (const table of ["supplier_bill_credit_notes", "supplier_bill_credit_note_lines"]) {
+    const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
+    assert.match(types, contract, `${table} must expose a read-only browser contract`);
+  }
 });
 
 test("banking exposes only tenant-scoped non-secret metadata and no execution path", async () => {

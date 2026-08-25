@@ -1149,6 +1149,50 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      supplier_bill_credit_notes: {
+        Row: {
+          account_control_id: string
+          accounting_event_id: string
+          credit_note_number: string
+          currency: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          issue_date: string
+          journal_entry_id: string
+          org_id: string
+          original_bill_id: string
+          payload_hash: string
+          posted_at: string
+          posted_by: string
+          reason: string
+          total: number
+          vendor_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      supplier_bill_credit_note_lines: {
+        Row: {
+          created_at: string
+          credit_note_id: string
+          description: string
+          entity_id: string
+          expense_account_id: string
+          id: string
+          line_number: number
+          line_total: number
+          org_id: string
+          original_bill_id: string
+          original_bill_line_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       bin_locations: {
         Row: {
           aisle: string | null
@@ -8384,6 +8428,16 @@ export type Database = {
           p_notes: string | null
           p_tax: number
           p_vendor_id: string
+        }
+        Returns: string
+      }
+      post_supplier_bill_credit: {
+        Args: {
+          p_bill_id: string
+          p_credit_date: string
+          p_credit_note_number: string
+          p_idempotency_key: string
+          p_reason: string
         }
         Returns: string
       }
