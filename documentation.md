@@ -23,7 +23,10 @@ The current recovery branch supports only these authoritative workflows:
 5. One full customer-credit workflow: exact copied invoice lines, a separate
    immutable credit document/event, and an exact-offset journal in an OPEN
    period while preserving the original invoice.
-6. Existing-user authentication with immutable tenant membership and one
+6. One manual full-receipt workflow: the server derives the exact invoice total
+   and atomically posts cash-clearing debit and AR credit in an OPEN period.
+   This is not bank-match or reconciliation evidence.
+7. Existing-user authentication with immutable tenant membership and one
    tenant-bound role assignment.
 
 All verified accounting writes occur through controlled PostgreSQL routines.
@@ -36,8 +39,8 @@ The following are unavailable or read-only preservation metadata:
 
 - Agent River, embeddings, global/precedent search, anomaly detection,
   autonomous approval, scheduled report delivery, and direct notifications.
-- Customer settlement, aging, collections, partial credits, refunds, tax and
-  cross-currency invoice posting.
+- Partial receipts, overpayments, refunds, aging, collections, tax and
+  cross-currency invoice posting, and bank-verified settlement evidence.
 - AP posting, approvals, payment runs, payment execution, and payment matching.
 - Bank connections, imports, matching, reconciliation, positive pay, balances,
   and bank-account credentials.
@@ -88,5 +91,5 @@ Do not deploy until all of the following are complete:
 - Perform finance/security review, backup and rollback rehearsal, and explicit
   release approval.
 
-No recovery migration, Edge function, commit, push, or deployment has been made
-from this workspace.
+Recovery code is published only on `recovery/production-readiness`. No recovery
+migration, Edge function, merge, or application deployment has been performed.

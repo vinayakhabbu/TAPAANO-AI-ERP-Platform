@@ -2,6 +2,7 @@ import { AlertTriangle, FileCheck2, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { InvoiceForm } from "@/components/forms/InvoiceForm";
 import { CreditNoteForm } from "@/components/forms/CreditNoteForm";
+import { ReceiptForm } from "@/components/forms/ReceiptForm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,37 +17,39 @@ import {
 import { useReceivables } from "@/hooks/useReceivables";
 
 const Receivables = () => {
-  const { invoices, creditNotes, stats, isLoading, error } = useReceivables();
+  const { invoices, creditNotes, receipts, stats, isLoading, error } = useReceivables();
 
   return (
     <AppLayout
       title="Customer invoicing"
-      subtitle="Atomic invoice-to-journal posting within the currently supported boundary"
+      subtitle="Atomic invoice, full-credit, and full-receipt posting within the supported boundary"
     >
       <Alert className="mb-6 border-warning/40 bg-warning/5">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Partial accounting workflow</AlertTitle>
         <AlertDescription>
           Only direct, zero-tax invoices in the legal entity&apos;s functional currency are supported.
-          Full exact credit notes are supported for verified invoices. Partial credits, refunds,
-          settlement, collections, aging, tax, FX, quotations, sales-order conversion, shipping,
-          subscriptions, and revenue recognition are unavailable and produce no accounting claims.
+          Full exact credit notes and manual full receipts are supported for verified invoices.
+          Receipt amounts are derived by PostgreSQL and are not bank-reconciled. Partial credits,
+          partial receipts, overpayments, refunds, collections, aging, tax, FX, quotations,
+          sales-order conversion, shipping, subscriptions, and revenue recognition are unavailable.
         </AlertDescription>
       </Alert>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Full receipts recorded</p>
+          {isLoading ? <Skeleton className="mt-2 h-8 w-16" /> : (
+            <p className="mt-2 text-2xl font-bold">{stats.fullReceiptCount}</p>
+          )}
+          <p className="mt-1 text-xs text-muted-foreground">Manual accounting records; not bank-reconciled</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Full credit notes</p>
           {isLoading ? <Skeleton className="mt-2 h-8 w-16" /> : (
             <p className="mt-2 text-2xl font-bold">{stats.fullCreditCount}</p>
           )}
-          <p className="mt-1 text-xs text-muted-foreground">Exact-offset corrections, not settlements</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm text-muted-foreground">Posted invoices</p>
-          {isLoading ? <Skeleton className="mt-2 h-8 w-16" /> : (
-            <p className="mt-2 text-2xl font-bold">{stats.invoiceCount}</p>
-          )}
+          <p className="mt-1 text-xs text-muted-foreground">Exact-offset corrections, not refunds</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Gross posted invoice total</p>
@@ -56,9 +59,11 @@ const Receivables = () => {
           <p className="mt-1 text-xs text-muted-foreground">Not an outstanding receivable or aging balance</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm text-muted-foreground">Settlement status</p>
-          <p className="mt-2 text-lg font-semibold">Unavailable</p>
-          <p className="mt-1 text-xs text-muted-foreground">No payment or collection inference is made</p>
+          <p className="text-sm text-muted-foreground">Posted invoices</p>
+          {isLoading ? <Skeleton className="mt-2 h-8 w-16" /> : (
+            <p className="mt-2 text-2xl font-bold">{stats.invoiceCount}</p>
+          )}
+          <p className="mt-1 text-xs text-muted-foreground">Verified journal-linked source documents</p>
         </div>
       </div>
 
@@ -88,7 +93,7 @@ const Receivables = () => {
                 <TableHead>Due date</TableHead>
                 <TableHead className="text-right">Posted total</TableHead>
                 <TableHead>Evidence</TableHead>
-                <TableHead>Correction</TableHead>
+                <TableHead>Resolution</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -125,12 +130,25 @@ const Receivables = () => {
                       <Badge variant="secondary">
                         Full credit posted
                       </Badge>
+                    ) : receipts.find((receipt) => receipt.invoiceId === invoice.id) ? (
+                      <Badge variant="secondary">
+                        Full receipt recorded
+                      </Badge>
                     ) : (
-                      <CreditNoteForm
-                        invoiceId={invoice.id}
-                        invoiceNumber={invoice.invoiceNumber}
-                        invoiceIssueDate={invoice.issueDate}
-                      />
+                      <div className="flex flex-wrap gap-2">
+                        <ReceiptForm
+                          invoiceId={invoice.id}
+                          invoiceNumber={invoice.invoiceNumber}
+                          invoiceIssueDate={invoice.issueDate}
+                          currency={invoice.currency ?? ""}
+                          total={invoice.total}
+                        />
+                        <CreditNoteForm
+                          invoiceId={invoice.id}
+                          invoiceNumber={invoice.invoiceNumber}
+                          invoiceIssueDate={invoice.issueDate}
+                        />
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>

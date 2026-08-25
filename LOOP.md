@@ -7,8 +7,9 @@ to `555c1f5`, with no `LOOP.md`, containment migrations, or test suite. The
 cycle transcript supplied by the project owner is therefore a recovery
 specification, not evidence present in this checkout.
 
-This branch reconstructs the work in dependency order. No production database,
-Edge deployment, merge, commit, or remote push has been performed.
+This branch reconstructs the work in dependency order. The recovery checkpoint
+is published on `recovery/production-readiness`; no merge, production database
+change, Edge deployment, or application deployment has been performed.
 
 ## Current state
 
@@ -17,8 +18,9 @@ Edge deployment, merge, commit, or remote push has been performed.
 - Recovered checkpoints: privileged workflow containment; deterministic journal
   and period controls; authenticated-session isolation; atomic customer-invoice
   posting; credential/autonomy, AP/payment, banking and residual-schema
-  containment; immutable accounting masters; and tenant-bound identity/RBAC.
-- Next dependency: controlled customer settlement and the remaining
+  containment; immutable accounting masters; tenant-bound identity/RBAC; exact
+  full credits; and server-derived manual full customer receipts.
+- Next dependency: controlled supplier-bill posting and the remaining
   source-to-subledger-to-GL vertical slices.
 
 ## Acceptance rules
@@ -132,7 +134,8 @@ aging, revenue, or collection claim.
 - Migrations must be rehearsed on a disposable copy of the real Supabase schema.
 - Managed PostgREST schema-cache, exact grants/RLS, Realtime publication, and
   real two-session concurrency/sign-out behavior require staging evidence.
-- No migration, function, or client change has been deployed or pushed.
+- The recovery code is published only on its branch. No migration, function,
+  merge, or application deployment has been performed.
 
 ## Recovery checkpoint 5 — credential and autonomy containment
 
@@ -205,7 +208,8 @@ aging, revenue, or collection claim.
   copy of the actual Supabase schema.
 - Managed RLS/grants, PostgREST schema cache, Realtime membership, Auth trigger
   behavior, and real multi-session/concurrency behavior require staging proof.
-- The branch remains uncommitted, unpushed, and undeployed.
+- This checkpoint is included in the published recovery branch and remains
+  unmerged and undeployed.
 
 ## Recovery checkpoint 11 — atomic full customer credit notes
 
@@ -238,5 +242,56 @@ presented as outstanding receivables.
 - The nine recovery migrations require ordered production-like rehearsal.
 - Real concurrent credit requests, managed constraint-trigger timing,
   PostgREST schema refresh, and period-close contention require staging proof.
-- No commit, push, migration, function deployment, or production action has
-  occurred.
+- This checkpoint is included in the published recovery branch. No migration,
+  function deployment, merge, or production action has occurred.
+
+## Recovery checkpoint 12 — atomic full customer receipts
+
+### Supported boundary
+
+One admin/moderator RPC records a manual full receipt against a verified,
+uncredited customer invoice. PostgreSQL derives the exact immutable invoice
+total; the browser cannot submit an amount. In one transaction the workflow
+creates an immutable receipt, canonical accounting event, OPEN-period link, and
+balanced journal that debits the configured cash-clearing asset and credits the
+invoice AR control account.
+
+The one-time entity receipt control is purpose-specific, tenant-bound, and
+immutable. A full receipt and a full credit note are mutually exclusive under
+the same invoice lock. The original invoice remains unchanged; receipt status
+is derived from the immutable receipt graph rather than a client-written invoice
+status or amount-paid field.
+
+Partial receipts, overpayments, refunds, receipt reversal, tax, FX, bank
+matching, and reconciliation remain unavailable. A manual receipt is not
+presented as bank-verified evidence.
+
+### Verification
+
+- Customer invoice/credit/receipt database scenarios: **20/20**, including
+  migration replay, hostile grants/policies/overloads, owner immutability,
+  exact receipt/event/period/journal reconciliation, server-derived decimal
+  amount, retry after close/account retirement, tenant target non-enumeration,
+  credit/receipt exclusion, and out-of-band reversal rejection.
+- Aggregate recovery regressions: **73/73**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the known **86 legacy errors and 8 warnings**
+  outside this slice.
+- Production build still fails after three transformed modules in the native
+  Rollup/stacker runtime before application code is transformed.
+
+### Residual deployment evidence
+
+- All ten recovery migrations require ordered rehearsal against a disposable,
+  production-like copy of the actual Supabase schema.
+- Real concurrent credit/receipt requests, period-close contention, managed
+  constraint-trigger timing, RLS/grants, PostgREST schema refresh, and Realtime
+  publication require staging proof.
+- No migration, function deployment, merge, or production action has occurred.
+
+### Next dependency
+
+Build the first controlled supplier-bill posting slice: zero tax, entity
+functional currency, immutable AP/expense controls, exact lines, and one atomic
+bill → event → OPEN period → balanced journal graph. Approval, matching,
+payment execution, tax, FX, and legacy-bill promotion remain fail closed.

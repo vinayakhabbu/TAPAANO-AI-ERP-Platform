@@ -10,8 +10,9 @@ export default function Help() {
         <AlertTitle>Use this build only for recovery verification</AlertTitle>
         <AlertDescription>
           Authoritative behavior is limited to deterministic journals, accounting periods,
-          exact reversal, and the supported atomic customer-invoice/full-credit workflows. Agent River,
-          autonomous approvals, search, notifications, AP/payment execution, reconciliation,
+          exact reversal, and the supported atomic customer-invoice, full-credit, and manual
+          full-receipt workflows. Agent River, autonomous approvals, search, notifications,
+          AP/payment execution, bank matching/reconciliation,
           tax, FX, inventory/production posting, payroll posting, forecasts, and financial
           reports are unavailable or unverified. See LOOP.md for executable evidence and staging requirements.
         </AlertDescription>

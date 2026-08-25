@@ -15,6 +15,10 @@ const creditMigrationUrl = new URL(
   "../supabase/migrations/20260825090000_recovery_customer_credit_note.sql",
   import.meta.url,
 );
+const receiptMigrationUrl = new URL(
+  "../supabase/migrations/20260825100000_recovery_customer_receipt.sql",
+  import.meta.url,
+);
 
 const ids = {
   orgA: "00000000-0000-4000-8000-000000000001",
@@ -23,10 +27,14 @@ const ids = {
   entityB: "10000000-0000-4000-8000-000000000002",
   adminA: "20000000-0000-4000-8000-000000000001",
   userA: "20000000-0000-4000-8000-000000000002",
+  adminB: "20000000-0000-4000-8000-000000000003",
   arA: "30000000-0000-4000-8000-000000000001",
   revenueA: "30000000-0000-4000-8000-000000000002",
   expenseA: "30000000-0000-4000-8000-000000000003",
   arB: "30000000-0000-4000-8000-000000000004",
+  cashA: "30000000-0000-4000-8000-000000000005",
+  cashB: "30000000-0000-4000-8000-000000000006",
+  revenueB: "30000000-0000-4000-8000-000000000007",
   customerA: "40000000-0000-4000-8000-000000000001",
   customerB: "40000000-0000-4000-8000-000000000002",
 };
@@ -113,34 +121,43 @@ const fixture = `
   INSERT INTO public.entities VALUES
     ('${ids.entityA}', '${ids.orgA}', 'Entity A', 'USD'),
     ('${ids.entityB}', '${ids.orgB}', 'Entity B', 'USD');
-  INSERT INTO auth.users VALUES ('${ids.adminA}'), ('${ids.userA}');
+  INSERT INTO auth.users VALUES ('${ids.adminA}'), ('${ids.userA}'), ('${ids.adminB}');
   INSERT INTO public.profiles VALUES
-    ('${ids.adminA}', '${ids.orgA}', 'admin'), ('${ids.userA}', '${ids.orgA}', 'user');
+    ('${ids.adminA}', '${ids.orgA}', 'admin'), ('${ids.userA}', '${ids.orgA}', 'user'),
+    ('${ids.adminB}', '${ids.orgB}', 'admin');
   INSERT INTO public.user_roles (user_id, role) VALUES
-    ('${ids.adminA}', 'admin'), ('${ids.userA}', 'user');
+    ('${ids.adminA}', 'admin'), ('${ids.userA}', 'user'), ('${ids.adminB}', 'admin');
   INSERT INTO public.accounts VALUES
     ('${ids.arA}', '${ids.orgA}', '1100', 'Accounts Receivable', 'asset', true),
     ('${ids.revenueA}', '${ids.orgA}', '4000', 'Revenue', 'revenue', true),
     ('${ids.expenseA}', '${ids.orgA}', '5000', 'Expense', 'expense', true),
-    ('${ids.arB}', '${ids.orgB}', '1100', 'Accounts Receivable', 'asset', true);
+    ('${ids.arB}', '${ids.orgB}', '1100', 'Accounts Receivable', 'asset', true),
+    ('${ids.cashA}', '${ids.orgA}', '1000', 'Cash clearing', 'asset', true),
+    ('${ids.cashB}', '${ids.orgB}', '1000', 'Cash clearing', 'asset', true),
+    ('${ids.revenueB}', '${ids.orgB}', '4000', 'Revenue', 'revenue', true);
   INSERT INTO public.customers VALUES
     ('${ids.customerA}', '${ids.orgA}', 'Customer A', 30),
     ('${ids.customerB}', '${ids.orgB}', 'Customer B', 30);
 `;
 
-async function createDb({ credit = false } = {}) {
+async function createDb({ credit = false, receipt = false } = {}) {
   const db = new PGlite();
   await db.exec(fixture);
   await db.exec(await readFile(journalMigrationUrl, "utf8"));
   const invoiceMigration = await readFile(invoiceMigrationUrl, "utf8");
   await db.exec(invoiceMigration);
   let creditMigration = null;
-  if (credit) {
+  if (credit || receipt) {
     creditMigration = await readFile(creditMigrationUrl, "utf8");
     await db.exec(creditMigration);
   }
+  let receiptMigration = null;
+  if (receipt) {
+    receiptMigration = await readFile(receiptMigrationUrl, "utf8");
+    await db.exec(receiptMigration);
+  }
   await db.exec(`SELECT set_config('request.jwt.claim.sub', '${ids.adminA}', false);`);
-  return { db, invoiceMigration, creditMigration };
+  return { db, invoiceMigration, creditMigration, receiptMigration };
 }
 
 const invoiceLines = JSON.stringify([
@@ -455,5 +472,223 @@ test("credit-note graph rejects null or out-of-band event and journal changes", 
     `UPDATE public.journal_entries SET accounting_event_id=NULL WHERE id='${links.rows[0].journal_entry_id}'`,
     `DELETE FROM public.customer_credit_note_lines WHERE credit_note_id='${credit.rows[0].id}'`,
   ]) await expectReject(() => db.exec(sql), /credit note|immutable|trusted/i);
+  await db.close();
+});
+
+async function configureReceipt(db) {
+  await db.exec(`SELECT public.configure_entity_customer_receipt_accounts(
+    '${ids.entityA}', '${ids.cashA}', 'receipt-control-v1'
+  );`);
+}
+
+async function postReceipt(db, invoiceId, number, key, overrides = {}) {
+  const receiptDate = overrides.receiptDate ?? "2026-08-27";
+  const currency = overrides.currency ?? "USD";
+  const reference = overrides.reference ?? `Manual receipt ${number}`;
+  const posted = await db.query(`SELECT public.post_customer_receipt(
+    '${invoiceId}', '${number}', '${receiptDate}', '${currency}', '${reference}', '${key}'
+  ) AS id;`);
+  return posted.rows[0].id;
+}
+
+test("receipt migration replays and removes hostile grants, policies, and routine overloads", async () => {
+  const { db, receiptMigration } = await createDb({ receipt: true });
+  await db.exec(`
+    GRANT INSERT,UPDATE,DELETE ON public.customer_receipts,public.entity_customer_receipt_controls
+      TO authenticated,service_role;
+    CREATE POLICY hostile_receipt_all ON public.customer_receipts
+      FOR ALL TO authenticated USING (true) WITH CHECK (true);
+    CREATE FUNCTION public.post_customer_receipt(uuid,text) RETURNS uuid
+      LANGUAGE sql SECURITY DEFINER AS 'SELECT $1';
+    GRANT EXECUTE ON FUNCTION public.post_customer_receipt(uuid,text) TO authenticated;
+  `);
+  await db.exec(receiptMigration);
+  for (const table of ["customer_receipts", "entity_customer_receipt_controls"]) {
+    const grants = await db.query(`
+      SELECT has_table_privilege('authenticated','public.${table}','SELECT') AS auth_read,
+        has_table_privilege('authenticated','public.${table}','UPDATE') AS auth_update,
+        has_table_privilege('service_role','public.${table}','INSERT') AS service_insert
+    `);
+    assert.deepEqual(grants.rows[0], { auth_read: true, auth_update: false, service_insert: false }, table);
+    const policies = await db.query(`SELECT count(*)::int AS count FROM pg_policies WHERE schemaname='public' AND tablename='${table}'`);
+    assert.equal(policies.rows[0].count, 1, table);
+  }
+  const overloads = await db.query(`
+    SELECT count(*)::int AS count FROM pg_proc procedure_info
+    JOIN pg_namespace namespace ON namespace.oid=procedure_info.pronamespace
+    WHERE namespace.nspname='public' AND procedure_info.proname='post_customer_receipt'
+      AND (procedure_info.prokind <> 'f'
+        OR oidvectortypes(procedure_info.proargtypes) <> 'uuid, text, date, text, text, text')
+  `);
+  assert.equal(overloads.rows[0].count, 0);
+  await db.close();
+});
+
+test("full customer receipt atomically creates exact immutable receipt-event-journal evidence", async () => {
+  const { db, receiptMigration } = await createDb({ receipt: true });
+  await prepare(db);
+  await configureReceipt(db);
+  const invoiceId = await postInvoice(db, "INV-RECEIPT", "invoice:receipt");
+  const receiptId = await postReceipt(db, invoiceId, "RCPT-1001", "receipt:1001");
+  const graph = await db.query(`
+    SELECT receipt.amount::text, receipt.currency, receipt.invoice_id,
+      event.source_type, event.source_id=receipt.id AS event_source_matches,
+      journal.status::text AS journal_status, journal.source_module,
+      invoice.amount_paid::text AS invoice_amount_paid, invoice.status::text AS invoice_status,
+      (SELECT count(*)::int FROM public.journal_lines line WHERE line.journal_entry_id=journal.id) AS line_count,
+      (SELECT count(*)::int FROM public.journal_lines line
+       JOIN public.entity_customer_receipt_controls control ON control.id=receipt.account_control_id
+       WHERE line.journal_entry_id=journal.id AND line.account_id=control.cash_account_id
+         AND line.debit=receipt.amount AND line.credit=0) AS cash_debit_count,
+      (SELECT count(*)::int FROM public.journal_lines line
+       JOIN public.entity_customer_receipt_controls control ON control.id=receipt.account_control_id
+       WHERE line.journal_entry_id=journal.id AND line.account_id=control.ar_account_id
+         AND line.credit=receipt.amount AND line.debit=0) AS ar_credit_count
+    FROM public.customer_receipts receipt
+    JOIN public.invoices invoice ON invoice.id=receipt.invoice_id
+    JOIN public.accounting_events event ON event.id=receipt.accounting_event_id
+    JOIN public.journal_entries journal ON journal.id=receipt.journal_entry_id
+    WHERE receipt.id='${receiptId}'
+  `);
+  assert.deepEqual(graph.rows[0], {
+    amount: "125.00", currency: "USD", invoice_id: invoiceId,
+    source_type: "customer_receipt", event_source_matches: true,
+    journal_status: "posted", source_module: "ar_receipt",
+    invoice_amount_paid: "0.00", invoice_status: "sent",
+    line_count: 2, cash_debit_count: 1, ar_credit_count: 1,
+  });
+  await db.exec(receiptMigration);
+  await db.query(`SELECT public.validate_customer_receipt_graph('${receiptId}')`);
+  await expectReject(
+    () => db.exec(`UPDATE public.customer_receipts SET amount=1 WHERE id='${receiptId}'`),
+    /receipt is immutable|trusted/i,
+  );
+  await db.close();
+});
+
+test("receipt workflow hides foreign targets and protects the complete graph from owner DML", async () => {
+  const { db } = await createDb({ receipt: true });
+  await prepare(db);
+  await configureReceipt(db);
+  const localInvoice = await postInvoice(db, "INV-RECEIPT-GUARD", "invoice:receipt-guard");
+  const receiptId = await postReceipt(db, localInvoice, "RCPT-GUARD", "receipt:guard");
+  const links = await db.query(`
+    SELECT accounting_event_id,journal_entry_id FROM public.customer_receipts WHERE id='${receiptId}'
+  `);
+  for (const sql of [
+    `UPDATE public.accounting_events SET source_id=NULL WHERE id='${links.rows[0].accounting_event_id}'`,
+    `UPDATE public.journal_entries SET accounting_event_id=NULL WHERE id='${links.rows[0].journal_entry_id}'`,
+    `UPDATE public.entity_customer_receipt_controls SET cash_account_id='${ids.arA}' WHERE entity_id='${ids.entityA}'`,
+    `DELETE FROM public.customer_receipts WHERE id='${receiptId}'`,
+    `TRUNCATE public.customer_receipts CASCADE`,
+  ]) await expectReject(() => db.exec(sql), /receipt|immutable|trusted/i);
+
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminB}',false)`);
+  await db.exec(`SELECT public.create_accounting_period('${ids.entityB}','2026-08-01','2026-08-31','org-b-aug')`);
+  await db.exec(`SELECT public.configure_entity_invoice_accounts('${ids.entityB}','${ids.arB}','${ids.revenueB}','org-b-ar')`);
+  await db.exec(`SELECT public.configure_entity_customer_receipt_accounts('${ids.entityB}','${ids.cashB}','org-b-cash')`);
+  const foreignInvoice = await db.query(`SELECT public.post_customer_invoice(
+    '${ids.entityB}','${ids.customerB}','INV-ORG-B','2026-08-25','2026-09-24',
+    'USD',0,null,'${invoiceLines}'::jsonb,'invoice:org-b'
+  ) AS id`);
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`);
+  const missing = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+  for (const entityId of [ids.entityB, missing]) {
+    await expectReject(
+      () => db.query(`SELECT public.configure_entity_customer_receipt_accounts('${entityId}','${ids.cashA}','hidden:${entityId}')`),
+      /entity not found or unavailable/,
+    );
+  }
+  for (const invoiceId of [foreignInvoice.rows[0].id, missing]) {
+    await expectReject(
+      () => db.query(`SELECT public.post_customer_receipt('${invoiceId}','RCPT-HIDDEN','2026-08-27','USD','Hidden','hidden:${invoiceId}')`),
+      /posted customer invoice not found or unavailable/,
+    );
+  }
+  await db.close();
+});
+
+test("customer receipt retry remains safe after period close and account retirement", async () => {
+  const { db } = await createDb({ receipt: true });
+  await prepare(db);
+  await configureReceipt(db);
+  const invoiceId = await postInvoice(db, "INV-RECEIPT-RETRY", "invoice:receipt-retry");
+  const first = await postReceipt(db, invoiceId, "RCPT-RETRY", "receipt:retry");
+  const period = await db.query(`SELECT id FROM public.accounting_periods WHERE entity_id='${ids.entityA}'`);
+  await db.exec(`SELECT public.transition_accounting_period('${period.rows[0].id}','HARD_CLOSED','closed after receipt')`);
+  await db.exec(`UPDATE public.accounts SET is_active=false WHERE id IN ('${ids.arA}','${ids.cashA}')`);
+  const second = await postReceipt(db, invoiceId, "RCPT-RETRY", "receipt:retry");
+  assert.equal(first, second);
+  await db.close();
+});
+
+test("receipt control requires a same-tenant active cash-purpose account and authorized actor", async () => {
+  const { db } = await createDb({ receipt: true });
+  await prepare(db);
+  await expectReject(
+    () => db.query(`SELECT public.configure_entity_customer_receipt_accounts('${ids.entityA}','${ids.cashB}','cross')`),
+    /cash|organization|tenant/i,
+  );
+  await expectReject(
+    () => db.query(`SELECT public.configure_entity_customer_receipt_accounts('${ids.entityA}','${ids.expenseA}','expense')`),
+    /cash|asset/i,
+  );
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.userA}',false)`);
+  await expectReject(
+    () => db.query(`SELECT public.configure_entity_customer_receipt_accounts('${ids.entityA}','${ids.cashA}','user')`),
+    /admin|moderator|authorized/i,
+  );
+  await db.close();
+});
+
+test("amount is server-derived while FX, pre-invoice, credited, and duplicate receipts fail atomically", async () => {
+  const { db } = await createDb({ receipt: true });
+  await prepare(db);
+  await configureReceipt(db);
+  const invoiceId = await postInvoice(db, "INV-RECEIPT-DENY", "invoice:receipt-deny");
+  for (const [number, key, overrides, pattern] of [
+    ["RCPT-FX", "receipt:fx", { currency: "EUR" }, /functional currency|currency/i],
+    ["RCPT-EARLY", "receipt:early", { receiptDate: "2026-08-24" }, /precede|date/i],
+  ]) await expectReject(() => postReceipt(db, invoiceId, number, key, overrides), pattern);
+  const signature = await db.query(`
+    SELECT oidvectortypes(proargtypes) AS arguments
+    FROM pg_proc procedure_info
+    JOIN pg_namespace namespace ON namespace.oid=procedure_info.pronamespace
+    WHERE namespace.nspname='public' AND procedure_info.proname='post_customer_receipt'
+  `);
+  assert.deepEqual(signature.rows, [{ arguments: "uuid, text, date, text, text, text" }]);
+  const receiptId = await postReceipt(db, invoiceId, "RCPT-ONE", "receipt:one");
+  await expectReject(
+    () => postReceipt(db, invoiceId, "RCPT-TWO", "receipt:two"),
+    /already has a full receipt|already resolved/i,
+  );
+  const count = await db.query(`SELECT count(*)::int AS count FROM public.customer_receipts`);
+  assert.deepEqual(count.rows[0], { count: 1 });
+  assert.ok(receiptId);
+  await db.close();
+});
+
+test("full credit and full receipt are mutually exclusive and receipt journals cannot be reversed out of band", async () => {
+  const { db } = await createDb({ receipt: true });
+  await prepare(db);
+  await configureReceipt(db);
+  const settledInvoice = await postInvoice(db, "INV-SETTLED", "invoice:settled");
+  const receiptId = await postReceipt(db, settledInvoice, "RCPT-SETTLED", "receipt:settled");
+  await expectReject(
+    () => db.query(`SELECT public.post_customer_credit_note('${settledInvoice}','CN-AFTER-RECEIPT','2026-08-28','Conflict','credit:after-receipt')`),
+    /receipt|resolved/i,
+  );
+  const receipt = await db.query(`SELECT journal_entry_id FROM public.customer_receipts WHERE id='${receiptId}'`);
+  await expectReject(
+    () => db.query(`SELECT public.reverse_posted_journal('${receipt.rows[0].journal_entry_id}','2026-08-28','Bypass','reverse:receipt')`),
+    /receipt reversal|customer receipt/i,
+  );
+
+  const creditedInvoice = await postInvoice(db, "INV-CREDITED-FIRST", "invoice:credited-first");
+  await db.query(`SELECT public.post_customer_credit_note('${creditedInvoice}','CN-FIRST','2026-08-28','Full credit','credit:first')`);
+  await expectReject(
+    () => postReceipt(db, creditedInvoice, "RCPT-AFTER-CREDIT", "receipt:after-credit"),
+    /credit|resolved/i,
+  );
   await db.close();
 });

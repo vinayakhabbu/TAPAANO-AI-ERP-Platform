@@ -30,6 +30,17 @@ export interface PostedCreditNoteHistory {
   journalEntryId: string;
 }
 
+export interface PostedCustomerReceiptHistory {
+  id: string;
+  invoiceId: string;
+  receiptNumber: string;
+  receiptDate: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  journalEntryId: string;
+}
+
 export const useReceivables = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
@@ -106,20 +117,50 @@ export const useReceivables = () => {
     enabled: ready,
   });
 
+  const postedCustomerReceiptsQuery = useQuery({
+    queryKey: ["posted-customer-receipt-history", user?.id, orgId],
+    queryFn: async () => {
+      if (!user?.id || !orgId) return [];
+      const { data, error } = await supabase
+        .from("customer_receipts")
+        .select("id, invoice_id, receipt_number, receipt_date, amount, currency, receipt_reference, journal_entry_id")
+        .eq("org_id", orgId)
+        .not("journal_entry_id", "is", null)
+        .order("receipt_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((receipt): PostedCustomerReceiptHistory => ({
+        id: receipt.id,
+        invoiceId: receipt.invoice_id,
+        receiptNumber: receipt.receipt_number,
+        receiptDate: receipt.receipt_date,
+        amount: receipt.amount,
+        currency: receipt.currency,
+        reference: receipt.receipt_reference,
+        journalEntryId: receipt.journal_entry_id,
+      }));
+    },
+    enabled: ready,
+  });
+
   const invoices = postedInvoicesQuery.data ?? [];
   const creditNotes = postedCreditNotesQuery.data ?? [];
+  const receipts = postedCustomerReceiptsQuery.data ?? [];
 
   return {
     customers: customersQuery.data ?? [],
     invoices,
     creditNotes,
+    receipts,
     stats: {
       customerCount: customersQuery.data?.length ?? 0,
       invoiceCount: invoices.length,
       postedInvoiceTotal: invoices.reduce((sum, invoice) => sum + invoice.total, 0),
       fullCreditCount: creditNotes.length,
+      fullReceiptCount: receipts.length,
     },
-    isLoading: customersQuery.isLoading || postedInvoicesQuery.isLoading || postedCreditNotesQuery.isLoading,
-    error: customersQuery.error || postedInvoicesQuery.error || postedCreditNotesQuery.error,
+    isLoading: customersQuery.isLoading || postedInvoicesQuery.isLoading
+      || postedCreditNotesQuery.isLoading || postedCustomerReceiptsQuery.isLoading,
+    error: customersQuery.error || postedInvoicesQuery.error
+      || postedCreditNotesQuery.error || postedCustomerReceiptsQuery.error,
   };
 };

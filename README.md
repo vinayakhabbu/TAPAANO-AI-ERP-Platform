@@ -24,18 +24,18 @@ but must not be treated as authoritative accounting output.
 - **Verified locally:** tenant-scoped posted-journal reads; balanced,
   idempotent manual posting; exact-offset reversal; OPEN/SOFT_CLOSED/
   HARD_CLOSED period enforcement; and zero-tax, same-functional-currency
-  customer invoice posting and exact full credit notes through atomic database
-  RPCs.
+  customer invoice posting, exact full credit notes, and server-derived manual
+  full receipts through atomic database RPCs.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
 - **Authorization boundary:** existing profiles have one immutable,
   tenant-bound role. Self-service registration and team/role administration are
   unavailable pending a controlled onboarding workflow.
-- **Unavailable or unverified:** customer settlement and aging, tax and FX
-  invoice posting, partial credits/refunds, AP/payment execution, banking reconciliation,
-  inventory and production posting, payroll posting, consolidation, and
-  authoritative financial reporting.
+- **Unavailable or unverified:** partial receipts, overpayments, refunds,
+  customer aging/collections, tax and FX invoice posting, AP/payment execution,
+  bank matching/reconciliation, inventory and production posting, payroll
+  posting, consolidation, and authoritative financial reporting.
 
 ### AI-powered features
 

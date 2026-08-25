@@ -83,6 +83,22 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      entity_customer_receipt_controls: {
+        Row: {
+          ar_account_id: string
+          cash_account_id: string
+          configured_at: string
+          configured_by: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          invoice_account_control_id: string
+          org_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       accounts: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -2275,6 +2291,30 @@ export type Database = {
             referencedColumns: ["org_id", "entity_id", "id"]
           },
         ]
+      }
+      customer_receipts: {
+        Row: {
+          account_control_id: string
+          accounting_event_id: string
+          amount: number
+          currency: string
+          customer_id: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          invoice_id: string
+          journal_entry_id: string
+          org_id: string
+          payload_hash: string
+          posted_at: string
+          posted_by: string
+          receipt_date: string
+          receipt_number: string
+          receipt_reference: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
       }
       customers: {
         Row: {
@@ -8140,6 +8180,14 @@ export type Database = {
       }
     }
     Functions: {
+      configure_entity_customer_receipt_accounts: {
+        Args: {
+          p_cash_account_id: string
+          p_entity_id: string
+          p_idempotency_key: string
+        }
+        Returns: string
+      }
       configure_entity_invoice_accounts: {
         Args: {
           p_ar_account_id: string
@@ -8262,6 +8310,17 @@ export type Database = {
           p_idempotency_key: string
           p_invoice_id: string
           p_reason: string
+        }
+        Returns: string
+      }
+      post_customer_receipt: {
+        Args: {
+          p_currency: string
+          p_idempotency_key: string
+          p_invoice_id: string
+          p_receipt_date: string
+          p_receipt_number: string
+          p_reference: string
         }
         Returns: string
       }

@@ -110,6 +110,22 @@ test("customer invoices can only be posted through the supported atomic RPC", as
     const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
     assert.match(types, contract, `${table} must expose a read-only browser contract`);
   }
+
+  for (const file of await sourceFiles(root)) {
+    const source = await readFile(file, "utf8");
+    const receiptWrite = /from\s*\(\s*["'](?:customer_receipts|entity_customer_receipt_controls)["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
+    assert.doesNotMatch(source, receiptWrite, file);
+  }
+  const receiptForm = await readFile(path.join(root, "components/forms/ReceiptForm.tsx"), "utf8");
+  assert.match(receiptForm, /rpc\(\s*["']post_customer_receipt["']/);
+  for (const argument of ["p_invoice_id", "p_receipt_number", "p_receipt_date", "p_currency", "p_reference", "p_idempotency_key"]) {
+    assert.match(receiptForm, new RegExp(`${argument}:`));
+  }
+  assert.doesNotMatch(receiptForm, /p_amount:/);
+  for (const table of ["customer_receipts", "entity_customer_receipt_controls"]) {
+    const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
+    assert.match(types, contract, `${table} must expose a read-only browser contract`);
+  }
 });
 
 test("receivables reads only tenant-scoped journal-linked posted invoices", async () => {
@@ -121,9 +137,12 @@ test("receivables reads only tenant-scoped journal-linked posted invoices", asyn
   assert.doesNotMatch(hook, /differenceInDays|totalAR|overdueAR|amount_paid/);
   assert.match(hook, /queryKey:\s*\["posted-credit-note-history",\s*user\?\.id,\s*orgId\]/);
   assert.match(hook, /from\("customer_credit_notes"\)[\s\S]{0,300}?\.eq\("org_id",\s*orgId\)/);
+  assert.match(hook, /queryKey:\s*\["posted-customer-receipt-history",\s*user\?\.id,\s*orgId\]/);
+  assert.match(hook, /from\("customer_receipts"\)[\s\S]{0,300}?\.eq\("org_id",\s*orgId\)/);
 
   const page = await readFile(path.join(root, "pages/Receivables.tsx"), "utf8");
-  assert.match(page, /Settlement status[\s\S]{0,160}Unavailable/);
+  assert.match(page, /Full receipts recorded/);
+  assert.match(page, /not bank-reconciled/i);
   assert.match(page, /Not an outstanding receivable or aging balance/);
   assert.match(page, /Full credit notes/);
   assert.doesNotMatch(page, />Total AR<|>Overdue</);
