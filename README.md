@@ -26,7 +26,8 @@ but must not be treated as authoritative accounting output.
   HARD_CLOSED period enforcement; and zero-tax, same-functional-currency
   customer invoice posting, exact full credit notes, and server-derived manual
   full receipts, plus zero-tax functional-currency supplier-bill posting,
-  and exact full supplier credits through atomic database RPCs.
+  exact full supplier credits, and server-derived manual full supplier payments
+  through atomic database RPCs.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
@@ -34,8 +35,9 @@ but must not be treated as authoritative accounting output.
   tenant-bound role. Self-service registration and team/role administration are
   unavailable pending a controlled onboarding workflow.
 - **Unavailable or unverified:** partial receipts, overpayments, refunds,
-  customer aging/collections, tax and FX invoice posting, supplier payments,
-  partial supplier credits/refunds, approval, matching, tax and FX posting,
+  customer aging/collections, tax and FX invoice posting, partial supplier
+  credits/payments, refunds, approval, matching, bank execution/reconciliation,
+  tax and FX posting,
   bank matching/reconciliation, inventory and production posting, payroll
   posting, consolidation, and authoritative financial reporting.
 

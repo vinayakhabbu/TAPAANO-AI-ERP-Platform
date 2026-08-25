@@ -222,7 +222,7 @@ test("legacy AP/payment tables are read-only and cannot produce accounting assur
 
   const page = await readFile(path.join(root, "pages/Payables.tsx"), "utf8");
   assert.match(page, /Supplier-bill posting boundary/);
-  assert.match(page, /Payment execution remains unavailable/);
+  assert.match(page, /Bank execution[\s\S]{0,180}remain unavailable/);
   assert.doesNotMatch(page, /Total AP|Due This Week|3-Way Matched|Process Payment/);
 
   const billForm = await readFile(path.join(root, "components/forms/BillForm.tsx"), "utf8");
@@ -261,6 +261,26 @@ test("legacy AP/payment tables are read-only and cannot produce accounting assur
   assert.match(hook, /from\("supplier_bill_credit_notes"\)[\s\S]{0,320}?\.eq\("org_id",\s*orgId\)/);
   assert.match(page, /Full supplier credit posted/);
   for (const table of ["supplier_bill_credit_notes", "supplier_bill_credit_note_lines"]) {
+    const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
+    assert.match(types, contract, `${table} must expose a read-only browser contract`);
+  }
+
+  for (const file of await sourceFiles(root)) {
+    const source = await readFile(file, "utf8");
+    const supplierPaymentWrite = /from\s*\(\s*["'](?:supplier_payments|entity_supplier_payment_controls)["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
+    assert.doesNotMatch(source, supplierPaymentWrite, file);
+  }
+  const paymentForm = await readFile(path.join(root, "components/forms/SupplierPaymentForm.tsx"), "utf8");
+  assert.match(paymentForm, /rpc\(\s*["']post_supplier_payment["']/);
+  for (const argument of ["p_bill_id", "p_payment_number", "p_payment_date", "p_currency", "p_reference", "p_idempotency_key"]) {
+    assert.match(paymentForm, new RegExp(`${argument}:`));
+  }
+  assert.doesNotMatch(paymentForm, /p_amount:/);
+  assert.match(hook, /queryKey:\s*\["posted-supplier-payment-history",\s*user\?\.id,\s*orgId\]/);
+  assert.match(hook, /from\("supplier_payments"\)[\s\S]{0,320}?\.eq\("org_id",\s*orgId\)/);
+  assert.match(page, /Full supplier payment recorded/);
+  assert.match(page, /not bank-reconciled/i);
+  for (const table of ["supplier_payments", "entity_supplier_payment_controls"]) {
     const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
     assert.match(types, contract, `${table} must expose a read-only browser contract`);
   }

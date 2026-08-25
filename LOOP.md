@@ -20,8 +20,9 @@ change, Edge deployment, or application deployment has been performed.
   posting; credential/autonomy, AP/payment, banking and residual-schema
   containment; immutable accounting masters; tenant-bound identity/RBAC; exact
   full credits; server-derived manual full customer receipts; and atomic direct
-  supplier-bill posting with exact full supplier credits.
-- Next dependency: controlled full supplier payment and the remaining
+  supplier-bill posting with exact full supplier credits and server-derived
+  manual full supplier payments.
+- Next dependency: controlled settlement corrections and the remaining
   source-to-subledger-to-GL vertical slices.
 
 ## Acceptance rules
@@ -386,3 +387,53 @@ uncorrected bill total, posts AP debit and a purpose-specific cash-clearing
 credit atomically in an OPEN period, and presents no bank-reconciliation claim.
 Partial payments, overpayments, refunds, payment runs, matching, tax, and FX
 remain fail closed.
+
+## Recovery checkpoint 15 — atomic full supplier payments
+
+### Supported boundary
+
+One admin/moderator RPC records a manual full payment against a verified,
+uncredited supplier bill. PostgreSQL derives the exact immutable bill total;
+the browser cannot submit an amount. In one transaction the workflow creates an
+immutable payment, canonical accounting event, OPEN-period link, and balanced
+journal that debits the bill AP control account and credits a purpose-specific
+cash-clearing asset.
+
+The original bill remains unchanged; payment status is derived from the
+immutable payment graph rather than client-written bill status or `amount_paid`.
+A full supplier payment and a full supplier credit are mutually exclusive under
+the bill lock. This manual accounting record is not evidence of bank execution,
+matching, or reconciliation.
+
+Partial payments, overpayments, refunds, payment runs, payment reversal,
+approval, matching, tax, and FX remain unavailable.
+
+### Verification
+
+- Supplier bill/credit/payment database scenarios: **18/18**, including hostile
+  replay, server-derived amount, exact payment/event/period/journal
+  reconciliation, retry after close/account retirement, purpose-specific cash
+  control, actor authorization, credit/payment exclusion, unsupported input
+  rollback, tenant non-enumeration, owner immutability, and reversal rejection.
+- Aggregate recovery regressions: **91/91**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the known **86 legacy errors and 8 warnings**
+  outside this slice.
+- Production build still fails after three transformed modules in the native
+  Rollup/stacker runtime before application code is transformed.
+
+### Residual deployment evidence
+
+- All thirteen recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Real concurrent credit/payment requests, period-close contention, managed
+  constraint-trigger timing, RLS/grants, PostgREST schema refresh, and Realtime
+  publication require staging proof.
+- No migration, function deployment, merge, or production action has occurred.
+
+### Next dependency
+
+Build controlled correction workflows for manual customer receipts and supplier
+payments so mistakes can post an immutable exact-offset journal in an OPEN
+period without mutating the original record or claiming a bank refund. Partial
+corrections, bank actions, tax, and FX remain fail closed.

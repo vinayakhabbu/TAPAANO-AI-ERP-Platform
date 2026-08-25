@@ -114,6 +114,22 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      entity_supplier_payment_controls: {
+        Row: {
+          ap_account_id: string
+          cash_account_id: string
+          configured_at: string
+          configured_by: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          org_id: string
+          supplier_bill_account_control_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       accounts: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -1188,6 +1204,30 @@ export type Database = {
           original_bill_line_id: string
           quantity: number
           unit_price: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      supplier_payments: {
+        Row: {
+          account_control_id: string
+          accounting_event_id: string
+          amount: number
+          bill_id: string
+          currency: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          journal_entry_id: string
+          org_id: string
+          payload_hash: string
+          payment_date: string
+          payment_number: string
+          payment_reference: string
+          posted_at: string
+          posted_by: string
+          vendor_id: string
         }
         Insert: never
         Update: never
@@ -8272,6 +8312,14 @@ export type Database = {
         }
         Returns: string
       }
+      configure_entity_supplier_payment_accounts: {
+        Args: {
+          p_cash_account_id: string
+          p_entity_id: string
+          p_idempotency_key: string
+        }
+        Returns: string
+      }
       configure_entity_customer_receipt_accounts: {
         Args: {
           p_cash_account_id: string
@@ -8438,6 +8486,17 @@ export type Database = {
           p_credit_note_number: string
           p_idempotency_key: string
           p_reason: string
+        }
+        Returns: string
+      }
+      post_supplier_payment: {
+        Args: {
+          p_bill_id: string
+          p_currency: string
+          p_idempotency_key: string
+          p_payment_date: string
+          p_payment_number: string
+          p_reference: string
         }
         Returns: string
       }

@@ -2,18 +2,20 @@ import { AlertTriangle, FileCheck2, FileWarning, Landmark, ShieldCheck } from "l
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BillForm } from "@/components/forms/BillForm";
 import { SupplierBillCreditForm } from "@/components/forms/SupplierBillCreditForm";
+import { SupplierPaymentForm } from "@/components/forms/SupplierPaymentForm";
 import { PaymentRunForm } from "@/components/forms/PaymentRunForm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useBills, usePayablesSummary, usePaymentRuns, usePostedSupplierBills, usePostedSupplierCredits } from "@/hooks/usePayables";
+import { useBills, usePayablesSummary, usePaymentRuns, usePostedSupplierBills, usePostedSupplierCredits, usePostedSupplierPayments } from "@/hooks/usePayables";
 
 const Payables = () => {
   const { data: bills = [], isLoading: billsLoading } = useBills();
   const { data: postedBills = [], isLoading: postedBillsLoading } = usePostedSupplierBills();
   const { data: postedCredits = [] } = usePostedSupplierCredits();
+  const { data: postedPayments = [] } = usePostedSupplierPayments();
   const { data: paymentRuns = [], isLoading: runsLoading } = usePaymentRuns();
   const summary = usePayablesSummary();
 
@@ -24,17 +26,19 @@ const Payables = () => {
         <AlertTitle>Supplier-bill posting boundary</AlertTitle>
         <AlertDescription>
           Direct, zero-tax bills in the entity&apos;s functional currency can post atomically to
-          a configured expense and AP control account. Full exact supplier credits are supported.
-          Payment execution remains unavailable, as do approval, matching, PO/receipt conversion,
-          tax, FX, partial credits, refunds, aging, and settlement.
+          a configured expense and AP control account. Full exact supplier credits and manual full
+          supplier payments are supported. Payments use cash clearing and are not bank-reconciled.
+          Bank execution, approval, matching, PO/receipt conversion, tax, FX, partial credits or
+          payments, refunds, aging, and automated settlement remain unavailable.
           Legacy rows remain frozen metadata and are not included in verified posted history.
         </AlertDescription>
       </Alert>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
           ["Verified posted bills", summary.postedBillCount],
           ["Full supplier credits", summary.postedCreditCount],
+          ["Manual full payments", summary.postedPaymentCount],
           ["Legacy bill headers", summary.billHeaderCount],
           ["Legacy payment-run headers", summary.paymentRunHistoryCount],
           ["Tenant vendor records", summary.vendorCount],
@@ -78,8 +82,13 @@ const Payables = () => {
                     <TableCell>
                       {postedCredits.find((credit) => credit.originalBillId === bill.id) ? (
                         <Badge variant="secondary">Full supplier credit posted</Badge>
+                      ) : postedPayments.find((payment) => payment.billId === bill.id) ? (
+                        <Badge variant="secondary">Full supplier payment recorded</Badge>
                       ) : (
-                        <SupplierBillCreditForm billId={bill.id} billNumber={bill.billNumber} billIssueDate={bill.issueDate} />
+                        <div className="flex flex-wrap gap-2">
+                          <SupplierPaymentForm billId={bill.id} billNumber={bill.billNumber} billIssueDate={bill.issueDate} currency={bill.currency} total={bill.total} />
+                          <SupplierBillCreditForm billId={bill.id} billNumber={bill.billNumber} billIssueDate={bill.issueDate} />
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
