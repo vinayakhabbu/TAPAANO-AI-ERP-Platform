@@ -8,6 +8,7 @@ const containmentMigrationUrl = new URL("../supabase/migrations/20260825040000_r
 const supplierBillMigrationUrl = new URL("../supabase/migrations/20260825110000_recovery_supplier_bill.sql", import.meta.url);
 const supplierCreditMigrationUrl = new URL("../supabase/migrations/20260825120000_recovery_supplier_bill_credit.sql", import.meta.url);
 const supplierPaymentMigrationUrl = new URL("../supabase/migrations/20260825130000_recovery_supplier_payment.sql", import.meta.url);
+const supplierPaymentCorrectionMigrationUrl = new URL("../supabase/migrations/20260825150000_recovery_supplier_payment_correction.sql", import.meta.url);
 
 const ids = {
   orgA: "00000000-0000-4000-8000-000000000001", orgB: "00000000-0000-4000-8000-000000000002",
@@ -79,7 +80,12 @@ const fixture = `
     VALUES ('${ids.legacyBillA}','${ids.orgA}','${ids.entityA}','${ids.vendorA}','LEGACY-BILL','2026-08-01','2026-08-31',50,0,50,0,'draft','USD',1,50);
 `;
 
-async function createDb({ supplierBill = true, supplierCredit = false, supplierPayment = false } = {}) {
+async function createDb({
+  supplierBill = true,
+  supplierCredit = false,
+  supplierPayment = false,
+  supplierPaymentCorrection = false,
+} = {}) {
   const db = new PGlite();
   await db.exec(fixture);
   await db.exec(await readFile(journalMigrationUrl,"utf8"));
@@ -87,17 +93,28 @@ async function createDb({ supplierBill = true, supplierCredit = false, supplierP
   const supplierBillMigration = await readFile(supplierBillMigrationUrl,"utf8");
   if (supplierBill) await db.exec(supplierBillMigration);
   let supplierCreditMigration = null;
-  if (supplierCredit || supplierPayment) {
+  if (supplierCredit || supplierPayment || supplierPaymentCorrection) {
     supplierCreditMigration = await readFile(supplierCreditMigrationUrl,"utf8");
     await db.exec(supplierCreditMigration);
   }
   let supplierPaymentMigration = null;
-  if (supplierPayment) {
+  if (supplierPayment || supplierPaymentCorrection) {
     supplierPaymentMigration = await readFile(supplierPaymentMigrationUrl,"utf8");
     await db.exec(supplierPaymentMigration);
   }
+  let supplierPaymentCorrectionMigration = null;
+  if (supplierPaymentCorrection) {
+    supplierPaymentCorrectionMigration = await readFile(supplierPaymentCorrectionMigrationUrl,"utf8");
+    await db.exec(supplierPaymentCorrectionMigration);
+  }
   await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`);
-  return { db, supplierBillMigration, supplierCreditMigration, supplierPaymentMigration };
+  return {
+    db,
+    supplierBillMigration,
+    supplierCreditMigration,
+    supplierPaymentMigration,
+    supplierPaymentCorrectionMigration,
+  };
 }
 
 const billLines = JSON.stringify([
@@ -335,5 +352,195 @@ test("supplier-payment graph is tenant-hidden, owner-immutable, and not generall
   const foreignBill=await postBill(db,"BILL-PAY-ORG-B","bill:pay-org-b",{entityId:ids.entityB,vendorId:ids.vendorB});
   await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`); const missing="ffffffff-ffff-4fff-8fff-ffffffffffff";
   for(const target of [foreignBill,ids.legacyBillA,missing]) await assert.rejects(postSupplierPayment(db,target,"PAY-HIDDEN",`supplier-payment:hidden:${target}`),/posted supplier bill not found or unavailable/);
+  await db.close();
+});
+
+async function postSupplierPaymentCorrection(db,paymentId,number,key,overrides={}) {
+  const correctionDate=overrides.correctionDate ?? "2026-08-28";
+  const reason=overrides.reason ?? `Correct mistaken supplier payment ${number}`;
+  const result=await db.query(`SELECT public.post_supplier_payment_correction(
+    '${paymentId}','${number}','${correctionDate}','${reason}','${key}'
+  ) AS id`);
+  return result.rows[0].id;
+}
+
+test("supplier-payment-correction migration replays and removes hostile grants, policies, and overloads",async()=>{
+  const {db,supplierPaymentCorrectionMigration}=await createDb({supplierPaymentCorrection:true});
+  await db.exec(`GRANT INSERT,UPDATE,DELETE ON public.supplier_payment_corrections TO authenticated,service_role;
+    CREATE POLICY hostile_supplier_payment_correction_all ON public.supplier_payment_corrections
+      FOR ALL TO authenticated USING(true) WITH CHECK(true);
+    CREATE FUNCTION public.post_supplier_payment_correction(uuid,text) RETURNS uuid
+      LANGUAGE sql SECURITY DEFINER AS 'SELECT $1';
+    GRANT EXECUTE ON FUNCTION public.post_supplier_payment_correction(uuid,text) TO authenticated;`);
+  await db.exec(supplierPaymentCorrectionMigration);
+  const grants=await db.query(`SELECT
+    has_table_privilege('authenticated','public.supplier_payment_corrections','SELECT') AS auth_read,
+    has_table_privilege('authenticated','public.supplier_payment_corrections','UPDATE') AS auth_update,
+    has_table_privilege('service_role','public.supplier_payment_corrections','INSERT') AS service_insert`);
+  assert.deepEqual(grants.rows[0],{auth_read:true,auth_update:false,service_insert:false});
+  const policies=await db.query(`SELECT count(*)::int AS count FROM pg_policies
+    WHERE schemaname='public' AND tablename='supplier_payment_corrections'`);
+  assert.equal(policies.rows[0].count,1);
+  const overloads=await db.query(`SELECT count(*)::int AS count FROM pg_proc procedure_info
+    JOIN pg_namespace namespace ON namespace.oid=procedure_info.pronamespace
+    WHERE namespace.nspname='public' AND procedure_info.proname='post_supplier_payment_correction'
+      AND (procedure_info.prokind<>'f'
+        OR oidvectortypes(procedure_info.proargtypes)<>'uuid, text, date, text, text')`);
+  assert.equal(overloads.rows[0].count,0);
+  await db.close();
+});
+
+test("supplier payment correction posts an exact immutable offset without mutating bill or payment",async()=>{
+  const {db,supplierPaymentCorrectionMigration}=await createDb({supplierPaymentCorrection:true});
+  await prepare(db); await configureSupplierPayment(db);
+  const billId=await postBill(db,"BILL-PC-CORRECT","bill:payment-correction");
+  const paymentId=await postSupplierPayment(db,billId,"PAY-PC-CORRECT","supplier-payment:correction-source");
+  const correctionId=await postSupplierPaymentCorrection(
+    db,paymentId,"SPC-1001","supplier-payment-correction:1001",
+  );
+  const graph=await db.query(`SELECT correction.amount::text,correction.currency,
+    correction.original_payment_id,event.source_type,event.source_id=correction.id AS event_source_matches,
+    journal.status::text AS journal_status,journal.source_module,
+    journal.reversal_of_id=payment.journal_entry_id AS reverses_payment,
+    payment_journal.reversed_by_id=journal.id AS payment_links_correction,
+    bill.amount_paid::text AS bill_amount_paid,bill.status::text AS bill_status,
+    (SELECT count(*)::int FROM public.journal_lines line
+      WHERE line.journal_entry_id=journal.id) AS line_count,
+    (SELECT bool_and(offset_line.account_id=original_line.account_id
+        AND offset_line.debit=original_line.credit
+        AND offset_line.credit=original_line.debit)
+     FROM public.journal_lines original_line
+     JOIN public.journal_lines offset_line
+       ON offset_line.journal_entry_id=journal.id
+      AND offset_line.line_number=original_line.line_number
+     WHERE original_line.journal_entry_id=payment.journal_entry_id) AS exact_offset
+    FROM public.supplier_payment_corrections correction
+    JOIN public.supplier_payments payment ON payment.id=correction.original_payment_id
+    JOIN public.bills bill ON bill.id=payment.bill_id
+    JOIN public.accounting_events event ON event.id=correction.accounting_event_id
+    JOIN public.journal_entries journal ON journal.id=correction.journal_entry_id
+    JOIN public.journal_entries payment_journal ON payment_journal.id=payment.journal_entry_id
+    WHERE correction.id='${correctionId}'`);
+  assert.deepEqual(graph.rows[0],{
+    amount:"100.00",currency:"USD",original_payment_id:paymentId,
+    source_type:"supplier_payment_correction",event_source_matches:true,
+    journal_status:"posted",source_module:"ap_payment_correction",
+    reverses_payment:true,payment_links_correction:true,
+    bill_amount_paid:"0.00",bill_status:"pending",line_count:2,exact_offset:true,
+  });
+  const signature=await db.query(`SELECT oidvectortypes(proargtypes) AS arguments
+    FROM pg_proc procedure_info JOIN pg_namespace namespace ON namespace.oid=procedure_info.pronamespace
+    WHERE namespace.nspname='public' AND procedure_info.proname='post_supplier_payment_correction'`);
+  assert.deepEqual(signature.rows,[{arguments:"uuid, text, date, text, text"}]);
+  await db.exec(supplierPaymentCorrectionMigration);
+  await db.query(`SELECT public.validate_supplier_payment_graph('${paymentId}')`);
+  await db.query(`SELECT public.validate_supplier_payment_correction_graph('${correctionId}')`);
+  await db.close();
+});
+
+test("supplier payment correction retry remains safe after close and account retirement",async()=>{
+  const {db}=await createDb({supplierPaymentCorrection:true});
+  await prepare(db); await configureSupplierPayment(db);
+  const billId=await postBill(db,"BILL-PC-RETRY","bill:payment-correction-retry");
+  const paymentId=await postSupplierPayment(db,billId,"PAY-PC-RETRY","supplier-payment:correction-retry-source");
+  const first=await postSupplierPaymentCorrection(
+    db,paymentId,"SPC-RETRY","supplier-payment-correction:retry",
+  );
+  const period=await db.query(`SELECT id FROM public.accounting_periods WHERE entity_id='${ids.entityA}'`);
+  await db.exec(`SELECT public.transition_accounting_period('${period.rows[0].id}','HARD_CLOSED','closed after supplier payment correction')`);
+  await db.exec(`UPDATE public.accounts SET is_active=false WHERE id IN ('${ids.apA}','${ids.cashA}')`);
+  assert.equal(first,await postSupplierPaymentCorrection(
+    db,paymentId,"SPC-RETRY","supplier-payment-correction:retry",
+  ));
+  await db.close();
+});
+
+test("supplier payment correction requires an authorized actor, valid chronology, and OPEN period",async()=>{
+  const {db}=await createDb({supplierPaymentCorrection:true});
+  await prepare(db); await configureSupplierPayment(db);
+  const billId=await postBill(db,"BILL-PC-DENY","bill:payment-correction-deny");
+  const paymentId=await postSupplierPayment(db,billId,"PAY-PC-DENY","supplier-payment:correction-deny-source");
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.userA}',false)`);
+  await assert.rejects(
+    postSupplierPaymentCorrection(db,paymentId,"SPC-USER","supplier-payment-correction:user"),
+    /admin|moderator|authorized/i,
+  );
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`);
+  await assert.rejects(
+    postSupplierPaymentCorrection(db,paymentId,"SPC-EARLY","supplier-payment-correction:early",{correctionDate:"2026-08-26"}),
+    /precede|chronology|date/i,
+  );
+  await assert.rejects(
+    postSupplierPaymentCorrection(db,paymentId,"SPC-NOPERIOD","supplier-payment-correction:no-period",{correctionDate:"2026-09-25"}),
+    /OPEN accounting period/i,
+  );
+  const residue=await db.query(`SELECT count(*)::int AS count FROM public.supplier_payment_corrections`);
+  assert.equal(residue.rows[0].count,0);
+  await db.close();
+});
+
+test("one supplier payment permits one correction and the complete correction graph is owner-immutable",async()=>{
+  const {db}=await createDb({supplierPaymentCorrection:true});
+  await prepare(db); await configureSupplierPayment(db);
+  const billId=await postBill(db,"BILL-PC-GUARD","bill:payment-correction-guard");
+  const paymentId=await postSupplierPayment(db,billId,"PAY-PC-GUARD","supplier-payment:correction-guard-source");
+  const correctionId=await postSupplierPaymentCorrection(
+    db,paymentId,"SPC-GUARD","supplier-payment-correction:guard",
+  );
+  const links=await db.query(`SELECT accounting_event_id,journal_entry_id
+    FROM public.supplier_payment_corrections WHERE id='${correctionId}'`);
+  for(const sql of [
+    `UPDATE public.supplier_payment_corrections SET amount=1 WHERE id='${correctionId}'`,
+    `DELETE FROM public.supplier_payment_corrections WHERE id='${correctionId}'`,
+    `UPDATE public.accounting_events SET source_id=NULL WHERE id='${links.rows[0].accounting_event_id}'`,
+    `UPDATE public.journal_entries SET accounting_event_id=NULL WHERE id='${links.rows[0].journal_entry_id}'`,
+    `TRUNCATE public.supplier_payment_corrections CASCADE`,
+  ]) await assert.rejects(db.exec(sql),/supplier payment correction|immutable|trusted/i);
+  await assert.rejects(
+    postSupplierPaymentCorrection(db,paymentId,"SPC-TWO","supplier-payment-correction:two"),
+    /already has a correction|already corrected/i,
+  );
+  await assert.rejects(
+    postSupplierPaymentCorrection(db,paymentId,"SPC-CHANGED","supplier-payment-correction:guard"),
+    /idempotency key conflicts/i,
+  );
+  await assert.rejects(
+    db.query(`SELECT public.reverse_posted_journal('${links.rows[0].journal_entry_id}','2026-08-29','Bypass','reverse:supplier-payment-correction')`),
+    /supplier payment correction|reversal is unavailable|only an original posted journal/i,
+  );
+  await db.exec(`SELECT set_config('tapaano.accounting_write','trusted',false)`);
+  await assert.rejects(
+    db.exec(`INSERT INTO public.journal_entries(
+      org_id,entity_id,entry_number,entry_date,status,created_by,reversal_of_id
+    ) VALUES(
+      '${ids.orgA}','${ids.entityA}','OWNER-SPC-BYPASS','2026-08-29','posted',
+      '${ids.adminA}','${links.rows[0].journal_entry_id}'
+    )`),
+    /supplier payment correction reversal is unavailable/i,
+  );
+  await assert.rejects(
+    postBillCredit(db,billId,"VC-AFTER-PC","vendor-credit:after-payment-correction"),
+    /payment|resolved/i,
+  );
+  await db.close();
+});
+
+test("supplier payment correction hides foreign and nonexistent targets identically",async()=>{
+  const {db}=await createDb({supplierPaymentCorrection:true});
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminB}',false)`);
+  await prepare(db,ids.entityB,ids.apB,ids.expenseB,"org-b-payment-correction-ap");
+  await configureSupplierPayment(db,ids.entityB,ids.cashB,"org-b-payment-correction-cash");
+  const foreignBill=await postBill(db,"BILL-PC-ORG-B","bill:payment-correction-org-b",{
+    entityId:ids.entityB,vendorId:ids.vendorB,
+  });
+  const foreignPayment=await postSupplierPayment(
+    db,foreignBill,"PAY-PC-ORG-B","supplier-payment:correction-org-b",
+  );
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`);
+  const missing="ffffffff-ffff-4fff-8fff-ffffffffffff";
+  for(const target of [foreignPayment,missing]) await assert.rejects(
+    postSupplierPaymentCorrection(db,target,"SPC-HIDDEN",`supplier-payment-correction:hidden:${target}`),
+    /posted supplier payment not found or unavailable/,
+  );
   await db.close();
 });

@@ -41,6 +41,17 @@ export interface PostedCustomerReceiptHistory {
   journalEntryId: string;
 }
 
+export interface PostedCustomerReceiptCorrectionHistory {
+  id: string;
+  originalReceiptId: string;
+  correctionNumber: string;
+  correctionDate: string;
+  amount: number;
+  currency: string;
+  reason: string;
+  journalEntryId: string;
+}
+
 export const useReceivables = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
@@ -142,25 +153,55 @@ export const useReceivables = () => {
     enabled: ready,
   });
 
+  const postedCustomerReceiptCorrectionsQuery = useQuery({
+    queryKey: ["posted-customer-receipt-correction-history", user?.id, orgId],
+    queryFn: async () => {
+      if (!user?.id || !orgId) return [];
+      const { data, error } = await supabase
+        .from("customer_receipt_corrections")
+        .select("id, original_receipt_id, correction_number, correction_date, amount, currency, reason, journal_entry_id")
+        .eq("org_id", orgId)
+        .not("journal_entry_id", "is", null)
+        .order("correction_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((correction): PostedCustomerReceiptCorrectionHistory => ({
+        id: correction.id,
+        originalReceiptId: correction.original_receipt_id,
+        correctionNumber: correction.correction_number,
+        correctionDate: correction.correction_date,
+        amount: correction.amount,
+        currency: correction.currency,
+        reason: correction.reason,
+        journalEntryId: correction.journal_entry_id,
+      }));
+    },
+    enabled: ready,
+  });
+
   const invoices = postedInvoicesQuery.data ?? [];
   const creditNotes = postedCreditNotesQuery.data ?? [];
   const receipts = postedCustomerReceiptsQuery.data ?? [];
+  const receiptCorrections = postedCustomerReceiptCorrectionsQuery.data ?? [];
 
   return {
     customers: customersQuery.data ?? [],
     invoices,
     creditNotes,
     receipts,
+    receiptCorrections,
     stats: {
       customerCount: customersQuery.data?.length ?? 0,
       invoiceCount: invoices.length,
       postedInvoiceTotal: invoices.reduce((sum, invoice) => sum + invoice.total, 0),
       fullCreditCount: creditNotes.length,
       fullReceiptCount: receipts.length,
+      receiptCorrectionCount: receiptCorrections.length,
     },
     isLoading: customersQuery.isLoading || postedInvoicesQuery.isLoading
-      || postedCreditNotesQuery.isLoading || postedCustomerReceiptsQuery.isLoading,
+      || postedCreditNotesQuery.isLoading || postedCustomerReceiptsQuery.isLoading
+      || postedCustomerReceiptCorrectionsQuery.isLoading,
     error: customersQuery.error || postedInvoicesQuery.error
-      || postedCreditNotesQuery.error || postedCustomerReceiptsQuery.error,
+      || postedCreditNotesQuery.error || postedCustomerReceiptsQuery.error
+      || postedCustomerReceiptCorrectionsQuery.error,
   };
 };

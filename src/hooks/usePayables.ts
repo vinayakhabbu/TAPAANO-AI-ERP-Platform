@@ -43,6 +43,17 @@ export interface PostedSupplierPayment {
   journalEntryId: string;
 }
 
+export interface PostedSupplierPaymentCorrection {
+  id: string;
+  originalPaymentId: string;
+  correctionNumber: string;
+  correctionDate: string;
+  amount: number;
+  currency: string;
+  reason: string;
+  journalEntryId: string;
+}
+
 export const useVendors = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
@@ -167,6 +178,35 @@ export const usePostedSupplierPayments = () => {
   });
 };
 
+export const usePostedSupplierPaymentCorrections = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
+  return useQuery({
+    queryKey: ["posted-supplier-payment-correction-history", user?.id, orgId],
+    queryFn: async () => {
+      if (!user?.id || !orgId) return [];
+      const { data, error } = await supabase
+        .from("supplier_payment_corrections")
+        .select("id, original_payment_id, correction_number, correction_date, amount, currency, reason, journal_entry_id")
+        .eq("org_id", orgId)
+        .not("journal_entry_id", "is", null)
+        .order("correction_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((correction): PostedSupplierPaymentCorrection => ({
+        id: correction.id,
+        originalPaymentId: correction.original_payment_id,
+        correctionNumber: correction.correction_number,
+        correctionDate: correction.correction_date,
+        amount: correction.amount,
+        currency: correction.currency,
+        reason: correction.reason,
+        journalEntryId: correction.journal_entry_id,
+      }));
+    },
+    enabled: Boolean(user?.id && orgId),
+  });
+};
+
 export const usePaymentRuns = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
@@ -192,6 +232,7 @@ export const usePayablesSummary = () => {
   const postedBills = usePostedSupplierBills();
   const postedCredits = usePostedSupplierCredits();
   const postedPayments = usePostedSupplierPayments();
+  const paymentCorrections = usePostedSupplierPaymentCorrections();
   const paymentRuns = usePaymentRuns();
   return {
     vendorCount: vendors.data?.length ?? 0,
@@ -199,8 +240,10 @@ export const usePayablesSummary = () => {
     postedBillCount: postedBills.data?.length ?? 0,
     postedCreditCount: postedCredits.data?.length ?? 0,
     postedPaymentCount: postedPayments.data?.length ?? 0,
+    paymentCorrectionCount: paymentCorrections.data?.length ?? 0,
     paymentRunHistoryCount: paymentRuns.data?.length ?? 0,
     isLoading: vendors.isLoading || bills.isLoading || postedBills.isLoading
-      || postedCredits.isLoading || postedPayments.isLoading || paymentRuns.isLoading,
+      || postedCredits.isLoading || postedPayments.isLoading
+      || paymentCorrections.isLoading || paymentRuns.isLoading,
   };
 };

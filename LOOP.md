@@ -21,9 +21,11 @@ change, Edge deployment, or application deployment has been performed.
   containment; immutable accounting masters; tenant-bound identity/RBAC; exact
   full credits; server-derived manual full customer receipts; and atomic direct
   supplier-bill posting with exact full supplier credits and server-derived
-  manual full supplier payments.
-- Next dependency: controlled settlement corrections and the remaining
-  source-to-subledger-to-GL vertical slices.
+  manual full supplier payments; and immutable exact-offset corrections for
+  manual customer receipts and supplier payments.
+- Next dependency: controlled one-time replacement receipts/payments after a
+  verified correction, followed by the remaining source-to-subledger-to-GL
+  vertical slices.
 
 ## Acceptance rules
 
@@ -437,3 +439,60 @@ Build controlled correction workflows for manual customer receipts and supplier
 payments so mistakes can post an immutable exact-offset journal in an OPEN
 period without mutating the original record or claiming a bank refund. Partial
 corrections, bank actions, tax, and FX remain fail closed.
+
+## Recovery checkpoint 16 — atomic receipt and supplier-payment corrections
+
+### Supported boundary
+
+Two admin/moderator RPCs correct one verified manual customer receipt or one
+verified manual supplier payment. PostgreSQL derives the immutable amount,
+currency, tenant/entity lineage, accounts, and journal lines from the original
+record; the browser submits only the source ID, correction number/date, reason,
+and idempotency key.
+
+Each workflow creates a separate immutable correction record and canonical
+accounting event, selects an OPEN period, posts an exact line-by-line offset,
+and links the new journal as the original journal's sole reversal. The original
+receipt/payment and its invoice/bill remain unchanged. Safe retry resolves the
+existing correction before consulting current period or account state.
+
+These are accounting corrections, not evidence of a refund, recall, bank
+execution, match, or reconciliation. One original permits one correction.
+Replacement or partial receipts/payments, partial corrections, bank actions,
+tax, and FX remain unavailable.
+
+### Verification
+
+- New correction database scenarios: **12/12**, covering hostile replay and
+  overload removal, exact source/event/period/journal reconciliation, immutable
+  source preservation, safe retry after close/account retirement, actor and
+  chronology checks, OPEN-period rollback, one-correction enforcement,
+  cross-tenant target non-enumeration, owner immutability, and purpose-specific
+  rejection of a second reversal even with the generic write guard opened.
+- Focused invoice/bill accounting scenarios: **50/50**.
+- Browser containment scenarios: **15/15**, including identifier-only RPC
+  forms, tenant-scoped correction history, read-only types, no direct table
+  mutation path, and fail-closed history rendering.
+- Aggregate recovery regressions: **103/103**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the known **86 legacy errors and 8 warnings**
+  outside this slice.
+- Production build still fails after three transformed modules in the native
+  Rollup/stacker runtime before application code is transformed.
+
+### Residual deployment evidence
+
+- All fifteen recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Real concurrent correction/retry, period-close contention, managed
+  constraint-trigger timing, RLS/grants, PostgREST schema refresh, and Realtime
+  publication require staging proof.
+- No migration, function deployment, merge, or production action has occurred.
+
+### Next dependency
+
+Build a controlled one-time replacement customer receipt and supplier payment
+only after the corresponding verified correction. PostgreSQL must derive the
+same immutable amount, currency, tenant lineage, and account controls while
+serializing the replacement against the correction. Generic repeat/partial
+settlement, refunds, bank actions, tax, and FX remain fail closed.

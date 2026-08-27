@@ -126,6 +126,20 @@ test("customer invoices can only be posted through the supported atomic RPC", as
     const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
     assert.match(types, contract, `${table} must expose a read-only browser contract`);
   }
+
+  for (const file of await sourceFiles(root)) {
+    const source = await readFile(file, "utf8");
+    const correctionWrite = /from\s*\(\s*["']customer_receipt_corrections["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
+    assert.doesNotMatch(source, correctionWrite, file);
+  }
+  const receiptCorrectionForm = await readFile(path.join(root, "components/forms/ReceiptCorrectionForm.tsx"), "utf8");
+  assert.match(receiptCorrectionForm, /rpc\(\s*["']post_customer_receipt_correction["']/);
+  for (const argument of ["p_receipt_id", "p_correction_number", "p_correction_date", "p_reason", "p_idempotency_key"]) {
+    assert.match(receiptCorrectionForm, new RegExp(`${argument}:`));
+  }
+  assert.doesNotMatch(receiptCorrectionForm, /p_(?:amount|currency|account_id):/);
+  const receiptCorrectionContract = /\n      customer_receipt_corrections: \{[\s\S]*?\n        Insert: never\n        Update: never/;
+  assert.match(types, receiptCorrectionContract);
 });
 
 test("receivables reads only tenant-scoped journal-linked posted invoices", async () => {
@@ -139,10 +153,14 @@ test("receivables reads only tenant-scoped journal-linked posted invoices", asyn
   assert.match(hook, /from\("customer_credit_notes"\)[\s\S]{0,300}?\.eq\("org_id",\s*orgId\)/);
   assert.match(hook, /queryKey:\s*\["posted-customer-receipt-history",\s*user\?\.id,\s*orgId\]/);
   assert.match(hook, /from\("customer_receipts"\)[\s\S]{0,300}?\.eq\("org_id",\s*orgId\)/);
+  assert.match(hook, /queryKey:\s*\["posted-customer-receipt-correction-history",\s*user\?\.id,\s*orgId\]/);
+  assert.match(hook, /from\("customer_receipt_corrections"\)[\s\S]{0,340}?\.eq\("org_id",\s*orgId\)/);
 
   const page = await readFile(path.join(root, "pages/Receivables.tsx"), "utf8");
   assert.match(page, /Full receipts recorded/);
   assert.match(page, /not bank-reconciled/i);
+  assert.match(page, /Receipt correction posted/);
+  assert.match(page, /not a refund/i);
   assert.match(page, /Not an outstanding receivable or aging balance/);
   assert.match(page, /Full credit notes/);
   assert.doesNotMatch(page, />Total AR<|>Overdue</);
@@ -284,6 +302,24 @@ test("legacy AP/payment tables are read-only and cannot produce accounting assur
     const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
     assert.match(types, contract, `${table} must expose a read-only browser contract`);
   }
+
+  for (const file of await sourceFiles(root)) {
+    const source = await readFile(file, "utf8");
+    const correctionWrite = /from\s*\(\s*["']supplier_payment_corrections["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
+    assert.doesNotMatch(source, correctionWrite, file);
+  }
+  const paymentCorrectionForm = await readFile(path.join(root, "components/forms/SupplierPaymentCorrectionForm.tsx"), "utf8");
+  assert.match(paymentCorrectionForm, /rpc\(\s*["']post_supplier_payment_correction["']/);
+  for (const argument of ["p_payment_id", "p_correction_number", "p_correction_date", "p_reason", "p_idempotency_key"]) {
+    assert.match(paymentCorrectionForm, new RegExp(`${argument}:`));
+  }
+  assert.doesNotMatch(paymentCorrectionForm, /p_(?:amount|currency|account_id):/);
+  assert.match(hook, /queryKey:\s*\["posted-supplier-payment-correction-history",\s*user\?\.id,\s*orgId\]/);
+  assert.match(hook, /from\("supplier_payment_corrections"\)[\s\S]{0,340}?\.eq\("org_id",\s*orgId\)/);
+  assert.match(page, /Supplier payment correction posted/);
+  assert.match(page, /not a refund/i);
+  const paymentCorrectionContract = /\n      supplier_payment_corrections: \{[\s\S]*?\n        Insert: never\n        Update: never/;
+  assert.match(types, paymentCorrectionContract);
 });
 
 test("banking exposes only tenant-scoped non-secret metadata and no execution path", async () => {

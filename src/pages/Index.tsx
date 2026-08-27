@@ -53,6 +53,9 @@ const Index = () => {
           <li>Entity accounting-period enforcement with terminal hard close.</li>
           <li>Atomic invoice, line, accounting-event, period, and journal creation for the supported invoice boundary.</li>
           <li>Atomic full credit notes with copied lines and exact-offset reversal journals.</li>
+          <li>Server-derived manual full customer receipts and supplier payments through cash clearing.</li>
+          <li>Immutable exact-offset receipt and supplier-payment corrections; no bank-action claim.</li>
+          <li>Atomic supplier bills and full supplier credits within the verified zero-tax functional-currency boundary.</li>
           <li>Fail-closed privileged AI, search, notification, AP/payment, and banking execution paths.</li>
         </ul>
       </div>
