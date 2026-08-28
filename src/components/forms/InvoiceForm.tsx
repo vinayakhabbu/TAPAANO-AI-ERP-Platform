@@ -70,6 +70,7 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
         .from("customers")
         .select("id, name")
         .eq("org_id", profile.org_id)
+        .eq("is_active", true)
         .order("name");
       if (error) throw error;
       return data ?? [];

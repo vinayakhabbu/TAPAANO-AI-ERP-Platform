@@ -27,8 +27,9 @@ deployment, or application deployment has been performed.
   after each verified correction; and audited tenant-bound administration of
   existing non-admin roles; and short-lived, token-bound onboarding of new
   non-admin members through one JWT-protected delivery boundary; and audited
-  create/rename/one-way-retire maintenance for chart-of-account rows.
-- Next dependency: controlled entity/customer/vendor maintenance.
+  create/rename/one-way-retire maintenance for chart-of-account rows; and
+  audited create/update/one-way-retire customer and vendor lifecycle controls.
+- Next dependency: controlled entity creation and rename.
 
 ## Acceptance rules
 
@@ -727,3 +728,53 @@ new invoice and bill posting reject retired parties while correction/retry
 paths preserve historical access. Then add entity creation/rename only;
 currency change and entity retirement remain unavailable until every posting
 routine shares a proven lifecycle check.
+
+## Recovery checkpoint 21 — controlled customer and vendor maintenance
+
+### Supported boundary
+
+One tenant admin can create a normalized active customer or vendor, update an
+active party's name/contact/payment metadata, or retire the party one way.
+Every operation is idempotent and writes append-only actor, reason, and
+persistent before/after evidence. Party ID, tenant, creation evidence, and
+historical references never change; physical table and audit writes remain
+unavailable to the browser, API roles, service role, and direct owner paths.
+
+New posted invoices and bills require an active same-tenant customer or vendor
+under a key-share row lock. Retirement takes an update lock, so concurrent
+posting is serialized: the post commits before retirement or fails after it.
+Previously posted documents and their safe idempotent retries remain preserved.
+
+### Verification
+
+- New party-maintenance database scenarios: **6/6**, including replay, hostile
+  grants/policies/overloads, exact create/update/retire and retry, tenant-admin
+  authorization, target non-enumeration, normalized bounded fields, persistent
+  before/after evidence, one-way retirement, historical preservation, active
+  party posting guards, and direct owner/audit mutation rejection.
+- Browser containment scenarios: **15/15**, including read-only physical party
+  types, tenant-scoped reads, exact RPC-only maintenance, hidden audit rows, and
+  explicit retirement behavior.
+- Aggregate recovery regressions: **144/144**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the unchanged legacy baseline of **86 errors
+  and 8 warnings**, outside this slice.
+- The production build remains blocked after three transformed modules by the
+  existing native Rollup/`stacker` assertion failure.
+
+### Residual deployment evidence
+
+- All twenty-one recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Managed RLS/grants, PostgREST routine/type refresh, concurrent posting versus
+  retirement, large legacy-master preflight, and migration replay require
+  staging proof.
+- No migration, Edge function, application deployment, or production action
+  has occurred.
+
+### Next dependency
+
+Add tenant-admin entity creation and rename with append-only snapshots and
+posting-safe tenant/currency identity. Entity currency change and retirement
+remain unavailable until every accounting routine shares a proven lifecycle
+contract.

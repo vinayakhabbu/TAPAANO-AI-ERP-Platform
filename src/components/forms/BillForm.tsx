@@ -48,7 +48,7 @@ export function BillForm({ trigger }: { trigger?: React.ReactNode }) {
     queryFn: async () => {
       if (!user?.id || !profile?.org_id) return [];
       const { data, error } = await supabase.from("vendors")
-        .select("id, name").eq("org_id", profile.org_id).order("name");
+        .select("id, name").eq("org_id", profile.org_id).eq("is_active", true).order("name");
       if (error) throw error;
       return data ?? [];
     },

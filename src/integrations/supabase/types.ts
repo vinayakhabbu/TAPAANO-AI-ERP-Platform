@@ -2542,6 +2542,7 @@ export type Database = {
           credit_limit: number | null
           email: string | null
           id: string
+          is_active: boolean
           name: string
           org_id: string
           payment_terms: number | null
@@ -8207,6 +8208,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_active: boolean
           name: string
           org_id: string
           payment_terms: number | null
@@ -8445,6 +8447,31 @@ export type Database = {
         }
         Returns: string
       }
+      create_tenant_customer: {
+        Args: {
+          p_address: string | null
+          p_credit_limit: number | null
+          p_email: string | null
+          p_idempotency_key: string
+          p_name: string
+          p_payment_terms: number
+          p_phone: string | null
+          p_reason: string
+        }
+        Returns: string
+      }
+      create_tenant_vendor: {
+        Args: {
+          p_address: string | null
+          p_email: string | null
+          p_idempotency_key: string
+          p_name: string
+          p_payment_terms: number
+          p_phone: string | null
+          p_reason: string
+        }
+        Returns: string
+      }
       change_tenant_member_role: {
         Args: {
           p_idempotency_key: string
@@ -8595,6 +8622,20 @@ export type Database = {
           reason: string
         }[]
       }
+      list_tenant_party_events: {
+        Args: never
+        Returns: {
+          actor_id: string
+          event_id: string
+          event_type: string
+          new_name: string
+          occurred_at: string
+          old_name: string | null
+          party_id: string
+          party_type: string
+          reason: string
+        }[]
+      }
       post_production_goods_receipt: {
         Args: {
           p_created_by?: string
@@ -8619,6 +8660,41 @@ export type Database = {
           p_account_id: string
           p_idempotency_key: string
           p_reason: string
+        }
+        Returns: string
+      }
+      retire_tenant_customer: {
+        Args: { p_customer_id: string; p_idempotency_key: string; p_reason: string }
+        Returns: string
+      }
+      retire_tenant_vendor: {
+        Args: { p_idempotency_key: string; p_reason: string; p_vendor_id: string }
+        Returns: string
+      }
+      update_tenant_customer: {
+        Args: {
+          p_address: string | null
+          p_credit_limit: number | null
+          p_customer_id: string
+          p_email: string | null
+          p_idempotency_key: string
+          p_name: string
+          p_payment_terms: number
+          p_phone: string | null
+          p_reason: string
+        }
+        Returns: string
+      }
+      update_tenant_vendor: {
+        Args: {
+          p_address: string | null
+          p_email: string | null
+          p_idempotency_key: string
+          p_name: string
+          p_payment_terms: number
+          p_phone: string | null
+          p_reason: string
+          p_vendor_id: string
         }
         Returns: string
       }

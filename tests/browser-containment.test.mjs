@@ -431,13 +431,14 @@ test("unverified modules are unreachable from active routes and dashboard claims
   assert.doesNotMatch(settings, /TeamSettings|SecuritySettings|SOXControls|NextDayMigration|DecisionDeskTabsSettings/);
   assert.match(settings, /RoleAdministrationSettings/);
   assert.match(settings, /AccountMaintenanceSettings/);
+  assert.match(settings, /PartyMaintenanceSettings/);
 
   const help = await readFile(path.join(root, "pages/Help.tsx"), "utf8");
   assert.match(help, /Agent River,[\s\S]*?are unavailable or unverified/);
   assert.doesNotMatch(help, /Creating invoices|Recording payments|Bank statements can be imported/);
 });
 
-test("accounting masters remain physically read-only and accounts use only controlled RPCs", async () => {
+test("accounting masters remain physically read-only and use only controlled maintenance RPCs", async () => {
   for (const file of await sourceFiles(root)) {
     const source = await readFile(file, "utf8");
     const masterWrite = /from\s*\(\s*["'](?:accounts|entities|customers|vendors)["']\s*\)[\s\S]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
@@ -463,7 +464,25 @@ test("accounting masters remain physically read-only and accounts use only contr
   assert.doesNotMatch(maintenance, /p_org_id|p_actor_id|\.from\("account_master_events"\)/);
   assert.doesNotMatch(types, /account_master_events:/);
 
+  const partyMaintenance = await readFile(path.join(root, "hooks/usePartyMaintenance.ts"), "utf8");
+  for (const routine of [
+    "create_tenant_customer", "update_tenant_customer", "retire_tenant_customer",
+    "create_tenant_vendor", "update_tenant_vendor", "retire_tenant_vendor",
+    "list_tenant_party_events",
+  ]) assert.match(partyMaintenance, new RegExp(`rpc\\(\\"${routine}\\"`));
+  assert.match(partyMaintenance, /\.from\("customers"\)[\s\S]*?\.eq\("org_id", orgId\)/);
+  assert.match(partyMaintenance, /\.from\("vendors"\)[\s\S]*?\.eq\("org_id", orgId\)/);
+  assert.doesNotMatch(partyMaintenance, /p_org_id|p_actor_id|\.from\("party_master_events"\)/);
+  assert.doesNotMatch(types, /party_master_events:/);
+
   const component = await readFile(path.join(root, "components/settings/AccountMaintenanceSettings.tsx"), "utf8");
   assert.match(component, /Account code, type, and parent are immutable after creation/);
   assert.match(component, /Retirement is one-way/);
+  const partyComponent = await readFile(path.join(root, "components/settings/PartyMaintenanceSettings.tsx"), "utf8");
+  assert.match(partyComponent, /Retirement is one-way/);
+  assert.match(partyComponent, /cannot be used for new posted invoices or bills/);
+  for (const relative of ["components/forms/InvoiceForm.tsx", "components/forms/BillForm.tsx"]) {
+    const postingForm = await readFile(path.join(root, relative), "utf8");
+    assert.match(postingForm, /\.eq\("is_active", true\)/, `${relative} must hide retired parties`);
+  }
 });
