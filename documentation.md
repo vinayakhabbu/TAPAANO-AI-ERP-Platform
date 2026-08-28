@@ -59,11 +59,16 @@ The current recovery branch supports only these authoritative workflows:
    boundary. PostgreSQL derives the tenant, display name, and role from the
    immutable invitation and rejects missing, expired, cancelled, wrong-email,
    or wrong-token Auth creation atomically.
+17. Controlled chart-of-accounts maintenance: a tenant admin can create an
+   active account, rename an active account, or retire one account exactly once
+   through idempotent RPCs with append-only before/after evidence. Account code,
+   type, parent, tenant lineage, and historical references remain immutable.
 
 All verified accounting writes occur through controlled PostgreSQL routines.
 The browser has no physical-table write contract for journals, periods,
-invoices, invoice/bill lines, bills, accounting events, accounting masters, or
-identity/role/invitation tables.
+invoices, invoice/bill lines, bills, accounting events, identity/role/invitation
+tables, or account audit rows. Supported account maintenance uses controlled
+routines only.
 
 ## Fail-closed and preservation boundaries
 
@@ -82,7 +87,8 @@ The following are unavailable or read-only preservation metadata:
   bill/payment-run rows remain unverified preservation metadata.
 - Bank connections, imports, matching, reconciliation, positive pay, balances,
   and bank-account credentials.
-- Accounting-master and organization maintenance.
+- Entity, customer, vendor, and organization maintenance. Account maintenance
+  is limited to controlled create, rename, and one-way retirement.
 - Tax, FX/revaluation, inventory, production, payroll, controlling, planning,
   service, forecast, generic Decision Ledger, and unsupported reporting paths.
 
@@ -110,6 +116,19 @@ implemented.
 - Admin-role changes, self-role changes, tenant moves, removal, and open
   self-service signup remain unavailable.
 
+## Accounting-master maintenance
+
+- Tenant admins can list tenant accounts and safe account audit evidence.
+- New accounts require a normalized unique code/name, exact account type, and
+  an optional active same-tenant parent of the same type.
+- Rename changes only the display name. Code, type, parent, tenant, controlling
+  classification, defaults, and creation evidence remain immutable.
+- Retirement is one-way and preserves every historical reference. PostgreSQL
+  rejects retirement when an active child or immutable AR/AP/cash control still
+  depends on the account.
+- Entity, customer, and vendor maintenance remains unavailable pending
+  posting-path lifecycle enforcement.
+
 ## Verification
 
 Run:
@@ -132,8 +151,8 @@ Do not deploy until all of the following are complete:
   database and resolve every preflight failure without inventing data.
 - Verify managed Supabase RLS, grants, Auth triggers, PostgREST schema cache,
   Realtime publication, Edge JWT behavior, and two-session concurrency.
-- Implement audited accounting-master maintenance and the missing accounting
-  vertical slices.
+- Complete audited entity/customer/vendor maintenance and the missing
+  accounting vertical slices.
 - Resolve repository-wide lint failures and obtain a successful production build
   in a supported build environment.
 - Perform finance/security review, backup and rollback rehearsal, and explicit
