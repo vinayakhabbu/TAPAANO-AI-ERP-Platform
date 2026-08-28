@@ -25,21 +25,24 @@ but must not be treated as authoritative accounting output.
   idempotent manual posting; exact-offset reversal; OPEN/SOFT_CLOSED/
   HARD_CLOSED period enforcement; and zero-tax, same-functional-currency
   customer invoice posting, exact full credit notes, and server-derived manual
-  full receipts with one exact-offset receipt correction, plus zero-tax
+  full receipts with one exact-offset receipt correction and one derived
+  replacement after that correction, plus zero-tax
   functional-currency supplier-bill posting, exact full supplier credits, and
   server-derived manual full supplier payments with one exact-offset payment
-  correction through atomic database RPCs. Corrections are accounting records,
-  not evidence of a bank refund or action.
+  correction and one derived post-correction replacement through atomic
+  database RPCs. Corrections and replacements are accounting records, not
+  evidence of a bank refund or action.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
 - **Authorization boundary:** existing profiles have one immutable,
   tenant-bound role. Self-service registration and team/role administration are
   unavailable pending a controlled onboarding workflow.
-- **Unavailable or unverified:** replacement or partial receipts, partial
-  receipt corrections, overpayments, refunds,
+- **Unavailable or unverified:** generic repeat or partial replacement receipts,
+  partial receipts or receipt corrections, overpayments, refunds,
   customer aging/collections, tax and FX invoice posting, partial supplier
-  credits/payments, replacement payments, partial payment corrections, refunds,
+  credits/payments, generic repeat or partial replacement payments, partial
+  payment corrections, refunds,
   approval, matching, bank execution/reconciliation,
   tax and FX posting,
   bank matching/reconciliation, inventory and production posting, payroll

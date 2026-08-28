@@ -30,20 +30,26 @@ The current recovery branch supports only these authoritative workflows:
    receipt amount, currency, accounts, and journal lines into an exact offset in
    an OPEN period. The original receipt and invoice remain unchanged. This is
    not a refund or bank-action record.
-8. One direct supplier-bill workflow: admin/moderator, zero tax, entity
+8. One customer-receipt replacement after that verified correction: the server
+   copies the original receipt amount, currency, lineage, accounts, and journal
+   lines into a new OPEN-period entry. This is not bank receipt evidence.
+9. One direct supplier-bill workflow: admin/moderator, zero tax, entity
    functional currency, exact lines, immutable entity AP/expense controls, and
    atomic bill → event → period → posted-journal creation.
-9. One full supplier-credit workflow: exact copied bill lines, a separate
+10. One full supplier-credit workflow: exact copied bill lines, a separate
    immutable correction document/event, and an exact AP/expense offset in an
    OPEN period while preserving the original bill.
-10. One manual full supplier-payment workflow: the server derives the exact
+11. One manual full supplier-payment workflow: the server derives the exact
    uncredited bill total and atomically posts AP debit and cash-clearing credit
    in an OPEN period. This is not bank-match or reconciliation evidence.
-11. One supplier-payment correction workflow: the server copies the immutable
+12. One supplier-payment correction workflow: the server copies the immutable
    payment amount, currency, accounts, and journal lines into an exact offset in
    an OPEN period. The original payment and bill remain unchanged. This is not
    a refund, recall, or bank-action record.
-12. Existing-user authentication with immutable tenant membership and one
+13. One supplier-payment replacement after that verified correction: the
+   server copies the original payment amount, currency, lineage, accounts, and
+   journal lines into a new OPEN-period entry. This is not bank execution.
+14. Existing-user authentication with immutable tenant membership and one
    tenant-bound role assignment.
 
 All verified accounting writes occur through controlled PostgreSQL routines.
@@ -56,11 +62,13 @@ The following are unavailable or read-only preservation metadata:
 
 - Agent River, embeddings, global/precedent search, anomaly detection,
   autonomous approval, scheduled report delivery, and direct notifications.
-- Replacement or partial receipts, partial receipt corrections, overpayments,
-  refunds, aging, collections, tax and cross-currency invoice posting, and
+- Generic repeat or partial replacement receipts, partial receipts or receipt
+  corrections, overpayments, refunds, aging, collections, tax and
+  cross-currency invoice posting, and
   bank-verified settlement evidence.
-- Partial supplier credits/payments, replacement payments, partial payment
-  corrections, refunds, AP approval/matching, PO/receipt conversion, payment
+- Partial supplier credits/payments, generic repeat or partial replacement
+  payments, partial payment corrections, refunds, AP approval/matching,
+  PO/receipt conversion, payment
   runs, bank execution, and payment matching. Legacy
   bill/payment-run rows remain unverified preservation metadata.
 - Bank connections, imports, matching, reconciliation, positive pay, balances,

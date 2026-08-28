@@ -1232,6 +1232,31 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      supplier_payment_replacements: {
+        Row: {
+          accounting_event_id: string
+          amount: number
+          bill_id: string
+          currency: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          journal_entry_id: string
+          org_id: string
+          original_correction_id: string
+          original_payment_id: string
+          payload_hash: string
+          posted_at: string
+          posted_by: string
+          reference: string
+          replacement_date: string
+          replacement_number: string
+          vendor_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       supplier_payments: {
         Row: {
           account_control_id: string
@@ -2456,6 +2481,31 @@ export type Database = {
           posted_at: string
           posted_by: string
           reason: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      customer_receipt_replacements: {
+        Row: {
+          accounting_event_id: string
+          amount: number
+          currency: string
+          customer_id: string
+          entity_id: string
+          id: string
+          idempotency_key: string
+          invoice_id: string
+          journal_entry_id: string
+          org_id: string
+          original_correction_id: string
+          original_receipt_id: string
+          payload_hash: string
+          posted_at: string
+          posted_by: string
+          reference: string
+          replacement_date: string
+          replacement_number: string
         }
         Insert: never
         Update: never
@@ -8520,6 +8570,16 @@ export type Database = {
         }
         Returns: string
       }
+      post_customer_receipt_replacement: {
+        Args: {
+          p_correction_id: string
+          p_idempotency_key: string
+          p_reference: string
+          p_replacement_date: string
+          p_replacement_number: string
+        }
+        Returns: string
+      }
       post_supplier_bill: {
         Args: {
           p_bill_number: string
@@ -8563,6 +8623,16 @@ export type Database = {
           p_idempotency_key: string
           p_payment_id: string
           p_reason: string
+        }
+        Returns: string
+      }
+      post_supplier_payment_replacement: {
+        Args: {
+          p_correction_id: string
+          p_idempotency_key: string
+          p_reference: string
+          p_replacement_date: string
+          p_replacement_number: string
         }
         Returns: string
       }

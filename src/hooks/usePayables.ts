@@ -54,6 +54,19 @@ export interface PostedSupplierPaymentCorrection {
   journalEntryId: string;
 }
 
+export interface PostedSupplierPaymentReplacement {
+  id: string;
+  originalPaymentId: string;
+  originalCorrectionId: string;
+  billId: string;
+  replacementNumber: string;
+  replacementDate: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  journalEntryId: string;
+}
+
 export const useVendors = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
@@ -207,6 +220,37 @@ export const usePostedSupplierPaymentCorrections = () => {
   });
 };
 
+export const usePostedSupplierPaymentReplacements = () => {
+  const { user, profile } = useAuth();
+  const orgId = profile?.org_id;
+  return useQuery({
+    queryKey: ["posted-supplier-payment-replacement-history", user?.id, orgId],
+    queryFn: async () => {
+      if (!user?.id || !orgId) return [];
+      const { data, error } = await supabase
+        .from("supplier_payment_replacements")
+        .select("id, original_payment_id, original_correction_id, bill_id, replacement_number, replacement_date, amount, currency, reference, journal_entry_id")
+        .eq("org_id", orgId)
+        .not("journal_entry_id", "is", null)
+        .order("replacement_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((replacement): PostedSupplierPaymentReplacement => ({
+        id: replacement.id,
+        originalPaymentId: replacement.original_payment_id,
+        originalCorrectionId: replacement.original_correction_id,
+        billId: replacement.bill_id,
+        replacementNumber: replacement.replacement_number,
+        replacementDate: replacement.replacement_date,
+        amount: replacement.amount,
+        currency: replacement.currency,
+        reference: replacement.reference,
+        journalEntryId: replacement.journal_entry_id,
+      }));
+    },
+    enabled: Boolean(user?.id && orgId),
+  });
+};
+
 export const usePaymentRuns = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
@@ -233,6 +277,7 @@ export const usePayablesSummary = () => {
   const postedCredits = usePostedSupplierCredits();
   const postedPayments = usePostedSupplierPayments();
   const paymentCorrections = usePostedSupplierPaymentCorrections();
+  const paymentReplacements = usePostedSupplierPaymentReplacements();
   const paymentRuns = usePaymentRuns();
   return {
     vendorCount: vendors.data?.length ?? 0,
@@ -241,9 +286,11 @@ export const usePayablesSummary = () => {
     postedCreditCount: postedCredits.data?.length ?? 0,
     postedPaymentCount: postedPayments.data?.length ?? 0,
     paymentCorrectionCount: paymentCorrections.data?.length ?? 0,
+    paymentReplacementCount: paymentReplacements.data?.length ?? 0,
     paymentRunHistoryCount: paymentRuns.data?.length ?? 0,
     isLoading: vendors.isLoading || bills.isLoading || postedBills.isLoading
       || postedCredits.isLoading || postedPayments.isLoading
-      || paymentCorrections.isLoading || paymentRuns.isLoading,
+      || paymentCorrections.isLoading || paymentReplacements.isLoading
+      || paymentRuns.isLoading,
   };
 };

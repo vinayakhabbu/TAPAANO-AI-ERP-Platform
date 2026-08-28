@@ -4,13 +4,14 @@ import { BillForm } from "@/components/forms/BillForm";
 import { SupplierBillCreditForm } from "@/components/forms/SupplierBillCreditForm";
 import { SupplierPaymentForm } from "@/components/forms/SupplierPaymentForm";
 import { SupplierPaymentCorrectionForm } from "@/components/forms/SupplierPaymentCorrectionForm";
+import { SupplierPaymentReplacementForm } from "@/components/forms/SupplierPaymentReplacementForm";
 import { PaymentRunForm } from "@/components/forms/PaymentRunForm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useBills, usePayablesSummary, usePaymentRuns, usePostedSupplierBills, usePostedSupplierCredits, usePostedSupplierPaymentCorrections, usePostedSupplierPayments } from "@/hooks/usePayables";
+import { useBills, usePayablesSummary, usePaymentRuns, usePostedSupplierBills, usePostedSupplierCredits, usePostedSupplierPaymentCorrections, usePostedSupplierPaymentReplacements, usePostedSupplierPayments } from "@/hooks/usePayables";
 
 const Payables = () => {
   const { data: bills = [], isLoading: billsLoading } = useBills();
@@ -25,34 +26,40 @@ const Payables = () => {
     data: paymentCorrections = [],
     isError: paymentCorrectionsError,
   } = usePostedSupplierPaymentCorrections();
+  const {
+    data: paymentReplacements = [],
+    isError: paymentReplacementsError,
+  } = usePostedSupplierPaymentReplacements();
   const { data: paymentRuns = [], isLoading: runsLoading } = usePaymentRuns();
   const summary = usePayablesSummary();
   const postedHistoryError = postedBillsError || postedCreditsError
-    || postedPaymentsError || paymentCorrectionsError;
+    || postedPaymentsError || paymentCorrectionsError || paymentReplacementsError;
 
   return (
-    <AppLayout title="Supplier bills" subtitle="Atomic supplier-bill, payment, credit, and correction posting within the supported AP boundary">
+    <AppLayout title="Supplier bills" subtitle="Atomic bill, credit, payment, correction, and one-time replacement posting">
       <Alert className="border-warning/40 bg-warning/5">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Supplier-bill posting boundary</AlertTitle>
         <AlertDescription>
           Direct, zero-tax bills in the entity&apos;s functional currency can post atomically to
           a configured expense and AP control account. Full exact supplier credits, manual full
-          supplier payments, and one exact supplier-payment correction are supported. Payments use
-          cash clearing and are not bank-reconciled. A payment correction is not a refund, recall,
-          or bank action. Replacement payments remain unavailable. Bank execution, approval,
+          supplier payments, one exact supplier-payment correction, and one server-derived
+          replacement after that correction are supported. Payments use cash clearing and are not bank-reconciled.
+          A correction or replacement is not a refund, recall, or bank action.
+          Generic repeat replacements remain unavailable. Bank execution, approval,
           matching, PO/receipt conversion, tax, FX, partial credits or payments, refunds, aging,
           and automated settlement remain unavailable.
           Legacy rows remain frozen metadata and are not included in verified posted history.
         </AlertDescription>
       </Alert>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         {[
           ["Verified posted bills", summary.postedBillCount],
           ["Full supplier credits", summary.postedCreditCount],
           ["Manual full payments", summary.postedPaymentCount],
           ["Payment corrections", summary.paymentCorrectionCount],
+          ["Replacement payments", summary.paymentReplacementCount],
           ["Legacy bill headers", summary.billHeaderCount],
           ["Legacy payment-run headers", summary.paymentRunHistoryCount],
           ["Tenant vendor records", summary.vendorCount],
@@ -91,6 +98,9 @@ const Payables = () => {
                   const paymentCorrection = paymentCorrections.find(
                     (correction) => correction.originalPaymentId === payment?.id,
                   );
+                  const paymentReplacement = paymentReplacements.find(
+                    (replacement) => replacement.originalCorrectionId === paymentCorrection?.id,
+                  );
                   return (
                   <TableRow key={bill.id}>
                     <TableCell className="font-mono">{bill.billNumber}</TableCell>
@@ -102,8 +112,19 @@ const Payables = () => {
                     <TableCell>
                       {postedCredits.find((credit) => credit.originalBillId === bill.id) ? (
                         <Badge variant="secondary">Full supplier credit posted</Badge>
+                      ) : paymentReplacement ? (
+                        <Badge variant="secondary">Replacement supplier payment recorded</Badge>
                       ) : paymentCorrection ? (
-                        <Badge variant="secondary">Supplier payment correction posted</Badge>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary">Supplier payment correction posted</Badge>
+                          <SupplierPaymentReplacementForm
+                            correctionId={paymentCorrection.id}
+                            correctionNumber={paymentCorrection.correctionNumber}
+                            correctionDate={paymentCorrection.correctionDate}
+                            currency={paymentCorrection.currency}
+                            amount={paymentCorrection.amount}
+                          />
+                        </div>
                       ) : payment ? (
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="secondary">Full supplier payment recorded</Badge>

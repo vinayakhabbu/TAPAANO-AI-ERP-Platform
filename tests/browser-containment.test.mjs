@@ -140,6 +140,20 @@ test("customer invoices can only be posted through the supported atomic RPC", as
   assert.doesNotMatch(receiptCorrectionForm, /p_(?:amount|currency|account_id):/);
   const receiptCorrectionContract = /\n      customer_receipt_corrections: \{[\s\S]*?\n        Insert: never\n        Update: never/;
   assert.match(types, receiptCorrectionContract);
+
+  for (const file of await sourceFiles(root)) {
+    const source = await readFile(file, "utf8");
+    const replacementWrite = /from\s*\(\s*["']customer_receipt_replacements["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
+    assert.doesNotMatch(source, replacementWrite, file);
+  }
+  const receiptReplacementForm = await readFile(path.join(root, "components/forms/ReceiptReplacementForm.tsx"), "utf8");
+  assert.match(receiptReplacementForm, /rpc\(\s*["']post_customer_receipt_replacement["']/);
+  for (const argument of ["p_correction_id", "p_replacement_number", "p_replacement_date", "p_reference", "p_idempotency_key"]) {
+    assert.match(receiptReplacementForm, new RegExp(`${argument}:`));
+  }
+  assert.doesNotMatch(receiptReplacementForm, /p_(?:amount|currency|account_id):/);
+  const receiptReplacementContract = /\n      customer_receipt_replacements: \{[\s\S]*?\n        Insert: never\n        Update: never/;
+  assert.match(types, receiptReplacementContract);
 });
 
 test("receivables reads only tenant-scoped journal-linked posted invoices", async () => {
@@ -155,11 +169,14 @@ test("receivables reads only tenant-scoped journal-linked posted invoices", asyn
   assert.match(hook, /from\("customer_receipts"\)[\s\S]{0,300}?\.eq\("org_id",\s*orgId\)/);
   assert.match(hook, /queryKey:\s*\["posted-customer-receipt-correction-history",\s*user\?\.id,\s*orgId\]/);
   assert.match(hook, /from\("customer_receipt_corrections"\)[\s\S]{0,340}?\.eq\("org_id",\s*orgId\)/);
+  assert.match(hook, /queryKey:\s*\["posted-customer-receipt-replacement-history",\s*user\?\.id,\s*orgId\]/);
+  assert.match(hook, /from\("customer_receipt_replacements"\)[\s\S]{0,420}?\.eq\("org_id",\s*orgId\)/);
 
   const page = await readFile(path.join(root, "pages/Receivables.tsx"), "utf8");
   assert.match(page, /Full receipts recorded/);
   assert.match(page, /not bank-reconciled/i);
   assert.match(page, /Receipt correction posted/);
+  assert.match(page, /Replacement receipt recorded/);
   assert.match(page, /not a refund/i);
   assert.match(page, /Not an outstanding receivable or aging balance/);
   assert.match(page, /Full credit notes/);
@@ -320,6 +337,23 @@ test("legacy AP/payment tables are read-only and cannot produce accounting assur
   assert.match(page, /not a refund/i);
   const paymentCorrectionContract = /\n      supplier_payment_corrections: \{[\s\S]*?\n        Insert: never\n        Update: never/;
   assert.match(types, paymentCorrectionContract);
+
+  for (const file of await sourceFiles(root)) {
+    const source = await readFile(file, "utf8");
+    const replacementWrite = /from\s*\(\s*["']supplier_payment_replacements["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
+    assert.doesNotMatch(source, replacementWrite, file);
+  }
+  const paymentReplacementForm = await readFile(path.join(root, "components/forms/SupplierPaymentReplacementForm.tsx"), "utf8");
+  assert.match(paymentReplacementForm, /rpc\(\s*["']post_supplier_payment_replacement["']/);
+  for (const argument of ["p_correction_id", "p_replacement_number", "p_replacement_date", "p_reference", "p_idempotency_key"]) {
+    assert.match(paymentReplacementForm, new RegExp(`${argument}:`));
+  }
+  assert.doesNotMatch(paymentReplacementForm, /p_(?:amount|currency|account_id):/);
+  assert.match(hook, /queryKey:\s*\["posted-supplier-payment-replacement-history",\s*user\?\.id,\s*orgId\]/);
+  assert.match(hook, /from\("supplier_payment_replacements"\)[\s\S]{0,420}?\.eq\("org_id",\s*orgId\)/);
+  assert.match(page, /Replacement supplier payment recorded/);
+  const paymentReplacementContract = /\n      supplier_payment_replacements: \{[\s\S]*?\n        Insert: never\n        Update: never/;
+  assert.match(types, paymentReplacementContract);
 });
 
 test("banking exposes only tenant-scoped non-secret metadata and no execution path", async () => {
