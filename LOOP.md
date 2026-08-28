@@ -7,9 +7,10 @@ to `555c1f5`, with no `LOOP.md`, containment migrations, or test suite. The
 cycle transcript supplied by the project owner is therefore a recovery
 specification, not evidence present in this checkout.
 
-This branch reconstructs the work in dependency order. The recovery checkpoint
-is published on `recovery/production-readiness`; no merge, production database
-change, Edge deployment, or application deployment has been performed.
+This branch reconstructs the work in dependency order. Recovery checkpoints
+through Cycle 16 are merged into `main` through pull requests #1 and #2 and are
+mirrored on `recovery/production-readiness`. No production database change,
+Edge deployment, or application deployment has been performed.
 
 ## Current state
 
