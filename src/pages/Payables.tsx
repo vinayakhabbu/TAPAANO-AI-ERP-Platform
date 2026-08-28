@@ -3,42 +3,56 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { BillForm } from "@/components/forms/BillForm";
 import { SupplierBillCreditForm } from "@/components/forms/SupplierBillCreditForm";
 import { SupplierPaymentForm } from "@/components/forms/SupplierPaymentForm";
+import { SupplierPaymentCorrectionForm } from "@/components/forms/SupplierPaymentCorrectionForm";
 import { PaymentRunForm } from "@/components/forms/PaymentRunForm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useBills, usePayablesSummary, usePaymentRuns, usePostedSupplierBills, usePostedSupplierCredits, usePostedSupplierPayments } from "@/hooks/usePayables";
+import { useBills, usePayablesSummary, usePaymentRuns, usePostedSupplierBills, usePostedSupplierCredits, usePostedSupplierPaymentCorrections, usePostedSupplierPayments } from "@/hooks/usePayables";
 
 const Payables = () => {
   const { data: bills = [], isLoading: billsLoading } = useBills();
-  const { data: postedBills = [], isLoading: postedBillsLoading } = usePostedSupplierBills();
-  const { data: postedCredits = [] } = usePostedSupplierCredits();
-  const { data: postedPayments = [] } = usePostedSupplierPayments();
+  const {
+    data: postedBills = [],
+    isLoading: postedBillsLoading,
+    isError: postedBillsError,
+  } = usePostedSupplierBills();
+  const { data: postedCredits = [], isError: postedCreditsError } = usePostedSupplierCredits();
+  const { data: postedPayments = [], isError: postedPaymentsError } = usePostedSupplierPayments();
+  const {
+    data: paymentCorrections = [],
+    isError: paymentCorrectionsError,
+  } = usePostedSupplierPaymentCorrections();
   const { data: paymentRuns = [], isLoading: runsLoading } = usePaymentRuns();
   const summary = usePayablesSummary();
+  const postedHistoryError = postedBillsError || postedCreditsError
+    || postedPaymentsError || paymentCorrectionsError;
 
   return (
-    <AppLayout title="Supplier bills" subtitle="Atomic supplier-bill posting within the supported AP boundary">
+    <AppLayout title="Supplier bills" subtitle="Atomic supplier-bill, payment, credit, and correction posting within the supported AP boundary">
       <Alert className="border-warning/40 bg-warning/5">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Supplier-bill posting boundary</AlertTitle>
         <AlertDescription>
           Direct, zero-tax bills in the entity&apos;s functional currency can post atomically to
-          a configured expense and AP control account. Full exact supplier credits and manual full
-          supplier payments are supported. Payments use cash clearing and are not bank-reconciled.
-          Bank execution, approval, matching, PO/receipt conversion, tax, FX, partial credits or
-          payments, refunds, aging, and automated settlement remain unavailable.
+          a configured expense and AP control account. Full exact supplier credits, manual full
+          supplier payments, and one exact supplier-payment correction are supported. Payments use
+          cash clearing and are not bank-reconciled. A payment correction is not a refund, recall,
+          or bank action. Replacement payments remain unavailable. Bank execution, approval,
+          matching, PO/receipt conversion, tax, FX, partial credits or payments, refunds, aging,
+          and automated settlement remain unavailable.
           Legacy rows remain frozen metadata and are not included in verified posted history.
         </AlertDescription>
       </Alert>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {[
           ["Verified posted bills", summary.postedBillCount],
           ["Full supplier credits", summary.postedCreditCount],
           ["Manual full payments", summary.postedPaymentCount],
+          ["Payment corrections", summary.paymentCorrectionCount],
           ["Legacy bill headers", summary.billHeaderCount],
           ["Legacy payment-run headers", summary.paymentRunHistoryCount],
           ["Tenant vendor records", summary.vendorCount],
@@ -69,9 +83,15 @@ const Payables = () => {
           <Table>
             <TableHeader><TableRow><TableHead>Bill</TableHead><TableHead>Vendor</TableHead><TableHead>Issue date</TableHead><TableHead>Due date</TableHead><TableHead className="text-right">Posted total</TableHead><TableHead>Evidence</TableHead><TableHead>Resolution</TableHead></TableRow></TableHeader>
             <TableBody>
-              {postedBillsLoading ? <TableRow><TableCell colSpan={7}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
+              {postedHistoryError ? <TableRow><TableCell colSpan={7} className="h-24 text-center text-destructive">Verified supplier accounting history is unavailable.</TableCell></TableRow>
+                : postedBillsLoading ? <TableRow><TableCell colSpan={7}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
                 : postedBills.length === 0 ? <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No verified posted supplier bills.</TableCell></TableRow>
-                : postedBills.map((bill) => (
+                : postedBills.map((bill) => {
+                  const payment = postedPayments.find((candidate) => candidate.billId === bill.id);
+                  const paymentCorrection = paymentCorrections.find(
+                    (correction) => correction.originalPaymentId === payment?.id,
+                  );
+                  return (
                   <TableRow key={bill.id}>
                     <TableCell className="font-mono">{bill.billNumber}</TableCell>
                     <TableCell>{bill.vendorName}</TableCell>
@@ -82,8 +102,19 @@ const Payables = () => {
                     <TableCell>
                       {postedCredits.find((credit) => credit.originalBillId === bill.id) ? (
                         <Badge variant="secondary">Full supplier credit posted</Badge>
-                      ) : postedPayments.find((payment) => payment.billId === bill.id) ? (
-                        <Badge variant="secondary">Full supplier payment recorded</Badge>
+                      ) : paymentCorrection ? (
+                        <Badge variant="secondary">Supplier payment correction posted</Badge>
+                      ) : payment ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary">Full supplier payment recorded</Badge>
+                          <SupplierPaymentCorrectionForm
+                            paymentId={payment.id}
+                            paymentNumber={payment.paymentNumber}
+                            paymentDate={payment.paymentDate}
+                            currency={payment.currency}
+                            amount={payment.amount}
+                          />
+                        </div>
                       ) : (
                         <div className="flex flex-wrap gap-2">
                           <SupplierPaymentForm billId={bill.id} billNumber={bill.billNumber} billIssueDate={bill.issueDate} currency={bill.currency} total={bill.total} />
@@ -92,7 +123,8 @@ const Payables = () => {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
             </TableBody>
           </Table>
         </TabsContent>

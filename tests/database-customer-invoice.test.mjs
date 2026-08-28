@@ -19,6 +19,10 @@ const receiptMigrationUrl = new URL(
   "../supabase/migrations/20260825100000_recovery_customer_receipt.sql",
   import.meta.url,
 );
+const receiptCorrectionMigrationUrl = new URL(
+  "../supabase/migrations/20260825140000_recovery_customer_receipt_correction.sql",
+  import.meta.url,
+);
 
 const ids = {
   orgA: "00000000-0000-4000-8000-000000000001",
@@ -140,24 +144,35 @@ const fixture = `
     ('${ids.customerB}', '${ids.orgB}', 'Customer B', 30);
 `;
 
-async function createDb({ credit = false, receipt = false } = {}) {
+async function createDb({ credit = false, receipt = false, receiptCorrection = false } = {}) {
   const db = new PGlite();
   await db.exec(fixture);
   await db.exec(await readFile(journalMigrationUrl, "utf8"));
   const invoiceMigration = await readFile(invoiceMigrationUrl, "utf8");
   await db.exec(invoiceMigration);
   let creditMigration = null;
-  if (credit || receipt) {
+  if (credit || receipt || receiptCorrection) {
     creditMigration = await readFile(creditMigrationUrl, "utf8");
     await db.exec(creditMigration);
   }
   let receiptMigration = null;
-  if (receipt) {
+  if (receipt || receiptCorrection) {
     receiptMigration = await readFile(receiptMigrationUrl, "utf8");
     await db.exec(receiptMigration);
   }
+  let receiptCorrectionMigration = null;
+  if (receiptCorrection) {
+    receiptCorrectionMigration = await readFile(receiptCorrectionMigrationUrl, "utf8");
+    await db.exec(receiptCorrectionMigration);
+  }
   await db.exec(`SELECT set_config('request.jwt.claim.sub', '${ids.adminA}', false);`);
-  return { db, invoiceMigration, creditMigration, receiptMigration };
+  return {
+    db,
+    invoiceMigration,
+    creditMigration,
+    receiptMigration,
+    receiptCorrectionMigration,
+  };
 }
 
 const invoiceLines = JSON.stringify([
@@ -690,5 +705,209 @@ test("full credit and full receipt are mutually exclusive and receipt journals c
     () => postReceipt(db, creditedInvoice, "RCPT-AFTER-CREDIT", "receipt:after-credit"),
     /credit|resolved/i,
   );
+  await db.close();
+});
+
+async function postReceiptCorrection(db, receiptId, number, key, overrides = {}) {
+  const correctionDate = overrides.correctionDate ?? "2026-08-28";
+  const reason = overrides.reason ?? `Correct mistaken receipt ${number}`;
+  const posted = await db.query(`SELECT public.post_customer_receipt_correction(
+    '${receiptId}', '${number}', '${correctionDate}', '${reason}', '${key}'
+  ) AS id;`);
+  return posted.rows[0].id;
+}
+
+test("receipt-correction migration replays and removes hostile grants, policies, and overloads", async () => {
+  const { db, receiptCorrectionMigration } = await createDb({ receiptCorrection: true });
+  await db.exec(`
+    GRANT INSERT,UPDATE,DELETE ON public.customer_receipt_corrections
+      TO authenticated,service_role;
+    CREATE POLICY hostile_receipt_correction_all ON public.customer_receipt_corrections
+      FOR ALL TO authenticated USING (true) WITH CHECK (true);
+    CREATE FUNCTION public.post_customer_receipt_correction(uuid,text) RETURNS uuid
+      LANGUAGE sql SECURITY DEFINER AS 'SELECT $1';
+    GRANT EXECUTE ON FUNCTION public.post_customer_receipt_correction(uuid,text) TO authenticated;
+  `);
+  await db.exec(receiptCorrectionMigration);
+  const grants = await db.query(`
+    SELECT has_table_privilege('authenticated','public.customer_receipt_corrections','SELECT') AS auth_read,
+      has_table_privilege('authenticated','public.customer_receipt_corrections','UPDATE') AS auth_update,
+      has_table_privilege('service_role','public.customer_receipt_corrections','INSERT') AS service_insert
+  `);
+  assert.deepEqual(grants.rows[0], { auth_read: true, auth_update: false, service_insert: false });
+  const policies = await db.query(`SELECT count(*)::int AS count FROM pg_policies
+    WHERE schemaname='public' AND tablename='customer_receipt_corrections'`);
+  assert.equal(policies.rows[0].count, 1);
+  const overloads = await db.query(`
+    SELECT count(*)::int AS count FROM pg_proc procedure_info
+    JOIN pg_namespace namespace ON namespace.oid=procedure_info.pronamespace
+    WHERE namespace.nspname='public'
+      AND procedure_info.proname='post_customer_receipt_correction'
+      AND (procedure_info.prokind <> 'f'
+        OR oidvectortypes(procedure_info.proargtypes) <> 'uuid, text, date, text, text')
+  `);
+  assert.equal(overloads.rows[0].count, 0);
+  await db.close();
+});
+
+test("customer receipt correction posts an exact immutable offset without mutating invoice or receipt", async () => {
+  const { db, receiptCorrectionMigration } = await createDb({ receiptCorrection: true });
+  await prepare(db);
+  await configureReceipt(db);
+  const invoiceId = await postInvoice(db, "INV-RC-CORRECT", "invoice:receipt-correction");
+  const receiptId = await postReceipt(db, invoiceId, "RCPT-CORRECT", "receipt:correction-source");
+  const correctionId = await postReceiptCorrection(
+    db, receiptId, "RCC-1001", "receipt-correction:1001",
+  );
+  const graph = await db.query(`
+    SELECT correction.amount::text,correction.currency,correction.original_receipt_id,
+      event.source_type,event.source_id=correction.id AS event_source_matches,
+      journal.status::text AS journal_status,journal.source_module,
+      journal.reversal_of_id=receipt.journal_entry_id AS reverses_receipt,
+      receipt_journal.reversed_by_id=journal.id AS receipt_links_correction,
+      invoice.amount_paid::text AS invoice_amount_paid,invoice.status::text AS invoice_status,
+      (SELECT count(*)::int FROM public.journal_lines line
+       WHERE line.journal_entry_id=journal.id) AS line_count,
+      (SELECT bool_and(offset_line.account_id=original_line.account_id
+          AND offset_line.debit=original_line.credit
+          AND offset_line.credit=original_line.debit)
+       FROM public.journal_lines original_line
+       JOIN public.journal_lines offset_line
+         ON offset_line.journal_entry_id=journal.id
+        AND offset_line.line_number=original_line.line_number
+       WHERE original_line.journal_entry_id=receipt.journal_entry_id) AS exact_offset
+    FROM public.customer_receipt_corrections correction
+    JOIN public.customer_receipts receipt ON receipt.id=correction.original_receipt_id
+    JOIN public.invoices invoice ON invoice.id=receipt.invoice_id
+    JOIN public.accounting_events event ON event.id=correction.accounting_event_id
+    JOIN public.journal_entries journal ON journal.id=correction.journal_entry_id
+    JOIN public.journal_entries receipt_journal ON receipt_journal.id=receipt.journal_entry_id
+    WHERE correction.id='${correctionId}'
+  `);
+  assert.deepEqual(graph.rows[0], {
+    amount: "125.00", currency: "USD", original_receipt_id: receiptId,
+    source_type: "customer_receipt_correction", event_source_matches: true,
+    journal_status: "posted", source_module: "ar_receipt_correction",
+    reverses_receipt: true, receipt_links_correction: true,
+    invoice_amount_paid: "0.00", invoice_status: "sent", line_count: 2, exact_offset: true,
+  });
+  const signature = await db.query(`SELECT oidvectortypes(proargtypes) AS arguments
+    FROM pg_proc procedure_info JOIN pg_namespace namespace ON namespace.oid=procedure_info.pronamespace
+    WHERE namespace.nspname='public' AND procedure_info.proname='post_customer_receipt_correction'`);
+  assert.deepEqual(signature.rows, [{ arguments: "uuid, text, date, text, text" }]);
+  await db.exec(receiptCorrectionMigration);
+  await db.query(`SELECT public.validate_customer_receipt_graph('${receiptId}')`);
+  await db.query(`SELECT public.validate_customer_receipt_correction_graph('${correctionId}')`);
+  await db.close();
+});
+
+test("customer receipt correction retry remains safe after close and account retirement", async () => {
+  const { db } = await createDb({ receiptCorrection: true });
+  await prepare(db);
+  await configureReceipt(db);
+  const invoiceId = await postInvoice(db, "INV-RC-RETRY", "invoice:receipt-correction-retry");
+  const receiptId = await postReceipt(db, invoiceId, "RCPT-RC-RETRY", "receipt:correction-retry-source");
+  const first = await postReceiptCorrection(db, receiptId, "RCC-RETRY", "receipt-correction:retry");
+  const period = await db.query(`SELECT id FROM public.accounting_periods WHERE entity_id='${ids.entityA}'`);
+  await db.exec(`SELECT public.transition_accounting_period('${period.rows[0].id}','HARD_CLOSED','closed after receipt correction')`);
+  await db.exec(`UPDATE public.accounts SET is_active=false WHERE id IN ('${ids.arA}','${ids.cashA}')`);
+  assert.equal(
+    first,
+    await postReceiptCorrection(db, receiptId, "RCC-RETRY", "receipt-correction:retry"),
+  );
+  await db.close();
+});
+
+test("customer receipt correction requires an authorized actor, valid chronology, and OPEN period", async () => {
+  const { db } = await createDb({ receiptCorrection: true });
+  await prepare(db);
+  await configureReceipt(db);
+  const invoiceId = await postInvoice(db, "INV-RC-DENY", "invoice:receipt-correction-deny");
+  const receiptId = await postReceipt(db, invoiceId, "RCPT-RC-DENY", "receipt:correction-deny-source");
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.userA}',false)`);
+  await expectReject(
+    () => postReceiptCorrection(db, receiptId, "RCC-USER", "receipt-correction:user"),
+    /admin|moderator|authorized/i,
+  );
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`);
+  await expectReject(
+    () => postReceiptCorrection(db, receiptId, "RCC-EARLY", "receipt-correction:early", { correctionDate: "2026-08-26" }),
+    /precede|chronology|date/i,
+  );
+  await expectReject(
+    () => postReceiptCorrection(db, receiptId, "RCC-NOPERIOD", "receipt-correction:no-period", { correctionDate: "2026-09-25" }),
+    /OPEN accounting period/i,
+  );
+  const residue = await db.query(`SELECT count(*)::int AS count FROM public.customer_receipt_corrections`);
+  assert.equal(residue.rows[0].count, 0);
+  await db.close();
+});
+
+test("one receipt permits one correction and the complete correction graph is owner-immutable", async () => {
+  const { db } = await createDb({ receiptCorrection: true });
+  await prepare(db);
+  await configureReceipt(db);
+  const invoiceId = await postInvoice(db, "INV-RC-GUARD", "invoice:receipt-correction-guard");
+  const receiptId = await postReceipt(db, invoiceId, "RCPT-RC-GUARD", "receipt:correction-guard-source");
+  const correctionId = await postReceiptCorrection(db, receiptId, "RCC-GUARD", "receipt-correction:guard");
+  const links = await db.query(`SELECT accounting_event_id,journal_entry_id
+    FROM public.customer_receipt_corrections WHERE id='${correctionId}'`);
+  for (const sql of [
+    `UPDATE public.customer_receipt_corrections SET amount=1 WHERE id='${correctionId}'`,
+    `DELETE FROM public.customer_receipt_corrections WHERE id='${correctionId}'`,
+    `UPDATE public.accounting_events SET source_id=NULL WHERE id='${links.rows[0].accounting_event_id}'`,
+    `UPDATE public.journal_entries SET accounting_event_id=NULL WHERE id='${links.rows[0].journal_entry_id}'`,
+    `TRUNCATE public.customer_receipt_corrections CASCADE`,
+  ]) await expectReject(() => db.exec(sql), /receipt correction|immutable|trusted/i);
+  await expectReject(
+    () => postReceiptCorrection(db, receiptId, "RCC-TWO", "receipt-correction:two"),
+    /already has a correction|already corrected/i,
+  );
+  await expectReject(
+    () => postReceiptCorrection(db, receiptId, "RCC-CHANGED", "receipt-correction:guard"),
+    /idempotency key conflicts/i,
+  );
+  await expectReject(
+    () => db.query(`SELECT public.reverse_posted_journal('${links.rows[0].journal_entry_id}','2026-08-29','Bypass','reverse:receipt-correction')`),
+    /receipt correction|reversal is unavailable|only an original posted journal/i,
+  );
+  await db.exec(`SELECT set_config('tapaano.accounting_write','trusted',false)`);
+  await expectReject(
+    () => db.exec(`INSERT INTO public.journal_entries(
+      org_id,entity_id,entry_number,entry_date,status,created_by,reversal_of_id
+    ) VALUES(
+      '${ids.orgA}','${ids.entityA}','OWNER-RCC-BYPASS','2026-08-29','posted',
+      '${ids.adminA}','${links.rows[0].journal_entry_id}'
+    )`),
+    /customer receipt correction reversal is unavailable/i,
+  );
+  await expectReject(
+    () => db.query(`SELECT public.post_customer_credit_note('${invoiceId}','CN-AFTER-CORRECTION','2026-08-29','Still unsupported','credit:after-receipt-correction')`),
+    /receipt|resolved/i,
+  );
+  await db.close();
+});
+
+test("customer receipt correction hides foreign and nonexistent targets identically", async () => {
+  const { db } = await createDb({ receiptCorrection: true });
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminB}',false)`);
+  await db.exec(`SELECT public.create_accounting_period('${ids.entityB}','2026-08-01','2026-08-31','org-b-correction-period')`);
+  await db.exec(`SELECT public.configure_entity_invoice_accounts('${ids.entityB}','${ids.arB}','${ids.revenueB}','org-b-correction-ar')`);
+  await db.exec(`SELECT public.configure_entity_customer_receipt_accounts('${ids.entityB}','${ids.cashB}','org-b-correction-cash')`);
+  const foreignInvoice = await db.query(`SELECT public.post_customer_invoice(
+    '${ids.entityB}','${ids.customerB}','INV-RC-ORG-B','2026-08-25','2026-09-24',
+    'USD',0,null,'${invoiceLines}'::jsonb,'invoice:receipt-correction-org-b'
+  ) AS id`);
+  const foreignReceipt = await postReceipt(
+    db, foreignInvoice.rows[0].id, "RCPT-RC-ORG-B", "receipt:correction-org-b",
+  );
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids.adminA}',false)`);
+  const missing = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+  for (const target of [foreignReceipt, missing]) {
+    await expectReject(
+      () => postReceiptCorrection(db, target, "RCC-HIDDEN", `receipt-correction:hidden:${target}`),
+      /posted customer receipt not found or unavailable/,
+    );
+  }
   await db.close();
 });

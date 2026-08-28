@@ -8,8 +8,8 @@
 
 TAPAANO is a multi-tenant ERP prototype built with React and Supabase. The
 current verified accounting slice supports deterministic journals, controlled
-accounting periods, exact reversals, and a narrow atomic customer-invoice
-and supplier-bill posting workflow. Other module screens may preserve historical/prototype data
+accounting periods, exact reversals, and narrow atomic customer-invoice,
+supplier-bill, receipt/payment, credit, and correction workflows. Other module screens may preserve historical/prototype data
 but must not be treated as authoritative accounting output.
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
@@ -25,18 +25,22 @@ but must not be treated as authoritative accounting output.
   idempotent manual posting; exact-offset reversal; OPEN/SOFT_CLOSED/
   HARD_CLOSED period enforcement; and zero-tax, same-functional-currency
   customer invoice posting, exact full credit notes, and server-derived manual
-  full receipts, plus zero-tax functional-currency supplier-bill posting,
-  exact full supplier credits, and server-derived manual full supplier payments
-  through atomic database RPCs.
+  full receipts with one exact-offset receipt correction, plus zero-tax
+  functional-currency supplier-bill posting, exact full supplier credits, and
+  server-derived manual full supplier payments with one exact-offset payment
+  correction through atomic database RPCs. Corrections are accounting records,
+  not evidence of a bank refund or action.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
 - **Authorization boundary:** existing profiles have one immutable,
   tenant-bound role. Self-service registration and team/role administration are
   unavailable pending a controlled onboarding workflow.
-- **Unavailable or unverified:** partial receipts, overpayments, refunds,
+- **Unavailable or unverified:** replacement or partial receipts, partial
+  receipt corrections, overpayments, refunds,
   customer aging/collections, tax and FX invoice posting, partial supplier
-  credits/payments, refunds, approval, matching, bank execution/reconciliation,
+  credits/payments, replacement payments, partial payment corrections, refunds,
+  approval, matching, bank execution/reconciliation,
   tax and FX posting,
   bank matching/reconciliation, inventory and production posting, payroll
   posting, consolidation, and authoritative financial reporting.
@@ -132,7 +136,8 @@ Key tables include:
 
 ## Security status
 
-- The recovered journal, period, invoice/credit/receipt and supplier-bill posting,
+- The recovered journal, period, invoice/credit/receipt/correction and
+  supplier-bill/payment/correction posting,
   identity, accounting-master,
   AP/payment, banking, credential, and listed residual-schema migrations enforce
   their bounded tenant, role, immutability, balance, lineage, and idempotency
