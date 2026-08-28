@@ -54,11 +54,16 @@ The current recovery branch supports only these authoritative workflows:
 15. Existing-member role administration: a tenant admin can change another
    non-admin member among moderator, user, and viewer through an atomic,
    idempotent RPC with append-only audit evidence.
+16. Controlled non-admin onboarding: a tenant admin can deliver one 24-hour,
+   single-use invitation through the JWT-protected `invite-member` Edge
+   boundary. PostgreSQL derives the tenant, display name, and role from the
+   immutable invitation and rejects missing, expired, cancelled, wrong-email,
+   or wrong-token Auth creation atomically.
 
 All verified accounting writes occur through controlled PostgreSQL routines.
 The browser has no physical-table write contract for journals, periods,
 invoices, invoice/bill lines, bills, accounting events, accounting masters, or
-identity/role tables.
+identity/role/invitation tables.
 
 ## Fail-closed and preservation boundaries
 
@@ -97,7 +102,12 @@ implemented.
   change another non-admin member among moderator, user, and viewer. The
   profile and matching role row update atomically and an immutable audit record
   captures actor, target, old/new role, reason, and idempotency key.
-- Admin-role changes, self-role changes, tenant moves, invitation, removal, and
+- A tenant admin can request a normalized non-admin invitation through the sole
+  active Edge workflow, inspect token-free tenant-scoped status, and cancel a
+  pending invitation. Only the Edge service role can create the invitation;
+  the browser never receives or types the secret/hash. Auth creation consumes
+  the exact email/token invitation before profile and role creation commit.
+- Admin-role changes, self-role changes, tenant moves, removal, and open
   self-service signup remain unavailable.
 
 ## Verification
@@ -122,13 +132,14 @@ Do not deploy until all of the following are complete:
   database and resolve every preflight failure without inventing data.
 - Verify managed Supabase RLS, grants, Auth triggers, PostgREST schema cache,
   Realtime publication, Edge JWT behavior, and two-session concurrency.
-- Implement controlled onboarding, audited accounting-master maintenance, and
-  the missing accounting vertical slices.
+- Implement audited accounting-master maintenance and the missing accounting
+  vertical slices.
 - Resolve repository-wide lint failures and obtain a successful production build
   in a supported build environment.
 - Perform finance/security review, backup and rollback rehearsal, and explicit
   release approval.
 
-Recovery checkpoints through Cycle 17 are merged into `main` and mirrored on
-`recovery/production-readiness`. No recovery migration, Edge function, or
-application deployment has been performed.
+Recovery checkpoints are published through reviewed pull requests on
+`recovery/production-readiness`; inspect Git history for exact merge status. No
+recovery migration, Edge function, or application deployment has been
+performed.

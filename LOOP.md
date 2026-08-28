@@ -8,9 +8,9 @@ cycle transcript supplied by the project owner is therefore a recovery
 specification, not evidence present in this checkout.
 
 This branch reconstructs the work in dependency order. Recovery checkpoints
-through Cycle 17 are merged into `main` through pull requests #1 through #4 and
-are mirrored on `recovery/production-readiness`. No production database change,
-Edge deployment, or application deployment has been performed.
+are published and integrated through reviewed pull requests; inspect Git
+history for exact branch status. No production database change, Edge
+deployment, or application deployment has been performed.
 
 ## Current state
 
@@ -25,9 +25,9 @@ Edge deployment, or application deployment has been performed.
   manual full supplier payments; immutable exact-offset corrections for manual
   customer receipts and supplier payments; and one server-derived replacement
   after each verified correction; and audited tenant-bound administration of
-  existing non-admin roles.
-- Next dependency: controlled onboarding and audited accounting-master
-  maintenance.
+  existing non-admin roles; and short-lived, token-bound onboarding of new
+  non-admin members through one JWT-protected delivery boundary.
+- Next dependency: audited accounting-master maintenance.
 
 ## Acceptance rules
 
@@ -606,3 +606,66 @@ Build controlled invitation/onboarding without trusting client-supplied tenant
 or role metadata, then add audited maintenance for entities, accounts,
 customers, and vendors. Admin membership and ambiguous tenant assignment must
 remain fail closed.
+
+## Recovery checkpoint 19 — controlled tenant onboarding
+
+### Supported boundary
+
+One tenant admin can deliver a 24-hour, single-use invitation for a normalized
+email, display name, and non-admin `moderator`, `user`, or `viewer` role. The
+browser submits those fields, an audit reason, and an idempotency key only to
+the JWT-protected `invite-member` Edge function. The Edge function validates
+the live caller and exact configured origin, derives a deterministic HMAC
+secret, and uses its service role for the otherwise-unexecutable invitation
+creation routine and Supabase Auth delivery.
+
+PostgreSQL stores only the SHA-256 token hash. The Auth trigger requires the
+exact unexpired invitation ID, secret, and normalized email, then derives the
+tenant, display name, and role from immutable database evidence while creating
+the matching profile and role atomically. Wrong, missing, expired, or cancelled
+evidence fails with the same error and leaves no identity residue. Tenant
+admins can list token-free status and cancel a pending invitation.
+
+Admin invitation, tenant creation/moves, member removal, and open self-service
+signup remain unavailable. The invitation Edge function is not deployed by
+this checkpoint.
+
+### Verification
+
+- Onboarding database scenarios: **7/7**, including replay, hostile grants,
+  policies and overloads, service-role-only creation, safe output,
+  idempotency/conflict checks, non-admin authorization, forged metadata
+  rejection, exact invitation consumption, equal-error invalid evidence,
+  cancellation, tenant-scoped audit, and owner/direct immutability.
+- Focused identity database scenarios: **19/19**.
+- Edge boundary scenarios: **7/7**, including exact JWT configuration, strict
+  origin/caller/payload checks, HMAC and SHA-256 handling, safe reconciliation,
+  and generic failure responses with no secret/error logging.
+- Browser containment scenarios: **15/15**, including the single allowed Edge
+  invocation, safe invitation list/cancel RPCs, no direct identity-table
+  mutation, no open signup, and no browser token/hash type contract.
+- Aggregate recovery regressions: **132/132**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the unchanged legacy baseline of **86 errors
+  and 8 warnings**, outside this slice.
+- The production build remains blocked after three transformed modules by the
+  existing native Rollup/`stacker` assertion failure.
+
+### Residual deployment evidence
+
+- All nineteen recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Managed Auth invitation behavior, SMTP/link delivery, redirect allow-list,
+  Edge secrets/CORS/JWT behavior, PostgREST schema refresh, concurrent invite
+  creation/consumption, and migration replay require staging proof.
+- No migration, Edge function, application deployment, or production action
+  has occurred.
+
+### Next dependency
+
+Build audited maintenance for entities, accounts, customers, and vendors so
+operators can manage the immutable accounting masters without direct database
+edits. Tenant lineage, account hierarchy, purpose constraints, referenced-row
+retirement, actor evidence, idempotency, and historical immutability must remain
+database-enforced; destructive deletion and cross-tenant reassignment remain
+fail closed.
