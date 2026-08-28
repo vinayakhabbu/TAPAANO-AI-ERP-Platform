@@ -112,5 +112,6 @@ Do not deploy until all of the following are complete:
 - Perform finance/security review, backup and rollback rehearsal, and explicit
   release approval.
 
-Recovery code is published only on `recovery/production-readiness`. No recovery
-migration, Edge function, merge, or application deployment has been performed.
+Recovery checkpoints through Cycle 16 are merged into `main` and mirrored on
+`recovery/production-readiness`. No recovery migration, Edge function, or
+application deployment has been performed.
