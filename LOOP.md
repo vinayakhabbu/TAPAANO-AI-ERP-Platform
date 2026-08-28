@@ -8,8 +8,8 @@ cycle transcript supplied by the project owner is therefore a recovery
 specification, not evidence present in this checkout.
 
 This branch reconstructs the work in dependency order. Recovery checkpoints
-through Cycle 16 are merged into `main` through pull requests #1 and #2 and are
-mirrored on `recovery/production-readiness`. No production database change,
+through Cycle 17 are merged into `main` through pull requests #1 through #4 and
+are mirrored on `recovery/production-readiness`. No production database change,
 Edge deployment, or application deployment has been performed.
 
 ## Current state
@@ -24,9 +24,10 @@ Edge deployment, or application deployment has been performed.
   supplier-bill posting with exact full supplier credits and server-derived
   manual full supplier payments; immutable exact-offset corrections for manual
   customer receipts and supplier payments; and one server-derived replacement
-  after each verified correction.
-- Next dependency: controlled onboarding, tenant-bound role administration,
-  and audited accounting-master maintenance.
+  after each verified correction; and audited tenant-bound administration of
+  existing non-admin roles.
+- Next dependency: controlled onboarding and audited accounting-master
+  maintenance.
 
 ## Acceptance rules
 
@@ -553,3 +554,55 @@ Build controlled onboarding, tenant-bound role administration, and audited
 accounting-master maintenance so the bounded accounting system can be operated
 without direct database edits. Ambiguous tenant membership and unsupported
 master mutations must continue to fail closed.
+
+## Recovery checkpoint 18 — tenant-bound role administration
+
+### Supported boundary
+
+One tenant-admin RPC changes another existing non-admin member among
+`moderator`, `user`, and `viewer`. PostgreSQL resolves the actor's immutable
+tenant and admin role, locks the target membership, updates the matching
+`profiles` and `user_roles` rows atomically through a deferred composite
+constraint, and inserts an append-only audit record with actor, target,
+old/new role, reason, and idempotency key.
+
+The browser can list same-tenant members only through a SECURITY DEFINER
+routine and can submit only target ID, new non-admin role, reason, and
+idempotency key. It has no physical identity-table write contract. Admin-role
+changes, self-role changes, tenant moves, invitation, removal, and signup
+remain fail closed.
+
+### Verification
+
+- New role-administration database scenarios: **6/6**, covering migration
+  replay, hostile grants/policies/overloads, same-tenant member listing,
+  non-admin denial, atomic profile/role reconciliation, immutable audit
+  evidence, safe retry, idempotency conflicts, invalid evidence rollback,
+  cross-tenant target non-enumeration, tenant-scoped audit reads, and direct
+  owner-write rejection.
+- Focused identity containment and administration scenarios: **12/12**.
+- Browser containment scenarios: **15/15**, including RPC-only role mutation,
+  tenant-scoped audit reads, read-only generated identity types, and continued
+  sign-in-only authentication.
+- Aggregate recovery regressions: **121/121**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the unchanged legacy baseline of **86 errors
+  and 8 warnings**, outside this slice.
+- The production build remains blocked after three transformed modules by the
+  existing native Rollup/`stacker` assertion failure.
+
+### Residual deployment evidence
+
+- All eighteen recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Managed Auth/RLS claims, concurrent role changes, deferred composite
+  constraints, PostgREST routine/type discovery, audit visibility, and
+  migration replay require staging proof.
+- No migration, Edge function, or application deployment has occurred.
+
+### Next dependency
+
+Build controlled invitation/onboarding without trusting client-supplied tenant
+or role metadata, then add audited maintenance for entities, accounts,
+customers, and vendors. Admin membership and ambiguous tenant assignment must
+remain fail closed.

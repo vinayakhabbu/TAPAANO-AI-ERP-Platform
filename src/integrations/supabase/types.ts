@@ -4658,6 +4658,37 @@ export type Database = {
           },
         ]
       }
+      identity_role_changes: {
+        Row: {
+          actor_id: string
+          changed_at: string
+          id: string
+          idempotency_key: string
+          new_role: Database["public"]["Enums"]["app_role"]
+          old_role: Database["public"]["Enums"]["app_role"]
+          org_id: string
+          reason: string
+          target_user_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: [
+          {
+            foreignKeyName: "identity_role_changes_actor_profile_fkey"
+            columns: ["org_id", "actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["org_id", "id"]
+          },
+          {
+            foreignKeyName: "identity_role_changes_target_profile_fkey"
+            columns: ["org_id", "target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["org_id", "id"]
+          },
+        ]
+      }
       journal_entries: {
         Row: {
           accounting_event_id: string | null
@@ -8399,6 +8430,15 @@ export type Database = {
       }
     }
     Functions: {
+      change_tenant_member_role: {
+        Args: {
+          p_idempotency_key: string
+          p_new_role: Database["public"]["Enums"]["app_role"]
+          p_reason: string
+          p_target_user_id: string
+        }
+        Returns: string
+      }
       configure_entity_supplier_bill_accounts: {
         Args: {
           p_ap_account_id: string
@@ -8502,6 +8542,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      list_tenant_members: {
+        Args: never
+        Returns: {
+          display_name: string | null
+          joined_at: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
       }
       post_production_goods_receipt: {
         Args: {

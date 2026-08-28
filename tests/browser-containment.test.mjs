@@ -198,11 +198,11 @@ test("authentication changes isolate cached tenant data and guard private routes
   assert.match(app, /<Route element=\{<AuthenticatedRoute \/>\}>/);
 });
 
-test("browser identity is sign-in-only and cannot mutate tenant membership or roles", async () => {
+test("browser identity is sign-in-only and cannot write identity tables directly", async () => {
   for (const file of await sourceFiles(root)) {
     const source = await readFile(file, "utf8");
     assert.doesNotMatch(source, /auth\s*\.\s*signUp\s*\(/, file);
-    const identityWrite = /from\s*\(\s*["'](?:profiles|user_roles)["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
+    const identityWrite = /from\s*\(\s*["'](?:profiles|user_roles|identity_role_changes)["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
     assert.doesNotMatch(source, identityWrite, file);
   }
 
@@ -211,10 +211,19 @@ test("browser identity is sign-in-only and cannot mutate tenant membership or ro
   assert.doesNotMatch(auth, /Create Account|companyName|displayName/);
 
   const types = await readFile(path.join(root, "integrations/supabase/types.ts"), "utf8");
-  for (const table of ["profiles", "user_roles"]) {
+  for (const table of ["profiles", "user_roles", "identity_role_changes"]) {
     const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);
     assert.match(types, contract, `${table} must expose no browser write contract`);
   }
+
+  const administration = await readFile(path.join(root, "hooks/useIdentityAdministration.ts"), "utf8");
+  assert.match(administration, /rpc\("list_tenant_members"\)/);
+  assert.match(administration, /rpc\("change_tenant_member_role"/);
+  assert.match(administration, /\.from\("identity_role_changes"\)[\s\S]*?\.eq\("org_id", orgId\)/);
+  assert.doesNotMatch(administration, /p_org_id|p_old_role|p_actor_id/);
+
+  const settings = await readFile(path.join(root, "pages/Settings.tsx"), "utf8");
+  assert.match(settings, /RoleAdministrationSettings/);
 });
 
 test("browser cannot read or mutate legacy AI credentials or autonomy configuration", async () => {
@@ -409,6 +418,7 @@ test("unverified modules are unreachable from active routes and dashboard claims
 
   const settings = await readFile(path.join(root, "pages/Settings.tsx"), "utf8");
   assert.doesNotMatch(settings, /TeamSettings|SecuritySettings|SOXControls|NextDayMigration|DecisionDeskTabsSettings/);
+  assert.match(settings, /RoleAdministrationSettings/);
 
   const help = await readFile(path.join(root, "pages/Help.tsx"), "utf8");
   assert.match(help, /Agent River,[\s\S]*?are unavailable or unverified/);

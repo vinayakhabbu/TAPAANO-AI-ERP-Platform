@@ -51,10 +51,14 @@ The current recovery branch supports only these authoritative workflows:
    journal lines into a new OPEN-period entry. This is not bank execution.
 14. Existing-user authentication with immutable tenant membership and one
    tenant-bound role assignment.
+15. Existing-member role administration: a tenant admin can change another
+   non-admin member among moderator, user, and viewer through an atomic,
+   idempotent RPC with append-only audit evidence.
 
 All verified accounting writes occur through controlled PostgreSQL routines.
 The browser has no physical-table write contract for journals, periods,
-invoices, invoice/bill lines, bills, accounting events, accounting masters, or roles.
+invoices, invoice/bill lines, bills, accounting events, accounting masters, or
+identity/role tables.
 
 ## Fail-closed and preservation boundaries
 
@@ -87,10 +91,14 @@ implemented.
 - Session changes reject stale profile responses, cancel in-flight queries, and
   clear the full query cache during sign-out.
 - A profile must have exactly one matching `user_roles` row in the same tenant.
-- Profiles and roles are immutable across API, service-role, and direct owner
-  DML; only the current profile can be read through browser policies.
-- Self-service signup, invitation, removal, and role changes are unavailable
-  until a controlled onboarding/administration workflow exists.
+- Profiles and roles reject direct API, service-role, and owner DML; only the
+  current profile can be read through browser table policies.
+- A tenant admin can list same-tenant members through a controlled routine and
+  change another non-admin member among moderator, user, and viewer. The
+  profile and matching role row update atomically and an immutable audit record
+  captures actor, target, old/new role, reason, and idempotency key.
+- Admin-role changes, self-role changes, tenant moves, invitation, removal, and
+  self-service signup remain unavailable.
 
 ## Verification
 
@@ -114,12 +122,13 @@ Do not deploy until all of the following are complete:
   database and resolve every preflight failure without inventing data.
 - Verify managed Supabase RLS, grants, Auth triggers, PostgREST schema cache,
   Realtime publication, Edge JWT behavior, and two-session concurrency.
-- Implement controlled onboarding and the missing accounting vertical slices.
+- Implement controlled onboarding, audited accounting-master maintenance, and
+  the missing accounting vertical slices.
 - Resolve repository-wide lint failures and obtain a successful production build
   in a supported build environment.
 - Perform finance/security review, backup and rollback rehearsal, and explicit
   release approval.
 
-Recovery checkpoints through Cycle 16 are merged into `main` and mirrored on
+Recovery checkpoints through Cycle 17 are merged into `main` and mirrored on
 `recovery/production-readiness`. No recovery migration, Edge function, or
 application deployment has been performed.
