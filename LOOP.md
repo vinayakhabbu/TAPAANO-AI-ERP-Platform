@@ -22,11 +22,11 @@ Edge deployment, or application deployment has been performed.
   containment; immutable accounting masters; tenant-bound identity/RBAC; exact
   full credits; server-derived manual full customer receipts; and atomic direct
   supplier-bill posting with exact full supplier credits and server-derived
-  manual full supplier payments; and immutable exact-offset corrections for
-  manual customer receipts and supplier payments.
-- Next dependency: controlled one-time replacement receipts/payments after a
-  verified correction, followed by the remaining source-to-subledger-to-GL
-  vertical slices.
+  manual full supplier payments; immutable exact-offset corrections for manual
+  customer receipts and supplier payments; and one server-derived replacement
+  after each verified correction.
+- Next dependency: controlled onboarding, tenant-bound role administration,
+  and audited accounting-master maintenance.
 
 ## Acceptance rules
 
@@ -497,3 +497,59 @@ only after the corresponding verified correction. PostgreSQL must derive the
 same immutable amount, currency, tenant lineage, and account controls while
 serializing the replacement against the correction. Generic repeat/partial
 settlement, refunds, bank actions, tax, and FX remain fail closed.
+
+## Recovery checkpoint 17 — one-time settlement replacements
+
+### Supported boundary
+
+Two admin/moderator RPCs post one customer-receipt or supplier-payment
+replacement only after the corresponding verified correction. The browser
+submits the correction ID, replacement number/date, reference, and idempotency
+key; PostgreSQL derives the original amount, currency, tenant/entity lineage,
+source document, accounts, and journal lines.
+
+Each replacement creates a separate immutable record, canonical accounting
+event, OPEN-period link, and posted journal that is an exact line-for-line copy
+of the original verified settlement. The original receipt/payment, correction,
+invoice/bill, and their journals remain unchanged. Retry resolves the existing
+replacement before consulting current period or account state.
+
+One correction permits one replacement. Generic repeat or partial settlement,
+additional replacement/correction chains, refunds, bank execution, matching,
+reconciliation, tax, and FX remain unavailable. A replacement is an accounting
+record, not evidence of a bank action.
+
+### Verification
+
+- Replacement database scenarios: **12/12**, covering replay and hostile
+  grants/policies/overloads, exact source/event/period/journal reconciliation,
+  safe retry after period close and account retirement, authorization and
+  chronology rollback, one-replacement enforcement, tenant target
+  non-enumeration, owner immutability, journal-line/truncate protection, and
+  direct or generic reversal rejection.
+- Focused invoice and supplier accounting scenarios: **62/62**.
+- Browser containment scenarios: **15/15**, including identifier-only RPC
+  forms, tenant-scoped replacement history, read-only generated types, no
+  physical-table mutation path, and fail-closed rendering.
+- Aggregate recovery regressions: **115/115**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the unchanged legacy baseline of **86 errors
+  and 8 warnings**, outside this slice.
+- The production build remains blocked after three transformed modules by the
+  existing native Rollup/`stacker` assertion failure.
+
+### Residual deployment evidence
+
+- All seventeen recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Real concurrent correction/replacement requests, period-close contention,
+  managed constraint-trigger timing, RLS/grants, PostgREST schema refresh, and
+  Realtime publication require staging proof.
+- No migration, Edge function, or application deployment has occurred.
+
+### Next dependency
+
+Build controlled onboarding, tenant-bound role administration, and audited
+accounting-master maintenance so the bounded accounting system can be operated
+without direct database edits. Ambiguous tenant membership and unsupported
+master mutations must continue to fail closed.

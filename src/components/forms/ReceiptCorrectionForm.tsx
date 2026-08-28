@@ -100,7 +100,8 @@ export function ReceiptCorrectionForm({
           <DialogDescription>
             PostgreSQL copies the original receipt evidence and posts its exact opposite in one
             OPEN-period transaction. This is an accounting correction, not a refund, bank action,
-            match, or reconciliation record. Replacement and partial corrections remain unavailable.
+            match, or reconciliation record. One server-derived replacement is available after this
+            correction; partial corrections and generic repeats remain unavailable.
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postCorrection.mutate(); }}>

@@ -52,6 +52,19 @@ export interface PostedCustomerReceiptCorrectionHistory {
   journalEntryId: string;
 }
 
+export interface PostedCustomerReceiptReplacementHistory {
+  id: string;
+  originalReceiptId: string;
+  originalCorrectionId: string;
+  invoiceId: string;
+  replacementNumber: string;
+  replacementDate: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  journalEntryId: string;
+}
+
 export const useReceivables = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
@@ -178,10 +191,38 @@ export const useReceivables = () => {
     enabled: ready,
   });
 
+  const postedCustomerReceiptReplacementsQuery = useQuery({
+    queryKey: ["posted-customer-receipt-replacement-history", user?.id, orgId],
+    queryFn: async () => {
+      if (!user?.id || !orgId) return [];
+      const { data, error } = await supabase
+        .from("customer_receipt_replacements")
+        .select("id, original_receipt_id, original_correction_id, invoice_id, replacement_number, replacement_date, amount, currency, reference, journal_entry_id")
+        .eq("org_id", orgId)
+        .not("journal_entry_id", "is", null)
+        .order("replacement_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((replacement): PostedCustomerReceiptReplacementHistory => ({
+        id: replacement.id,
+        originalReceiptId: replacement.original_receipt_id,
+        originalCorrectionId: replacement.original_correction_id,
+        invoiceId: replacement.invoice_id,
+        replacementNumber: replacement.replacement_number,
+        replacementDate: replacement.replacement_date,
+        amount: replacement.amount,
+        currency: replacement.currency,
+        reference: replacement.reference,
+        journalEntryId: replacement.journal_entry_id,
+      }));
+    },
+    enabled: ready,
+  });
+
   const invoices = postedInvoicesQuery.data ?? [];
   const creditNotes = postedCreditNotesQuery.data ?? [];
   const receipts = postedCustomerReceiptsQuery.data ?? [];
   const receiptCorrections = postedCustomerReceiptCorrectionsQuery.data ?? [];
+  const receiptReplacements = postedCustomerReceiptReplacementsQuery.data ?? [];
 
   return {
     customers: customersQuery.data ?? [],
@@ -189,6 +230,7 @@ export const useReceivables = () => {
     creditNotes,
     receipts,
     receiptCorrections,
+    receiptReplacements,
     stats: {
       customerCount: customersQuery.data?.length ?? 0,
       invoiceCount: invoices.length,
@@ -196,12 +238,15 @@ export const useReceivables = () => {
       fullCreditCount: creditNotes.length,
       fullReceiptCount: receipts.length,
       receiptCorrectionCount: receiptCorrections.length,
+      receiptReplacementCount: receiptReplacements.length,
     },
     isLoading: customersQuery.isLoading || postedInvoicesQuery.isLoading
       || postedCreditNotesQuery.isLoading || postedCustomerReceiptsQuery.isLoading
-      || postedCustomerReceiptCorrectionsQuery.isLoading,
+      || postedCustomerReceiptCorrectionsQuery.isLoading
+      || postedCustomerReceiptReplacementsQuery.isLoading,
     error: customersQuery.error || postedInvoicesQuery.error
       || postedCreditNotesQuery.error || postedCustomerReceiptsQuery.error
-      || postedCustomerReceiptCorrectionsQuery.error,
+      || postedCustomerReceiptCorrectionsQuery.error
+      || postedCustomerReceiptReplacementsQuery.error,
   };
 };

@@ -100,7 +100,8 @@ export function SupplierPaymentCorrectionForm({
           <DialogDescription>
             PostgreSQL copies the original supplier-payment evidence and posts its exact opposite
             in one OPEN-period transaction. This is an accounting correction, not a refund, recall,
-            bank action, match, or reconciliation record. Replacement and partial corrections remain unavailable.
+            bank action, match, or reconciliation record. One server-derived replacement is available
+            after this correction; partial corrections and generic repeats remain unavailable.
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postCorrection.mutate(); }}>
