@@ -38,6 +38,9 @@ but must not be treated as authoritative accounting output.
   JWT-protected Edge boundary; PostgreSQL derives the immutable tenant and role.
   Tenant admins can create, rename, and one-way retire chart-of-account rows
   through audited RPCs; code, type, parent, tenant, and history stay immutable.
+  Tenant admins can also create, update, and one-way retire normalized customer
+  and vendor profiles through audited RPCs. Retired parties remain historical
+  references but are rejected by new posted invoices and bills.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
@@ -56,7 +59,7 @@ but must not be treated as authoritative accounting output.
   approval, matching, bank execution/reconciliation,
   tax and FX posting,
   bank matching/reconciliation, inventory and production posting, payroll
-  posting, entity/customer/vendor maintenance, consolidation, and authoritative
+  posting, entity and organization maintenance, consolidation, and authoritative
   financial reporting.
 
 ### AI-powered features
@@ -165,6 +168,10 @@ Key tables include:
   Tenant admins use exact create/rename/retire RPCs with append-only before/after
   evidence; retirement cannot strand active children or immutable AR/AP/cash
   controls.
+- Customer and vendor writes remain unavailable at the physical table boundary.
+  Tenant admins use exact create/update/retire RPCs with append-only before/after
+  evidence; retirement is one-way and blocks new invoice or bill posting while
+  preserving prior documents.
 - Unsupported legacy tables covered by the residual lockdown are preservation
   data only. Do not infer implementation correctness—or repository-wide
   security for any unlisted object—from that containment.

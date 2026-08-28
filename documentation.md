@@ -63,12 +63,16 @@ The current recovery branch supports only these authoritative workflows:
    active account, rename an active account, or retire one account exactly once
    through idempotent RPCs with append-only before/after evidence. Account code,
    type, parent, tenant lineage, and historical references remain immutable.
+18. Controlled customer/vendor maintenance: a tenant admin can create, update,
+   or one-way retire normalized party profiles through idempotent RPCs with
+   append-only before/after evidence. Retirement preserves prior documents and
+   rejects new posted invoices or bills.
 
 All verified accounting writes occur through controlled PostgreSQL routines.
 The browser has no physical-table write contract for journals, periods,
 invoices, invoice/bill lines, bills, accounting events, identity/role/invitation
-tables, or account audit rows. Supported account maintenance uses controlled
-routines only.
+tables, account audit rows, or party audit rows. Supported account and party
+maintenance uses controlled routines only.
 
 ## Fail-closed and preservation boundaries
 
@@ -87,8 +91,9 @@ The following are unavailable or read-only preservation metadata:
   bill/payment-run rows remain unverified preservation metadata.
 - Bank connections, imports, matching, reconciliation, positive pay, balances,
   and bank-account credentials.
-- Entity, customer, vendor, and organization maintenance. Account maintenance
-  is limited to controlled create, rename, and one-way retirement.
+- Entity and organization maintenance. Account maintenance is limited to
+  controlled create, rename, and one-way retirement; customer/vendor
+  maintenance is limited to controlled create, update, and one-way retirement.
 - Tax, FX/revaluation, inventory, production, payroll, controlling, planning,
   service, forecast, generic Decision Ledger, and unsupported reporting paths.
 
@@ -126,8 +131,15 @@ implemented.
 - Retirement is one-way and preserves every historical reference. PostgreSQL
   rejects retirement when an active child or immutable AR/AP/cash control still
   depends on the account.
-- Entity, customer, and vendor maintenance remains unavailable pending
-  posting-path lifecycle enforcement.
+- Tenant admins can create, update, and retire customers and vendors only
+  through controlled routines. Names/contact/payment metadata are normalized;
+  tenant identity, creation evidence, and historical references never change.
+- Party retirement locks the target row. New posted invoices and bills take a
+  conflicting key-share lock and require an active same-tenant party, so a
+  concurrent post deterministically commits before retirement or fails after
+  retirement. Existing idempotent document retries remain safe.
+- Entity creation and rename remain unavailable. Currency changes and entity
+  retirement remain fail closed.
 
 ## Verification
 
@@ -151,7 +163,7 @@ Do not deploy until all of the following are complete:
   database and resolve every preflight failure without inventing data.
 - Verify managed Supabase RLS, grants, Auth triggers, PostgREST schema cache,
   Realtime publication, Edge JWT behavior, and two-session concurrency.
-- Complete audited entity/customer/vendor maintenance and the missing
+- Complete audited entity maintenance and the missing
   accounting vertical slices.
 - Resolve repository-wide lint failures and obtain a successful production build
   in a supported build environment.
