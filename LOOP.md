@@ -26,8 +26,9 @@ deployment, or application deployment has been performed.
   customer receipts and supplier payments; and one server-derived replacement
   after each verified correction; and audited tenant-bound administration of
   existing non-admin roles; and short-lived, token-bound onboarding of new
-  non-admin members through one JWT-protected delivery boundary.
-- Next dependency: audited accounting-master maintenance.
+  non-admin members through one JWT-protected delivery boundary; and audited
+  create/rename/one-way-retire maintenance for chart-of-account rows.
+- Next dependency: controlled entity/customer/vendor maintenance.
 
 ## Acceptance rules
 
@@ -669,3 +670,60 @@ edits. Tenant lineage, account hierarchy, purpose constraints, referenced-row
 retirement, actor evidence, idempotency, and historical immutability must remain
 database-enforced; destructive deletion and cross-tenant reassignment remain
 fail closed.
+
+## Recovery checkpoint 20 — controlled account maintenance
+
+### Supported boundary
+
+One tenant admin can create an active chart-of-account row with a normalized
+unique code, name, account type, and optional active same-tenant parent of the
+same type. An active account can be renamed without changing its structural
+identity, or retired one way while preserving all historical references.
+
+Every operation is idempotent and writes an append-only event with actor,
+reason, and persistent before/after snapshots. Account code, type, parent,
+tenant, controlling classification, default dimensions, creation timestamp,
+and physical history remain immutable. Retirement rejects active parents and
+any account used by immutable invoice, bill, receipt, or payment controls.
+
+The browser retains a read-only physical account contract and invokes only the
+exact create, rename, retire, and safe audit-listing RPCs. Entity, customer, and
+vendor maintenance remains unavailable; their lifecycle controls are not
+implied by this checkpoint.
+
+### Verification
+
+- New account-maintenance database scenarios: **6/6**, including replay,
+  hostile table/column grants, policies and overloads, admin authorization,
+  exact create and retry, tenant/type-safe hierarchy, normalized identity,
+  audited rename, target non-enumeration, one-way retirement, active-child and
+  immutable-control protection, persistent snapshot semantics, and direct
+  owner/truncate rejection.
+- Focused account containment and maintenance scenarios: **11/11**.
+- Browser containment scenarios: **15/15**, including RPC-only maintenance,
+  tenant-scoped account reads, hidden physical audit rows, read-only account
+  types, and explicit unsupported-master boundaries.
+- Aggregate recovery regressions: **138/138**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the unchanged legacy baseline of **86 errors
+  and 8 warnings**, outside this slice.
+- The production build remains blocked after three transformed modules by the
+  existing native Rollup/`stacker` assertion failure.
+
+### Residual deployment evidence
+
+- All twenty recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Managed RLS/grants, PostgREST routine/type refresh, account-control lock
+  contention, concurrent create/rename/retire requests, and migration replay
+  require staging proof.
+- No migration, Edge function, application deployment, or production action
+  has occurred.
+
+### Next dependency
+
+Add controlled customer and vendor create/update/retire workflows only after
+new invoice and bill posting reject retired parties while correction/retry
+paths preserve historical access. Then add entity creation/rename only;
+currency change and entity retirement remain unavailable until every posting
+routine shares a proven lifecycle check.

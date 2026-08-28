@@ -430,13 +430,14 @@ test("unverified modules are unreachable from active routes and dashboard claims
   const settings = await readFile(path.join(root, "pages/Settings.tsx"), "utf8");
   assert.doesNotMatch(settings, /TeamSettings|SecuritySettings|SOXControls|NextDayMigration|DecisionDeskTabsSettings/);
   assert.match(settings, /RoleAdministrationSettings/);
+  assert.match(settings, /AccountMaintenanceSettings/);
 
   const help = await readFile(path.join(root, "pages/Help.tsx"), "utf8");
   assert.match(help, /Agent River,[\s\S]*?are unavailable or unverified/);
   assert.doesNotMatch(help, /Creating invoices|Recording payments|Bank statements can be imported/);
 });
 
-test("accounting master data is read-only in browser code and generated contracts", async () => {
+test("accounting masters remain physically read-only and accounts use only controlled RPCs", async () => {
   for (const file of await sourceFiles(root)) {
     const source = await readFile(file, "utf8");
     const masterWrite = /from\s*\(\s*["'](?:accounts|entities|customers|vendors)["']\s*\)[\s\S]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
@@ -451,4 +452,18 @@ test("accounting master data is read-only in browser code and generated contract
     const source = await readFile(path.join(root, relative), "utf8");
     assert.match(source, /maintenance unavailable/);
   }
+  const maintenance = await readFile(path.join(root, "hooks/useAccountMaintenance.ts"), "utf8");
+  for (const routine of [
+    "create_tenant_account", "rename_tenant_account", "retire_tenant_account",
+    "list_tenant_account_events",
+  ]) {
+    assert.match(maintenance, new RegExp(`rpc\\(\\"${routine}\\"`));
+  }
+  assert.match(maintenance, /\.from\("accounts"\)[\s\S]*?\.eq\("org_id", orgId\)/);
+  assert.doesNotMatch(maintenance, /p_org_id|p_actor_id|\.from\("account_master_events"\)/);
+  assert.doesNotMatch(types, /account_master_events:/);
+
+  const component = await readFile(path.join(root, "components/settings/AccountMaintenanceSettings.tsx"), "utf8");
+  assert.match(component, /Account code, type, and parent are immutable after creation/);
+  assert.match(component, /Retirement is one-way/);
 });

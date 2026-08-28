@@ -36,6 +36,8 @@ but must not be treated as authoritative accounting output.
   atomic, idempotent, audited RPC. Tenant admins can also deliver a 24-hour,
   single-use invitation for one non-admin member through the sole active
   JWT-protected Edge boundary; PostgreSQL derives the immutable tenant and role.
+  Tenant admins can create, rename, and one-way retire chart-of-account rows
+  through audited RPCs; code, type, parent, tenant, and history stay immutable.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
@@ -54,7 +56,8 @@ but must not be treated as authoritative accounting output.
   approval, matching, bank execution/reconciliation,
   tax and FX posting,
   bank matching/reconciliation, inventory and production posting, payroll
-  posting, consolidation, and authoritative financial reporting.
+  posting, entity/customer/vendor maintenance, consolidation, and authoritative
+  financial reporting.
 
 ### AI-powered features
 
@@ -158,6 +161,10 @@ Key tables include:
 - Controlled onboarding is the sole active Edge workflow. It validates the
   caller JWT and configured origin, keeps creation service-role-only, and
   reconciles Auth creation against a single-use tenant invitation in PostgreSQL.
+- Chart-of-accounts writes remain unavailable at the physical table boundary.
+  Tenant admins use exact create/rename/retire RPCs with append-only before/after
+  evidence; retirement cannot strand active children or immutable AR/AP/cash
+  controls.
 - Unsupported legacy tables covered by the residual lockdown are preservation
   data only. Do not infer implementation correctness—or repository-wide
   security for any unlisted object—from that containment.

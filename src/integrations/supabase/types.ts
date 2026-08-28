@@ -8434,6 +8434,17 @@ export type Database = {
         Args: { p_invitation_id: string; p_reason: string }
         Returns: string
       }
+      create_tenant_account: {
+        Args: {
+          p_account_type: Database["public"]["Enums"]["account_type"]
+          p_code: string
+          p_idempotency_key: string
+          p_name: string
+          p_parent_id: string | null
+          p_reason: string
+        }
+        Returns: string
+      }
       change_tenant_member_role: {
         Args: {
           p_idempotency_key: string
@@ -8571,6 +8582,19 @@ export type Database = {
           status: string
         }[]
       }
+      list_tenant_account_events: {
+        Args: never
+        Returns: {
+          account_id: string
+          actor_id: string
+          event_id: string
+          event_type: string
+          new_snapshot: Json
+          occurred_at: string
+          old_snapshot: Json | null
+          reason: string
+        }[]
+      }
       post_production_goods_receipt: {
         Args: {
           p_created_by?: string
@@ -8578,6 +8602,23 @@ export type Database = {
           p_production_order_id: string
           p_quantity: number
           p_warehouse_id: string
+        }
+        Returns: string
+      }
+      rename_tenant_account: {
+        Args: {
+          p_account_id: string
+          p_idempotency_key: string
+          p_name: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      retire_tenant_account: {
+        Args: {
+          p_account_id: string
+          p_idempotency_key: string
+          p_reason: string
         }
         Returns: string
       }
