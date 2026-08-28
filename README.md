@@ -31,13 +31,17 @@ but must not be treated as authoritative accounting output.
   server-derived manual full supplier payments with one exact-offset payment
   correction and one derived post-correction replacement through atomic
   database RPCs. Corrections and replacements are accounting records, not
-  evidence of a bank refund or action.
+  evidence of a bank refund or action. Existing non-admin tenant members can
+  be changed among moderator, user, and viewer by a tenant admin through one
+  atomic, idempotent, audited RPC.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
-- **Authorization boundary:** existing profiles have one immutable,
-  tenant-bound role. Self-service registration and team/role administration are
-  unavailable pending a controlled onboarding workflow.
+- **Authorization boundary:** existing profiles have one tenant-bound role.
+  Tenant admins can change another existing non-admin member among moderator,
+  user, and viewer with append-only audit evidence. Admin roles, self-role,
+  tenant membership, invitation, removal, and self-service registration remain
+  immutable or unavailable.
 - **Unavailable or unverified:** generic repeat or partial replacement receipts,
   partial receipts or receipt corrections, overpayments, refunds,
   customer aging/collections, tax and FX invoice posting, partial supplier
@@ -141,7 +145,7 @@ Key tables include:
 
 - The recovered journal, period, invoice/credit/receipt/correction and
   supplier-bill/payment/correction posting,
-  identity, accounting-master,
+  identity and non-admin role administration, accounting-master,
   AP/payment, banking, credential, and listed residual-schema migrations enforce
   their bounded tenant, role, immutability, balance, lineage, and idempotency
   properties in PostgreSQL and have disposable-database regression coverage.
