@@ -22,11 +22,37 @@ export interface IdentityRoleChange {
   changedAt: string;
 }
 
+export interface TenantInvitation {
+  id: string;
+  email: string;
+  displayName: string;
+  role: Exclude<TenantMemberRole, "admin">;
+  status: "PENDING" | "CONSUMED" | "CANCELLED" | "EXPIRED";
+  createdBy: string;
+  createdAt: string;
+  expiresAt: string;
+  resolvedAt: string | null;
+  cancelReason: string | null;
+}
+
 interface ChangeTenantMemberRoleInput {
   targetUserId: string;
   newRole: Exclude<TenantMemberRole, "admin">;
   reason: string;
   idempotencyKey: string;
+}
+
+interface InviteTenantMemberInput {
+  email: string;
+  displayName: string;
+  role: Exclude<TenantMemberRole, "admin">;
+  reason: string;
+  idempotencyKey: string;
+}
+
+interface CancelTenantInvitationInput {
+  invitationId: string;
+  reason: string;
 }
 
 export function useIdentityAdministration() {
@@ -74,6 +100,27 @@ export function useIdentityAdministration() {
     enabled: ready,
   });
 
+  const invitationsQuery = useQuery({
+    queryKey: ["tenant-invitations", user?.id, orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("list_tenant_invitations");
+      if (error) throw error;
+      return (data ?? []).map((invitation): TenantInvitation => ({
+        id: invitation.invitation_id,
+        email: invitation.email,
+        displayName: invitation.display_name,
+        role: invitation.role as Exclude<TenantMemberRole, "admin">,
+        status: invitation.status as TenantInvitation["status"],
+        createdBy: invitation.created_by,
+        createdAt: invitation.created_at,
+        expiresAt: invitation.expires_at,
+        resolvedAt: invitation.resolved_at,
+        cancelReason: invitation.cancel_reason,
+      }));
+    },
+    enabled: ready,
+  });
+
   const changeRole = useMutation({
     mutationFn: async (input: ChangeTenantMemberRoleInput) => {
       const { data, error } = await supabase.rpc("change_tenant_member_role", {
@@ -93,6 +140,42 @@ export function useIdentityAdministration() {
     },
   });
 
+  const inviteMember = useMutation({
+    mutationFn: async (input: InviteTenantMemberInput) => {
+      const { data, error } = await supabase.functions.invoke("invite-member", {
+        body: {
+          email: input.email,
+          display_name: input.displayName,
+          role: input.role,
+          reason: input.reason,
+          idempotency_key: input.idempotencyKey,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["tenant-members", user?.id, orgId] }),
+        queryClient.invalidateQueries({ queryKey: ["tenant-invitations", user?.id, orgId] }),
+      ]);
+    },
+  });
+
+  const cancelInvitation = useMutation({
+    mutationFn: async (input: CancelTenantInvitationInput) => {
+      const { data, error } = await supabase.rpc("cancel_tenant_invitation", {
+        p_invitation_id: input.invitationId,
+        p_reason: input.reason,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tenant-invitations", user?.id, orgId] });
+    },
+  });
+
   return {
     isAdmin,
     members: membersQuery.data ?? [],
@@ -101,6 +184,11 @@ export function useIdentityAdministration() {
     changes: changesQuery.data ?? [],
     changesError: changesQuery.error,
     changesLoading: changesQuery.isLoading,
+    invitations: invitationsQuery.data ?? [],
+    invitationsError: invitationsQuery.error,
+    invitationsLoading: invitationsQuery.isLoading,
     changeRole,
+    inviteMember,
+    cancelInvitation,
   };
 }

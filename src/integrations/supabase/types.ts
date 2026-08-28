@@ -8430,6 +8430,10 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_tenant_invitation: {
+        Args: { p_invitation_id: string; p_reason: string }
+        Returns: string
+      }
       change_tenant_member_role: {
         Args: {
           p_idempotency_key: string
@@ -8550,6 +8554,21 @@ export type Database = {
           joined_at: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
+        }[]
+      }
+      list_tenant_invitations: {
+        Args: never
+        Returns: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string
+          expires_at: string
+          invitation_id: string
+          resolved_at: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
         }[]
       }
       post_production_goods_receipt: {

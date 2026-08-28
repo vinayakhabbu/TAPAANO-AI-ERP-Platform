@@ -7,7 +7,7 @@ import { AutoApprovalSettings } from "@/components/settings/AutoApprovalSettings
 import { RoleAdministrationSettings } from "@/components/settings/RoleAdministrationSettings";
 
 const Settings = () => (
-  <AppLayout title="Settings containment" subtitle="Read-only tenant identity and disabled privileged configuration">
+  <AppLayout title="Settings" subtitle="Controlled tenant identity administration and disabled privileged configuration">
     <Tabs defaultValue="organization" className="space-y-6">
       <TabsList>
         <TabsTrigger value="organization" className="gap-2"><Building2 className="h-4 w-4" />Organization</TabsTrigger>

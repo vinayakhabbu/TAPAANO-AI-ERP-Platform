@@ -33,14 +33,18 @@ but must not be treated as authoritative accounting output.
   database RPCs. Corrections and replacements are accounting records, not
   evidence of a bank refund or action. Existing non-admin tenant members can
   be changed among moderator, user, and viewer by a tenant admin through one
-  atomic, idempotent, audited RPC.
+  atomic, idempotent, audited RPC. Tenant admins can also deliver a 24-hour,
+  single-use invitation for one non-admin member through the sole active
+  JWT-protected Edge boundary; PostgreSQL derives the immutable tenant and role.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
 - **Authorization boundary:** existing profiles have one tenant-bound role.
   Tenant admins can change another existing non-admin member among moderator,
-  user, and viewer with append-only audit evidence. Admin roles, self-role,
-  tenant membership, invitation, removal, and self-service registration remain
+  user, and viewer with append-only audit evidence and can invite one new
+  non-admin member through a short-lived, token-bound workflow. The invitation
+  secret is never exposed to the browser or stored in plaintext. Admin roles,
+  self-role, tenant moves, removal, and open self-service registration remain
   immutable or unavailable.
 - **Unavailable or unverified:** generic repeat or partial replacement receipts,
   partial receipts or receipt corrections, overpayments, refunds,
@@ -151,6 +155,9 @@ Key tables include:
   properties in PostgreSQL and have disposable-database regression coverage.
 - Authenticated routes are guarded, financial query keys include the current
   identity and organization, and sign-out cancels and clears cached tenant data.
+- Controlled onboarding is the sole active Edge workflow. It validates the
+  caller JWT and configured origin, keeps creation service-role-only, and
+  reconciles Auth creation against a single-use tenant invitation in PostgreSQL.
 - Unsupported legacy tables covered by the residual lockdown are preservation
   data only. Do not infer implementation correctness—or repository-wide
   security for any unlisted object—from that containment.

@@ -17,10 +17,17 @@ async function sourceFiles(directory) {
   return nested.flat();
 }
 
-test("browser source contains no Edge invocation path", async () => {
+test("browser invokes only the controlled member-invitation Edge boundary", async () => {
+  const allowedFile = path.join(root, "hooks/useIdentityAdministration.ts");
   for (const file of await sourceFiles(root)) {
     const source = await readFile(file, "utf8");
-    assert.doesNotMatch(source, /functions\s*\.\s*invoke\s*\(/, file);
+    if (file === allowedFile) {
+      const invocations = [...source.matchAll(/functions\s*\.\s*invoke\s*\(\s*["']([^"']+)["']/g)];
+      assert.deepEqual(invocations.map((match) => match[1]), ["invite-member"]);
+      assert.doesNotMatch(source, /functions\s*\.\s*invoke\s*\(\s*(?!["']invite-member["'])/, file);
+    } else {
+      assert.doesNotMatch(source, /functions\s*\.\s*invoke\s*\(/, file);
+    }
     assert.doesNotMatch(source, /functions\s*\[\s*["']invoke["']\s*\]\s*\(/, file);
   }
 });
@@ -202,7 +209,7 @@ test("browser identity is sign-in-only and cannot write identity tables directly
   for (const file of await sourceFiles(root)) {
     const source = await readFile(file, "utf8");
     assert.doesNotMatch(source, /auth\s*\.\s*signUp\s*\(/, file);
-    const identityWrite = /from\s*\(\s*["'](?:profiles|user_roles|identity_role_changes)["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
+    const identityWrite = /from\s*\(\s*["'](?:profiles|user_roles|identity_role_changes|identity_invitations)["']\s*\)[^;]{0,500}?\.(?:insert|update|upsert|delete)\s*\(/;
     assert.doesNotMatch(source, identityWrite, file);
   }
 
@@ -219,8 +226,12 @@ test("browser identity is sign-in-only and cannot write identity tables directly
   const administration = await readFile(path.join(root, "hooks/useIdentityAdministration.ts"), "utf8");
   assert.match(administration, /rpc\("list_tenant_members"\)/);
   assert.match(administration, /rpc\("change_tenant_member_role"/);
+  assert.match(administration, /functions\.invoke\("invite-member"/);
+  assert.match(administration, /rpc\("list_tenant_invitations"\)/);
+  assert.match(administration, /rpc\("cancel_tenant_invitation"/);
   assert.match(administration, /\.from\("identity_role_changes"\)[\s\S]*?\.eq\("org_id", orgId\)/);
-  assert.doesNotMatch(administration, /p_org_id|p_old_role|p_actor_id/);
+  assert.doesNotMatch(administration, /p_org_id|p_old_role|p_actor_id|p_token_hash|create_tenant_invitation/);
+  assert.doesNotMatch(types, /token_hash|create_tenant_invitation/);
 
   const settings = await readFile(path.join(root, "pages/Settings.tsx"), "utf8");
   assert.match(settings, /RoleAdministrationSettings/);
