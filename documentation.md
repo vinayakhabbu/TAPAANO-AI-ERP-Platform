@@ -162,14 +162,17 @@ git diff --check
 Current local evidence is recorded in `LOOP.md`. Disposable PostgreSQL tests do
 not replace ordered rehearsal against a copy of the real Supabase schema.
 Pull requests and pushes to `main` also run these gates plus the production
-build in a read-only Node 22 GitHub Actions workflow.
+build in a read-only Node 22 GitHub Actions workflow. A separate credential-free
+job applies all 63 migrations twice to a disposable local Supabase stack,
+compares public-schema dumps, runs database lint, and always destroys the stack.
 
 ## Deployment gates
 
 Do not deploy until all of the following are complete:
 
-- Rehearse all recovery migrations in order against a disposable production-like
-  database and resolve every preflight failure without inventing data.
+- Rehearse all recovery migrations in order against a sanitized data-bearing
+  production-like copy and resolve every preflight failure without inventing
+  data. The empty-stack full-chain rehearsal is complete.
 - Verify managed Supabase RLS, grants, Auth triggers, PostgREST schema cache,
   Realtime publication, Edge JWT behavior, and two-session concurrency.
 - Complete the missing accounting vertical slices.
