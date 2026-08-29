@@ -29,8 +29,10 @@ deployment, or application deployment has been performed.
   non-admin members through one JWT-protected delivery boundary; and audited
   create/rename/one-way-retire maintenance for chart-of-account rows; and
   audited create/update/one-way-retire customer and vendor lifecycle controls;
-  and audited entity creation/rename with immutable functional currency.
-- Next dependency: repository lint/build remediation and CI gates.
+  and audited entity creation/rename with immutable functional currency; and a
+  read-only Node 22 CI gate for tests, TypeScript, lint, and production build.
+- Next dependency: obtain a successful hosted production build, then rehearse
+  all recovery migrations against a disposable production-like database.
 
 ## Acceptance rules
 
@@ -829,3 +831,48 @@ Resolve the repository-wide lint baseline and native production-build blocker,
 then add CI gates for aggregate tests, TypeScript, lint, migration integrity,
 and production build. This repository-quality milestone precedes staging
 migration rehearsal.
+
+## Recovery checkpoint 23 — enforceable repository CI
+
+### Supported boundary
+
+Pull requests and pushes to `main` now run a read-only GitHub Actions workflow
+on Node 22. The workflow installs the exact lockfile with the repository's
+required legacy peer resolver, then runs aggregate regressions, TypeScript,
+repository-wide lint, and the production build. It has only `contents: read`
+permission and contains no secret, Supabase, publish, or deployment step.
+
+The five non-type-debt lint failures were corrected. Eighty-one legacy
+`explicit-any` findings remain visible as warnings rather than being concealed
+or unsafely rewritten across unsupported prototype modules. Together with the
+eight existing Fast Refresh warnings, the repository lint gate now exits with
+zero errors and 89 warnings. Node support is declared as 20 or 22 LTS.
+
+### Verification
+
+- CI workflow safety regression: **1/1**, including read-only permissions,
+  Node 22, exact install/test/type/lint/build commands, and absence of secrets
+  or deployment actions.
+- Aggregate recovery regressions: **151/151**.
+- TypeScript, repository-wide lint with **0 errors / 89 warnings**, changed-file
+  lint, and `git diff --check` pass.
+- This restricted workspace still reproduces the known Rollup native-parser
+  `stacker` panic after three transformed modules. The hosted Node 22 workflow
+  is the authoritative build gate; a successful hosted run is required before
+  staging rehearsal.
+
+### Residual deployment evidence
+
+- All twenty-two recovery migrations still require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- The 89 warning sites remain explicit quality debt; no warning is represented
+  as type-safe merely to make CI green.
+- No migration, Edge function, application deployment, or production action
+  has occurred.
+
+### Next dependency
+
+Require a green hosted Node 22 production build, then rehearse all recovery
+migrations in order against a disposable production-like database with
+preflight, replay, rollback, RLS/grant, PostgREST-cache, and concurrency
+evidence. Production remains out of scope without a separate explicit approval.

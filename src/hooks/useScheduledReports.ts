@@ -56,7 +56,7 @@ export function useCreateScheduledReport() {
       
       // Calculate next run time based on schedule
       const now = new Date();
-      let nextRun = new Date();
+      const nextRun = new Date();
       
       if (data.schedule_frequency === 'daily') {
         nextRun.setDate(now.getDate() + 1);

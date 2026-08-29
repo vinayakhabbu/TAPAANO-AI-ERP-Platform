@@ -218,6 +218,10 @@ npm test
 npm run typecheck
 ```
 
+Pull requests and pushes to `main` run regression tests, TypeScript, lint, and
+the production build on Node 22 through a read-only GitHub Actions workflow.
+The workflow does not deploy the application or apply database migrations.
+
 ## Deployment
 
 

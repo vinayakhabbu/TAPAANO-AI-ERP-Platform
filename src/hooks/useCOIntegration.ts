@@ -177,7 +177,7 @@ export const useCostCenterBalance = (costCenterId: string | null, fromDate?: str
     queryFn: async () => {
       if (!costCenterId) return null;
 
-      let query = supabase
+      const query = supabase
         .from("co_document_lines")
         .select(`
           amount,
