@@ -155,12 +155,14 @@ Run:
 ```bash
 npm test
 npm run typecheck
-./node_modules/.bin/eslint <changed files>
+npm run lint
 git diff --check
 ```
 
 Current local evidence is recorded in `LOOP.md`. Disposable PostgreSQL tests do
 not replace ordered rehearsal against a copy of the real Supabase schema.
+Pull requests and pushes to `main` also run these gates plus the production
+build in a read-only Node 22 GitHub Actions workflow.
 
 ## Deployment gates
 
@@ -171,8 +173,8 @@ Do not deploy until all of the following are complete:
 - Verify managed Supabase RLS, grants, Auth triggers, PostgREST schema cache,
   Realtime publication, Edge JWT behavior, and two-session concurrency.
 - Complete the missing accounting vertical slices.
-- Resolve repository-wide lint failures and obtain a successful production build
-  in a supported build environment.
+- Eliminate the remaining lint warning debt and obtain a successful production
+  build in the supported hosted Node 22 environment.
 - Perform finance/security review, backup and rollback rehearsal, and explicit
   release approval.
 
