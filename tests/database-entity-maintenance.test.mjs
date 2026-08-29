@@ -65,7 +65,7 @@ const fixture = `
   CREATE TABLE public.entity_invoice_account_controls(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,entity_id uuid NOT NULL);
   CREATE TABLE public.entity_customer_receipt_controls(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,entity_id uuid NOT NULL);
   CREATE TABLE public.entity_supplier_bill_account_controls(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,entity_id uuid NOT NULL);
-  CREATE TABLE public.entity_supplier_payment_account_controls(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,entity_id uuid NOT NULL);
+  CREATE TABLE public.entity_supplier_payment_controls(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,entity_id uuid NOT NULL);
 
   INSERT INTO public.organizations VALUES('${ids.orgA}','A'),('${ids.orgB}','B');
   INSERT INTO auth.users VALUES('${ids.adminA}'),('${ids.moderatorA}'),('${ids.adminB}');
@@ -180,7 +180,7 @@ test("new entity creation invents no period or accounting-control configuration"
     (SELECT count(*)::int FROM public.entity_invoice_account_controls WHERE entity_id='${id}') AS invoice_controls,
     (SELECT count(*)::int FROM public.entity_customer_receipt_controls WHERE entity_id='${id}') AS receipt_controls,
     (SELECT count(*)::int FROM public.entity_supplier_bill_account_controls WHERE entity_id='${id}') AS bill_controls,
-    (SELECT count(*)::int FROM public.entity_supplier_payment_account_controls WHERE entity_id='${id}') AS payment_controls`);
+    (SELECT count(*)::int FROM public.entity_supplier_payment_controls WHERE entity_id='${id}') AS payment_controls`);
   assert.deepEqual(counts.rows[0],{periods:0,invoice_controls:0,receipt_controls:0,bill_controls:0,payment_controls:0});
   await db.close();
 });

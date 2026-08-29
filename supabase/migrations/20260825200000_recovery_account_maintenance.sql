@@ -64,7 +64,7 @@ LOCK TABLE public.profiles, public.user_roles, public.accounts,
   public.account_master_events, public.entity_invoice_account_controls,
   public.entity_customer_receipt_controls,
   public.entity_supplier_bill_account_controls,
-  public.entity_supplier_payment_account_controls
+  public.entity_supplier_payment_controls
   IN SHARE ROW EXCLUSIVE MODE;
 
 CREATE OR REPLACE FUNCTION public.account_master_snapshot(p_account public.accounts)
@@ -477,7 +477,7 @@ BEGIN
       WHERE control.org_id=v_org_id AND control.cash_account_id=p_account_id)
      OR EXISTS (SELECT 1 FROM public.entity_supplier_bill_account_controls control
       WHERE control.org_id=v_org_id AND p_account_id IN (control.ap_account_id,control.expense_account_id))
-     OR EXISTS (SELECT 1 FROM public.entity_supplier_payment_account_controls control
+     OR EXISTS (SELECT 1 FROM public.entity_supplier_payment_controls control
       WHERE control.org_id=v_org_id AND control.cash_account_id=p_account_id) THEN
     RAISE EXCEPTION 'account used by an immutable accounting control cannot be retired';
   END IF;

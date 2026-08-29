@@ -65,8 +65,8 @@ const fixture = `
     SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id=_user_id AND role=_role)
   $$;
   CREATE OR REPLACE FUNCTION public.get_user_role(_user_id uuid)
-  RETURNS public.app_role LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
-    SELECT role FROM public.user_roles WHERE user_id=_user_id LIMIT 1
+  RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+    SELECT role::text FROM public.user_roles WHERE user_id=_user_id LIMIT 1
   $$;
   CREATE OR REPLACE FUNCTION public.assert_accounting_actor(p_org_id uuid)
   RETURNS uuid LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,auth AS $$

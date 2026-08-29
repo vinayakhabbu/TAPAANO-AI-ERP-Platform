@@ -29,10 +29,11 @@ deployment, or application deployment has been performed.
   non-admin members through one JWT-protected delivery boundary; and audited
   create/rename/one-way-retire maintenance for chart-of-account rows; and
   audited create/update/one-way-retire customer and vendor lifecycle controls;
-  and audited entity creation/rename with immutable functional currency; and a
-  read-only Node 22 CI gate for tests, TypeScript, lint, and production build.
-- Next dependency: obtain a successful hosted production build, then rehearse
-  all recovery migrations against a disposable production-like database.
+  and audited entity creation/rename with immutable functional currency; a
+  read-only Node 22 CI gate; and deterministic full-chain rehearsal in a
+  disposable local Supabase stack.
+- Next dependency: rehearse against a sanitized data-bearing copy, then run
+  managed-service, concurrency, security, finance, backup, and rollback gates.
 
 ## Acceptance rules
 
@@ -876,3 +877,55 @@ Require a green hosted Node 22 production build, then rehearse all recovery
 migrations in order against a disposable production-like database with
 preflight, replay, rollback, RLS/grant, PostgREST-cache, and concurrency
 evidence. Production remains out of scope without a separate explicit approval.
+
+## Recovery checkpoint 24 — deterministic full-chain migration rehearsal
+
+### Supported boundary
+
+The read-only CI workflow now starts a credential-free local Supabase stack
+with pinned CLI `2.116.0`. It applies the complete ordered 63-file history,
+resets and reapplies that history, compares two public-schema dumps byte for
+byte, runs Supabase database lint at error level, and destroys the stack even
+when a prior step fails. A manifest regression pins all 63 files and the
+contiguous 22-file recovery tail.
+
+The first two rehearsals exposed real ordered-history defects that isolated
+fixtures did not reproduce: legacy `get_user_role(uuid)` returned `text` before
+the identity migration installed its enum-return contract, and account
+maintenance referenced a supplier-payment control table name that the actual
+supplier-payment migration never created. Both are fixed with exact legacy
+fixtures and focused regressions.
+
+### Verification
+
+- Migration/CI safety regressions: **3/3**, including the manifest fingerprint,
+  read-only permissions, local-only Supabase commands, two resets/dumps,
+  deterministic comparison, error-level lint, unconditional cleanup, and the
+  absence of tokens, project links, database pushes, or deployment commands.
+- Focused identity helper regression: **9/9**.
+- Focused account/entity lineage regressions: **13/13**.
+- Aggregate recovery regressions: **153/153** on the hosted Node 22 gate.
+- Hosted TypeScript, repository-wide lint, production build, and application
+  verification pass.
+- Hosted disposable Supabase evidence passes: initial full-chain application,
+  clean reset/replay, identical public schema, database lint, and teardown.
+
+### Residual deployment evidence
+
+- The successful rehearsal starts from an empty managed local schema. It does
+  not prove that a sanitized copy of existing production rows satisfies every
+  recovery preflight or lock-time budget.
+- Managed PostgREST schema-cache refresh, Realtime publication state, Auth/Edge
+  integration, and two-session concurrency still need staging evidence.
+- Backup restoration and rollback must be rehearsed against the same sanitized
+  data-bearing copy before any production change is considered.
+- No remote Supabase project, migration, Edge function, hosted application, or
+  production database was changed.
+
+### Next dependency
+
+Obtain an authorized sanitized production-like database copy and rehearse the
+same manifest against its legacy rows, including preflight failure reporting,
+lock timing, backup restore, rollback, PostgREST/Realtime/Auth behavior, and
+two-session races. Then complete finance, security, and UAT sign-off. A remote
+deployment remains a separate explicitly approved action.
