@@ -28,8 +28,9 @@ deployment, or application deployment has been performed.
   existing non-admin roles; and short-lived, token-bound onboarding of new
   non-admin members through one JWT-protected delivery boundary; and audited
   create/rename/one-way-retire maintenance for chart-of-account rows; and
-  audited create/update/one-way-retire customer and vendor lifecycle controls.
-- Next dependency: controlled entity creation and rename.
+  audited create/update/one-way-retire customer and vendor lifecycle controls;
+  and audited entity creation/rename with immutable functional currency.
+- Next dependency: repository lint/build remediation and CI gates.
 
 ## Acceptance rules
 
@@ -778,3 +779,53 @@ Add tenant-admin entity creation and rename with append-only snapshots and
 posting-safe tenant/currency identity. Entity currency change and retirement
 remain unavailable until every accounting routine shares a proven lifecycle
 contract.
+
+## Recovery checkpoint 22 — controlled entity creation and rename
+
+### Supported boundary
+
+One tenant admin can create a normalized entity with one uppercase three-letter
+functional currency or rename an existing same-tenant entity. Both operations
+are idempotent and write append-only actor, reason, and before/after evidence.
+Entity ID, tenant lineage, functional currency, creation evidence, deletion,
+and retirement remain immutable or unavailable.
+
+Entity creation deliberately creates no accounting period, chart-of-account
+row, AR/AP/cash control, tax setup, or posting configuration. Each supported
+accounting boundary must be configured explicitly before the new entity can
+post. The browser retains a read-only physical entity contract and invokes only
+the exact create, rename, and safe audit-listing RPCs.
+
+### Verification
+
+- New entity-maintenance database scenarios: **6/6**, including replay,
+  hostile grants/policies/overloads, exact create/rename and retry, tenant-admin
+  authorization, normalized currency/name, target non-enumeration, NULL-safe
+  persistent audit snapshots, immutable currency/tenant/history, no invented
+  accounting setup, and direct owner/audit mutation rejection.
+- Browser containment scenarios: **15/15**, including tenant-scoped entity
+  reads, exact RPC-only maintenance, hidden physical audit rows, read-only
+  entity types, and explicit unconfigured-new-entity behavior.
+- Aggregate recovery regressions: **150/150**.
+- TypeScript, changed-file lint, and `git diff --check` pass.
+- Repository-wide lint remains at the unchanged legacy baseline of **86 errors
+  and 8 warnings**, outside this slice.
+- The production build remains blocked after three transformed modules by the
+  existing native Rollup/`stacker` assertion failure.
+
+### Residual deployment evidence
+
+- All twenty-two recovery migrations require ordered rehearsal against a
+  disposable, production-like copy of the actual Supabase schema.
+- Managed RLS/grants, PostgREST routine/type refresh, concurrent entity
+  create/rename requests, large legacy-master preflight, and migration replay
+  require staging proof.
+- No migration, Edge function, application deployment, or production action
+  has occurred.
+
+### Next dependency
+
+Resolve the repository-wide lint baseline and native production-build blocker,
+then add CI gates for aggregate tests, TypeScript, lint, migration integrity,
+and production build. This repository-quality milestone precedes staging
+migration rehearsal.

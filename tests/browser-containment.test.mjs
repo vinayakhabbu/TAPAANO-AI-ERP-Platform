@@ -432,6 +432,7 @@ test("unverified modules are unreachable from active routes and dashboard claims
   assert.match(settings, /RoleAdministrationSettings/);
   assert.match(settings, /AccountMaintenanceSettings/);
   assert.match(settings, /PartyMaintenanceSettings/);
+  assert.match(settings, /EntityMaintenanceSettings/);
 
   const help = await readFile(path.join(root, "pages/Help.tsx"), "utf8");
   assert.match(help, /Agent River,[\s\S]*?are unavailable or unverified/);
@@ -475,6 +476,13 @@ test("accounting masters remain physically read-only and use only controlled mai
   assert.doesNotMatch(partyMaintenance, /p_org_id|p_actor_id|\.from\("party_master_events"\)/);
   assert.doesNotMatch(types, /party_master_events:/);
 
+  const entityMaintenance = await readFile(path.join(root, "hooks/useEntityMaintenance.ts"), "utf8");
+  for (const routine of ["create_tenant_entity", "rename_tenant_entity", "list_tenant_entity_events"])
+    assert.match(entityMaintenance, new RegExp(`rpc\\(\\"${routine}\\"`));
+  assert.match(entityMaintenance, /\.from\("entities"\)[\s\S]*?\.eq\("org_id",orgId\)/);
+  assert.doesNotMatch(entityMaintenance, /p_org_id|p_actor_id|\.from\("entity_master_events"\)/);
+  assert.doesNotMatch(types, /entity_master_events:/);
+
   const component = await readFile(path.join(root, "components/settings/AccountMaintenanceSettings.tsx"), "utf8");
   assert.match(component, /Account code, type, and parent are immutable after creation/);
   assert.match(component, /Retirement is one-way/);
@@ -485,4 +493,7 @@ test("accounting masters remain physically read-only and use only controlled mai
     const postingForm = await readFile(path.join(root, relative), "utf8");
     assert.match(postingForm, /\.eq\("is_active", true\)/, `${relative} must hide retired parties`);
   }
+  const entityComponent = await readFile(path.join(root, "components/settings/EntityMaintenanceSettings.tsx"), "utf8");
+  assert.match(entityComponent, /Functional currency and tenant identity are immutable after creation/);
+  assert.match(entityComponent, /without periods or accounting controls/);
 });
