@@ -277,6 +277,11 @@ AS $$
   )
 $$;
 
+-- PostgreSQL cannot change an existing function's return type through
+-- CREATE OR REPLACE. The historical chain leaves this exact helper returning
+-- text, so replace it explicitly before installing the enum-return contract.
+DROP FUNCTION IF EXISTS public.get_user_role(uuid);
+
 CREATE OR REPLACE FUNCTION public.get_user_role(_user_id uuid)
 RETURNS public.app_role
 LANGUAGE sql
