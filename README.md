@@ -41,6 +41,9 @@ but must not be treated as authoritative accounting output.
   Tenant admins can also create, update, and one-way retire normalized customer
   and vendor profiles through audited RPCs. Retired parties remain historical
   references but are rejected by new posted invoices and bills.
+  Tenant admins can create and rename legal entities through audited RPCs;
+  functional currency, tenant identity, deletion, and retirement stay immutable
+  or unavailable, and no accounting setup is inferred.
 - **Contained:** Agent River, model-backed search/embedding, autonomous
   approval, anomaly detection, precedent search, scheduled reports, direct
   notification delivery, legacy AP/payment execution, and banking execution.
@@ -59,7 +62,8 @@ but must not be treated as authoritative accounting output.
   approval, matching, bank execution/reconciliation,
   tax and FX posting,
   bank matching/reconciliation, inventory and production posting, payroll
-  posting, entity and organization maintenance, consolidation, and authoritative
+  posting, organization maintenance, entity currency/lifecycle changes,
+  consolidation, and authoritative
   financial reporting.
 
 ### AI-powered features
@@ -172,6 +176,10 @@ Key tables include:
   Tenant admins use exact create/update/retire RPCs with append-only before/after
   evidence; retirement is one-way and blocks new invoice or bill posting while
   preserving prior documents.
+- Entity writes remain unavailable at the physical table boundary. Tenant
+  admins use exact create/rename RPCs with append-only snapshots; functional
+  currency and tenant identity never change, and new entities start without
+  periods or accounting controls.
 - Unsupported legacy tables covered by the residual lockdown are preservation
   data only. Do not infer implementation correctness—or repository-wide
   security for any unlisted object—from that containment.

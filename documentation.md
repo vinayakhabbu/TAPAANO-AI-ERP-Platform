@@ -67,6 +67,10 @@ The current recovery branch supports only these authoritative workflows:
    or one-way retire normalized party profiles through idempotent RPCs with
    append-only before/after evidence. Retirement preserves prior documents and
    rejects new posted invoices or bills.
+19. Controlled entity maintenance: a tenant admin can create an entity with one
+   immutable uppercase three-letter functional currency or rename an existing
+   entity through idempotent RPCs with append-only before/after evidence. No
+   period or accounting-control configuration is created implicitly.
 
 All verified accounting writes occur through controlled PostgreSQL routines.
 The browser has no physical-table write contract for journals, periods,
@@ -91,8 +95,9 @@ The following are unavailable or read-only preservation metadata:
   bill/payment-run rows remain unverified preservation metadata.
 - Bank connections, imports, matching, reconciliation, positive pay, balances,
   and bank-account credentials.
-- Entity and organization maintenance. Account maintenance is limited to
-  controlled create, rename, and one-way retirement; customer/vendor
+- Organization maintenance, entity currency/lifecycle changes, and entity
+  deletion. Account maintenance is limited to controlled create, rename, and
+  one-way retirement; customer/vendor
   maintenance is limited to controlled create, update, and one-way retirement.
 - Tax, FX/revaluation, inventory, production, payroll, controlling, planning,
   service, forecast, generic Decision Ledger, and unsupported reporting paths.
@@ -138,8 +143,10 @@ implemented.
   conflicting key-share lock and require an active same-tenant party, so a
   concurrent post deterministically commits before retirement or fails after
   retirement. Existing idempotent document retries remain safe.
-- Entity creation and rename remain unavailable. Currency changes and entity
-  retirement remain fail closed.
+- Tenant admins can create and rename entities only through controlled routines.
+  Tenant identity, functional currency, creation evidence, deletion, and
+  retirement remain immutable or unavailable. New entities have no posting
+  period or account controls until each supported boundary is configured.
 
 ## Verification
 
@@ -163,8 +170,7 @@ Do not deploy until all of the following are complete:
   database and resolve every preflight failure without inventing data.
 - Verify managed Supabase RLS, grants, Auth triggers, PostgREST schema cache,
   Realtime publication, Edge JWT behavior, and two-session concurrency.
-- Complete audited entity maintenance and the missing
-  accounting vertical slices.
+- Complete the missing accounting vertical slices.
 - Resolve repository-wide lint failures and obtain a successful production build
   in a supported build environment.
 - Perform finance/security review, backup and rollback rehearsal, and explicit

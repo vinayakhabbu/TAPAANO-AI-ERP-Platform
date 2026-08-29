@@ -8460,6 +8460,15 @@ export type Database = {
         }
         Returns: string
       }
+      create_tenant_entity: {
+        Args: {
+          p_currency: string
+          p_idempotency_key: string
+          p_name: string
+          p_reason: string
+        }
+        Returns: string
+      }
       create_tenant_vendor: {
         Args: {
           p_address: string | null
@@ -8636,6 +8645,20 @@ export type Database = {
           reason: string
         }[]
       }
+      list_tenant_entity_events: {
+        Args: never
+        Returns: {
+          actor_id: string
+          currency: string
+          entity_id: string
+          event_id: string
+          event_type: string
+          new_name: string
+          occurred_at: string
+          old_name: string | null
+          reason: string
+        }[]
+      }
       post_production_goods_receipt: {
         Args: {
           p_created_by?: string
@@ -8649,6 +8672,15 @@ export type Database = {
       rename_tenant_account: {
         Args: {
           p_account_id: string
+          p_idempotency_key: string
+          p_name: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      rename_tenant_entity: {
+        Args: {
+          p_entity_id: string
           p_idempotency_key: string
           p_name: string
           p_reason: string
