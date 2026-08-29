@@ -79,7 +79,7 @@ const fixture = `
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id uuid NOT NULL, entity_id uuid NOT NULL,
     ap_account_id uuid NOT NULL, expense_account_id uuid NOT NULL
   );
-  CREATE TABLE public.entity_supplier_payment_account_controls (
+  CREATE TABLE public.entity_supplier_payment_controls (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id uuid NOT NULL, entity_id uuid NOT NULL,
     cash_account_id uuid NOT NULL
   );
