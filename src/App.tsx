@@ -2,37 +2,28 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Outlet, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { useLayoutEffect } from "react";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Receivables from "./pages/Receivables";
-import Payables from "./pages/Payables";
-import GeneralLedger from "./pages/GeneralLedger";
-import Banking from "./pages/Banking";
-import PeriodClose from "./pages/PeriodClose";
-import Settings from "./pages/Settings";
-import Help from "./pages/Help";
-import ContainedModule from "./pages/ContainedModule";
-import NotFound from "./pages/NotFound";
+import { lazy, Suspense } from "react";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Receivables = lazy(() => import("./pages/Receivables"));
+const Payables = lazy(() => import("./pages/Payables"));
+const GeneralLedger = lazy(() => import("./pages/GeneralLedger"));
+const Banking = lazy(() => import("./pages/Banking"));
+const PeriodClose = lazy(() => import("./pages/PeriodClose"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Help = lazy(() => import("./pages/Help"));
+const ContainedModule = lazy(() => import("./pages/ContainedModule"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
-// Prevent scroll restoration on navigation
-function ScrollToTop() {
-  const { pathname } = useLocation();
-  
-  useLayoutEffect(() => {
-    // Don't scroll - keep current position
-  }, [pathname]);
-  
-  return null;
-}
-
 function AuthenticatedRoute() {
-  const { user, profile, loading, signingOut } = useAuth();
+  const { user, profile, loading, signingOut, signOut } = useAuth();
 
   if (loading || signingOut) {
     return (
@@ -41,14 +32,38 @@ function AuthenticatedRoute() {
       </div>
     );
   }
-  if (!user || !profile?.org_id) return <Navigate to="/auth" replace />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!profile?.org_id) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
+        <section className="w-full max-w-lg rounded-xl border border-border bg-card p-8 shadow-lg">
+          <p className="text-sm font-medium text-destructive">Access unavailable</p>
+          <h1 className="mt-2 text-2xl font-semibold">No authorized tenant membership was loaded.</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            No financial data is available. Contact your tenant administrator, or sign out and use another account.
+          </p>
+          <button
+            className="mt-6 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            disabled={signingOut}
+            onClick={() => void signOut().catch(() => undefined)}
+            type="button"
+          >
+            {signingOut ? "Signing out…" : "Sign out"}
+          </button>
+        </section>
+      </main>
+    );
+  }
   return <Outlet />;
 }
 
 function AppRoutes() {
   return (
-    <>
-      <ScrollToTop />
+    <Suspense fallback={(
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Loading TAPAANO…
+      </div>
+    )}>
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route element={<AuthenticatedRoute />}>
@@ -74,24 +89,26 @@ function AppRoutes() {
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
-    </>
+    </Suspense>
   );
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <AppErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </AppErrorBoundary>
 );
 
 export default App;

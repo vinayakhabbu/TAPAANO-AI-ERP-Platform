@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const workflowPath = new URL("../.github/workflows/ci.yml", import.meta.url);
+const securityWorkflowPath = new URL("../.github/workflows/security.yml", import.meta.url);
 
 test("CI is read-only and verifies the locked repository on Node 22", async () => {
   const workflow = await readFile(workflowPath, "utf8");
@@ -34,4 +35,14 @@ test("CI rehearses migrations only in a disposable local Supabase stack", async 
 
   assert.doesNotMatch(workflow, /SUPABASE_ACCESS_TOKEN|DB_PASSWORD|PROJECT_ID/);
   assert.doesNotMatch(workflow, /supabase (?:link|db push|functions deploy)/);
+});
+
+test("security CI rejects high and critical production dependency advisories", async () => {
+  const workflow = await readFile(securityWorkflowPath, "utf8");
+
+  assert.match(workflow, /node-version: 22/);
+  assert.match(workflow, /npm ci --legacy-peer-deps/);
+  assert.match(workflow, /npm audit --omit=dev --audit-level=high/);
+  assert.match(workflow, /dependency-review-action@v4/);
+  assert.match(workflow, /github\/codeql-action\/analyze@v3/);
 });

@@ -15,7 +15,7 @@ deployment, or application deployment has been performed.
 ## Current state
 
 - Production readiness: **NOT READY**
-- Recovery branch: `recovery/production-readiness`
+- Recovery branch: merged to `main` in pull request #11
 - Recovered checkpoints: privileged workflow containment; deterministic journal
   and period controls; authenticated-session isolation; atomic customer-invoice
   posting; credential/autonomy, AP/payment, banking and residual-schema
@@ -847,7 +847,7 @@ The five non-type-debt lint failures were corrected. Eighty-one legacy
 `explicit-any` findings remain visible as warnings rather than being concealed
 or unsafely rewritten across unsupported prototype modules. Together with the
 eight existing Fast Refresh warnings, the repository lint gate now exits with
-zero errors and 89 warnings. Node support is declared as 20 or 22 LTS.
+zero errors and 89 warnings. Node support is declared as 20.19+ or 22.12+ LTS.
 
 ### Verification
 
@@ -929,3 +929,153 @@ same manifest against its legacy rows, including preflight failure reporting,
 lock timing, backup restore, rollback, PostgREST/Realtime/Auth behavior, and
 two-session races. Then complete finance, security, and UAT sign-off. A remote
 deployment remains a separate explicitly approved action.
+
+## Recovery checkpoint 25 — release boundary hardening
+
+### Supported boundary
+
+- Production startup validates the public Supabase URL and publishable key and
+  renders a controlled unavailable screen before importing application code when
+  configuration is unsafe. Service-role-looking material is rejected.
+- The application has a top-level render error boundary, active routes are
+  loaded on demand, and legacy public metadata no longer claims AI, banking, or
+  reconciliation capabilities that are not verified.
+- External font and Lovable metadata dependencies are removed. Static-host SPA
+  fallback, immutable asset caching, CSP, HSTS, frame, MIME-sniffing, referrer,
+  resource, and permissions headers are supplied.
+- The active General Ledger route no longer imports mock multi-book or
+  intercompany screens, emits simulated posting success, or labels unverified
+  client-computed cross-entity amounts as balances. Those reporting and
+  consolidation capabilities remain unavailable.
+- The active shell no longer mounts the unavailable AI panel, invents an Acme
+  tenant or Controller role, or offers a cosmetic period selector and empty
+  notification center. The sidebar now derives identity from the signed-in
+  profile.
+- Empty local environment state is no longer tracked. A release-only build gate
+  verifies HTTPS and public-key configuration without weakening credential-free
+  CI builds.
+- Dependency review, CodeQL, Dependabot policy, vulnerability-reporting guidance,
+  and an explicit data/staging/restore/concurrency/finance/security/UAT release
+  checklist are part of the repository.
+- The locked dependency graph is upgraded to React Router 7.18.3, Vite 8.2.2,
+  and the compatible Vite React plugin. The full and production-only npm audits
+  report zero known vulnerabilities, and security CI now rejects new high or
+  critical production advisories.
+
+### Verification
+
+- Release-boundary regressions: **3/3**.
+- Aggregate repository regressions: **158/158**.
+- The full suite, TypeScript, lint, and validated production build pass on
+  supported Node **22.23.2** against the exact npm lockfile.
+- TypeScript passes; repository-wide lint remains **0 errors / 89 warnings**.
+- A validated release-environment build passes. Route-level splitting reduces
+  the prior 871.20 kB monolithic application bundle to a largest 205.71 kB
+  chunk, and the generated artifact includes the hosting control files.
+- CI, security-workflow, and Dependabot YAML parse successfully; the new hosted
+  security workflow has not run until these changes are pushed.
+
+### Residual deployment evidence
+
+- These controls have not been exercised on a chosen hosting platform; hosts
+  that do not consume `_headers` and `_redirects` must reproduce them.
+- A custom Supabase domain must be added explicitly to CSP `connect-src`.
+- The sanitized data-bearing rehearsal, managed-service behavior, backup restore,
+  rollback, concurrency/load evidence, monitoring, finance/security acceptance,
+  UAT, and release approval are still required.
+- No remote migration, function deployment, application deployment, or
+  production data action has occurred.
+
+### Next dependency
+
+Follow `PRODUCTION_READINESS.md` using an authorized sanitized production-like
+copy and a chosen staging/hosting target. Production remains unapproved until
+every mandatory evidence gate has a named owner and explicit sign-off.
+
+## Recovery checkpoint 26 — fail-closed browser identity and financial reads
+
+### Supported boundary
+
+- Session and tenant-profile initialization now handles rejected Supabase calls,
+  ignores stale identity work, and never admits an authenticated user without a
+  loaded tenant membership. The private-route guard presents an explicit
+  unavailable state instead of entering a redirect loop.
+- Sign-out is reachable from the active shell, uses Supabase local scope, cancels
+  and clears tenant query data, and removes a namespaced browser session even if
+  the remote revoke request fails. Direct browser storage access is wrapped with
+  a page-lifecycle fallback so privacy settings cannot crash authentication or
+  shell startup.
+- Active dashboard, ledger, period, receivables, payables, and banking reads now
+  distinguish query failure from a valid empty result. Affected counts, totals,
+  and histories render as unavailable and explicitly warn operators not to infer
+  zero balances or absent records.
+- The theme toggle follows the resolved system theme. Authentication errors are
+  reported only to development diagnostics, while operators receive a generic
+  non-enumerating sign-in failure.
+
+### Verification
+
+- Browser, release, and CI containment scenarios: **24/24**.
+- Aggregate repository regressions: **160/160** on supported Node **22.23.2**.
+- TypeScript passes; repository-wide lint remains **0 errors / 89 warnings**.
+- The production build passes with 2,137 transformed modules and a largest
+  206.10 kB route/runtime chunk. The npm advisory check reports zero known
+  vulnerabilities.
+
+### Residual deployment evidence
+
+- Authentication, storage-denial, offline sign-out, and failed financial-read
+  behavior still require browser-level smoke tests against an authorized staged
+  Supabase project.
+- Sanitized data rehearsal, managed-service behavior, restore/rollback,
+  concurrency and performance evidence, monitoring, finance and security
+  acceptance, role-based UAT, and explicit release approval remain mandatory.
+- No remote migration, function deployment, application deployment, or
+  production data action has occurred.
+
+### Next dependency
+
+Execute the named-owner staging and release gates in `PRODUCTION_READINESS.md`.
+The repository is locally hardened but remains unapproved for production or
+financial reliance until those external gates are evidenced and signed off.
+
+## Recovery checkpoint 27 — exact-origin release CSP
+
+### Supported boundary
+
+The credential-free build now ships a fail-closed `connect-src 'self'` policy
+and cannot silently become a functional remote deployment. The release build
+accepts only an origin-only HTTPS Supabase URL, builds the application, and then
+generates a static-host policy pinned to that exact HTTPS and WebSocket origin.
+Wildcard access to arbitrary `*.supabase.co` projects is removed.
+
+The full release verifier now terminates in `build:release`, so the artifact it
+approves is the same exact-origin artifact intended for deployment. URLs with
+credentials, a path, query, or fragment fail validation in both the build-time
+script and browser startup boundary.
+
+### Verification
+
+- Browser, release, and CI containment scenarios: **25/25**, including exact CSP
+  generation and fail-closed ordinary-build assertions.
+- Aggregate repository regressions: **161/161** on supported Node **22.23.2**.
+- TypeScript passes; repository lint has zero errors and the documented 89
+  warnings.
+- A release artifact was generated with a synthetic public configuration and
+  its emitted `_headers` file contained only the exact synthetic HTTPS/WSS
+  Supabase origin. No key material is written to that file.
+
+### Residual deployment evidence
+
+- The selected host must be proven to honor the generated `_headers` semantics,
+  or equivalent headers must be configured and captured at its edge.
+- The sanitized-data, managed-service, restore/rollback, concurrency/load,
+  operations, finance/security, UAT, and approval gates remain outstanding.
+- No remote migration, function deployment, application deployment, or
+  production data action has occurred.
+
+### Next dependency
+
+Provide an authorized staging Supabase project or sanitized production-like
+restore, the chosen hosting platform, and named gate owners so the remaining
+external production evidence can be executed and retained.

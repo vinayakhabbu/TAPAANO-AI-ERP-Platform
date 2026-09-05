@@ -29,6 +29,12 @@ const Receivables = () => {
     isLoading,
     error,
   } = useReceivables();
+  const statsUnavailable = Boolean(error);
+
+  const renderStat = (value: number, width = "w-16") => {
+    if (isLoading) return <Skeleton className={`mt-2 h-8 ${width}`} />;
+    return <p className="mt-2 text-2xl font-bold">{statsUnavailable ? "Unavailable" : value.toLocaleString()}</p>;
+  };
 
   return (
     <AppLayout
@@ -50,47 +56,45 @@ const Receivables = () => {
         </AlertDescription>
       </Alert>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      {statsUnavailable ? (
+        <Alert variant="destructive" className="mt-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Receivables summary unavailable</AlertTitle>
+          <AlertDescription>
+            One or more verified-history reads failed. Counts and totals are hidden; do not interpret missing values as zero.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Replacement receipts</p>
-          {isLoading ? <Skeleton className="mt-2 h-8 w-16" /> : (
-            <p className="mt-2 text-2xl font-bold">{stats.receiptReplacementCount}</p>
-          )}
+          {renderStat(stats.receiptReplacementCount)}
           <p className="mt-1 text-xs text-muted-foreground">One verified post-correction replacement</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Receipt corrections</p>
-          {isLoading ? <Skeleton className="mt-2 h-8 w-16" /> : (
-            <p className="mt-2 text-2xl font-bold">{stats.receiptCorrectionCount}</p>
-          )}
+          {renderStat(stats.receiptCorrectionCount)}
           <p className="mt-1 text-xs text-muted-foreground">Exact-offset accounting; not a refund</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Full receipts recorded</p>
-          {isLoading ? <Skeleton className="mt-2 h-8 w-16" /> : (
-            <p className="mt-2 text-2xl font-bold">{stats.fullReceiptCount}</p>
-          )}
+          {renderStat(stats.fullReceiptCount)}
           <p className="mt-1 text-xs text-muted-foreground">Manual accounting records; not bank-reconciled</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Full credit notes</p>
-          {isLoading ? <Skeleton className="mt-2 h-8 w-16" /> : (
-            <p className="mt-2 text-2xl font-bold">{stats.fullCreditCount}</p>
-          )}
+          {renderStat(stats.fullCreditCount)}
           <p className="mt-1 text-xs text-muted-foreground">Exact-offset corrections, not refunds</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Gross posted invoice total</p>
-          {isLoading ? <Skeleton className="mt-2 h-8 w-28" /> : (
-            <p className="mt-2 text-2xl font-bold">{stats.postedInvoiceTotal.toLocaleString()}</p>
-          )}
+          {renderStat(stats.postedInvoiceTotal, "w-28")}
           <p className="mt-1 text-xs text-muted-foreground">Not an outstanding receivable or aging balance</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Posted invoices</p>
-          {isLoading ? <Skeleton className="mt-2 h-8 w-16" /> : (
-            <p className="mt-2 text-2xl font-bold">{stats.invoiceCount}</p>
-          )}
+          {renderStat(stats.invoiceCount)}
           <p className="mt-1 text-xs text-muted-foreground">Verified journal-linked source documents</p>
         </div>
       </div>

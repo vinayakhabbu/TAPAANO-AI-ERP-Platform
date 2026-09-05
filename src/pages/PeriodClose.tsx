@@ -21,7 +21,7 @@ const statusStyle = {
 };
 
 const PeriodClose = () => {
-  const { data: periods = [], isLoading } = useAccountingPeriods();
+  const { data: periods = [], isLoading, isError } = useAccountingPeriods();
   const openCount = periods.filter((period) => period.status === "OPEN").length;
 
   return (
@@ -31,13 +31,13 @@ const PeriodClose = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Configured periods</CardDescription>
-              <CardTitle className="text-3xl">{isLoading ? "—" : periods.length}</CardTitle>
+              <CardTitle className="text-3xl">{isLoading ? "—" : isError ? "Unavailable" : periods.length}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Open for posting</CardDescription>
-              <CardTitle className="text-3xl">{isLoading ? "—" : openCount}</CardTitle>
+              <CardTitle className="text-3xl">{isLoading ? "—" : isError ? "Unavailable" : openCount}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
@@ -72,7 +72,13 @@ const PeriodClose = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
+                {isError ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-10 text-center text-destructive">
+                      Accounting-period history is unavailable. Do not infer that no periods are configured.
+                    </TableCell>
+                  </TableRow>
+                ) : isLoading ? (
                   <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                 ) : periods.length === 0 ? (
                   <TableRow>

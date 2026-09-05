@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useBankAccounts, useBankTransactions } from "@/hooks/useBanking";
 
 const Banking = () => {
-  const { data: accounts = [], isLoading: accountsLoading } = useBankAccounts();
-  const { data: transactions = [], isLoading: transactionsLoading } = useBankTransactions();
+  const { data: accounts = [], isLoading: accountsLoading, isError: accountsError } = useBankAccounts();
+  const { data: transactions = [], isLoading: transactionsLoading, isError: transactionsError } = useBankTransactions();
 
   return (
     <AppLayout title="Banking containment" subtitle="Non-secret read-only preservation metadata">
@@ -22,14 +22,24 @@ const Banking = () => {
         </AlertDescription>
       </Alert>
 
+      {accountsError || transactionsError ? (
+        <Alert variant="destructive" className="mt-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Banking metadata unavailable</AlertTitle>
+          <AlertDescription>
+            One or more tenant-scoped reads failed. Counts are hidden; do not interpret missing values as zero.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Tenant account metadata rows</p>
-          {accountsLoading ? <Skeleton className="mt-2 h-8 w-16" /> : <p className="mt-2 text-2xl font-bold">{accounts.length}</p>}
+          {accountsLoading ? <Skeleton className="mt-2 h-8 w-16" /> : <p className="mt-2 text-2xl font-bold">{accountsError ? "Unavailable" : accounts.length}</p>}
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Tenant transaction metadata rows</p>
-          {transactionsLoading ? <Skeleton className="mt-2 h-8 w-16" /> : <p className="mt-2 text-2xl font-bold">{transactions.length}</p>}
+          {transactionsLoading ? <Skeleton className="mt-2 h-8 w-16" /> : <p className="mt-2 text-2xl font-bold">{transactionsError ? "Unavailable" : transactions.length}</p>}
         </div>
       </div>
 
@@ -41,7 +51,8 @@ const Banking = () => {
         <Table>
           <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Institution label</TableHead><TableHead>Currency label</TableHead><TableHead>Evidence</TableHead></TableRow></TableHeader>
           <TableBody>
-            {accountsLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
+            {accountsError ? <TableRow><TableCell colSpan={4} className="h-24 text-center text-destructive">Account metadata is unavailable.</TableCell></TableRow>
+              : accountsLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
               : accounts.length === 0 ? <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No account metadata.</TableCell></TableRow>
               : accounts.map((account) => (
                 <TableRow key={account.id}>
@@ -61,7 +72,8 @@ const Banking = () => {
         <Table>
           <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Description</TableHead><TableHead>Evidence</TableHead></TableRow></TableHeader>
           <TableBody>
-            {transactionsLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
+            {transactionsError ? <TableRow><TableCell colSpan={3} className="h-24 text-center text-destructive">Transaction metadata is unavailable.</TableCell></TableRow>
+              : transactionsLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
               : transactions.length === 0 ? <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted-foreground">No transaction metadata.</TableCell></TableRow>
               : transactions.map((transaction) => (
                 <TableRow key={transaction.id}>

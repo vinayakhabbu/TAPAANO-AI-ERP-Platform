@@ -66,7 +66,7 @@ but must not be treated as authoritative accounting output.
   consolidation, and authoritative
   financial reporting.
 
-### AI-powered features
+### AI features
 
 AI and autonomous workflows are intentionally unavailable while their tenant,
 audit, credential, and side-effect boundaries are being rebuilt.
@@ -86,7 +86,7 @@ audit, credential, and side-effect boundaries are being rebuilt.
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 20.19+ or 22.12+ and npm
 - A Supabase project 
 
 ### Installation
@@ -94,14 +94,14 @@ audit, credential, and side-effect boundaries are being rebuilt.
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-   cd YOUR_REPO
+   git clone https://github.com/vinayakhabbu/TAPAANO-AI-ERP-Platform.git
+   cd TAPAANO-AI-ERP-Platform
    ```
 
 2. **Install dependencies**
 
    ```bash
-   npm install
+   npm ci --legacy-peer-deps
    ```
 
 3. **Set up environment variables**
@@ -111,8 +111,10 @@ audit, credential, and side-effect boundaries are being rebuilt.
    ```env
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
-   VITE_SUPABASE_PROJECT_ID=your_project_id
    ```
+
+   Never place a service-role key or other secret in a `VITE_*` variable;
+   Vite embeds these values in the browser bundle.
 
 4. **Start the development server**
 
@@ -122,7 +124,7 @@ audit, credential, and side-effect boundaries are being rebuilt.
 
 5. **Open your browser**
 
-   Navigate to `http://localhost:5173`
+   Navigate to `http://localhost:8080`
 
 ### Database Setup
 
@@ -196,14 +198,24 @@ See [documentation.md](./documentation.md) for comprehensive documentation inclu
 - Security model
 - Architecture diagrams
 
+Use [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) for the evidence gates,
+release build, managed Supabase rehearsal, rollback, and deployment order. See
+[SECURITY.md](./SECURITY.md) before handling vulnerability reports or secrets.
+
 ## Development
 
 ```bash
 # Start dev server
 npm run dev
 
-# Build for production
+# Credential-free CI build
 npm run build
+
+# Release build (requires valid public Supabase environment variables)
+npm run build:release
+
+# Full release verification
+npm run verify:release
 
 # Preview production build
 npm run preview
@@ -218,6 +230,10 @@ npm test
 npm run typecheck
 ```
 
+Only `build:release` produces a deployable CSP: it pins browser network access
+to the configured Supabase HTTPS and WebSocket origin. The credential-free
+`build` artifact intentionally blocks remote Supabase connections.
+
 Pull requests and pushes to `main` run regression tests, TypeScript, lint, and
 the production build on Node 22 through a read-only GitHub Actions workflow.
 The workflow also applies the complete migration history twice to a disposable
@@ -227,13 +243,11 @@ application, or apply migrations outside that disposable runner.
 
 ## Deployment
 
-
-### Self-Hosting
-
-1. Build the project: `npm run build`
-2. Deploy the `dist/` folder to any static hosting service
-3. Configure environment variables on your hosting platform
-4. Deploy Supabase Edge Functions to your Supabase project
+Do not deploy directly from this README. Complete and retain every gate in
+[PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md), then build an immutable
+artifact with `npm run verify:release`. Static hosts that understand Netlify/
+Cloudflare-style files will pick up the included SPA fallback and security
+headers; other hosts must reproduce those controls explicitly.
 
 ## Contributing
 

@@ -55,6 +55,40 @@ test("disabled surfaces describe an unavailable state", async () => {
   }
 });
 
+test("the active application shell exposes no simulated product state", async () => {
+  const layout = await readFile(path.join(root, "components/layout/AppLayout.tsx"), "utf8");
+  const sidebar = await readFile(path.join(root, "components/layout/Sidebar.tsx"), "utf8");
+  const header = await readFile(path.join(root, "components/layout/Header.tsx"), "utf8");
+
+  assert.doesNotMatch(layout, /AIChatBar|AI_PANEL|ROUTE_SUBTITLES/);
+  assert.doesNotMatch(sidebar, /Acme Corp|Controller|AI ERP Platform/);
+  assert.match(sidebar, /useAuth\(\)/);
+  assert.match(sidebar, /signOut/);
+  assert.doesNotMatch(header, /selectedPeriod|Notifications|0 unread/);
+  assert.match(header, /resolvedTheme/);
+});
+
+test("browser storage restrictions cannot crash authentication or shell state", async () => {
+  const storageFile = path.join(root, "lib/browserStorage.ts");
+  const storage = await readFile(storageFile, "utf8");
+  const client = await readFile(path.join(root, "integrations/supabase/client.ts"), "utf8");
+  const layout = await readFile(path.join(root, "components/layout/AppLayout.tsx"), "utf8");
+  const sidebar = await readFile(path.join(root, "components/layout/Sidebar.tsx"), "utf8");
+
+  assert.match(storage, /try[\s\S]*?window\.localStorage[\s\S]*?catch/);
+  assert.match(storage, /fallbackStorage/);
+  assert.match(client, /storage:\s*safeBrowserStorage/);
+  assert.match(client, /storageKey:\s*SUPABASE_AUTH_STORAGE_KEY/);
+  assert.match(layout, /safeBrowserStorage\.getItem[\s\S]*?safeBrowserStorage\.setItem/);
+  assert.match(sidebar, /safeBrowserStorage\.getItem[\s\S]*?safeBrowserStorage\.setItem/);
+
+  for (const file of await sourceFiles(root)) {
+    if (file === storageFile) continue;
+    const source = await readFile(file, "utf8");
+    assert.doesNotMatch(source, /\b(?:localStorage|sessionStorage)\b/, file);
+  }
+});
+
 test("browser cannot write physical journal or period tables", async () => {
   for (const file of await sourceFiles(root)) {
     const source = await readFile(file, "utf8");
@@ -195,14 +229,48 @@ test("receivables reads only tenant-scoped journal-linked posted invoices", asyn
 
 test("authentication changes isolate cached tenant data and guard private routes", async () => {
   const auth = await readFile(path.join(root, "hooks/useAuth.tsx"), "utf8");
-  assert.match(auth, /setSigningOut\(true\)[\s\S]*?setUser\(null\)[\s\S]*?setProfile\(null\)[\s\S]*?cancelQueries\(\)[\s\S]*?auth\.signOut\(\)[\s\S]*?cancelQueries\(\)[\s\S]*?queryClient\.clear\(\)/);
+  assert.match(auth, /setSigningOut\(true\)[\s\S]*?setUser\(null\)[\s\S]*?setProfile\(null\)[\s\S]*?cancelQueries\(\)[\s\S]*?auth\.signOut\(\{ scope: "local" \}\)[\s\S]*?cancelQueries\(\)[\s\S]*?queryClient\.clear\(\)/);
   assert.match(auth, /identityEpoch\.current === epoch && currentUserId\.current === userId/);
   assert.match(auth, /signingOutRef\.current \|\| identityEpoch\.current !== initialEpoch/);
+  assert.match(auth, /select\("id, org_id, display_name, role"\)/);
+  assert.match(auth, /getSession\(\)[\s\S]*?\.catch/);
+  assert.match(auth, /signOut\(\{ scope: "local" \}\)/);
+  assert.match(auth, /safeBrowserStorage\.removeItem\(SUPABASE_AUTH_STORAGE_KEY\)/);
+  assert.doesNotMatch(auth, /select\("\*"\)|console\.error/);
 
   const app = await readFile(path.join(root, "App.tsx"), "utf8");
   assert.match(app, /function AuthenticatedRoute\(\)/);
-  assert.match(app, /if \(!user \|\| !profile\?\.org_id\)/);
+  assert.match(app, /if \(!user\) return <Navigate to="\/auth" replace/);
+  assert.match(app, /if \(!profile\?\.org_id\)/);
+  assert.match(app, /No authorized tenant membership was loaded/);
   assert.match(app, /<Route element=\{<AuthenticatedRoute \/>\}>/);
+
+  const authPage = await readFile(path.join(root, "pages/Auth.tsx"), "utf8");
+  const notFound = await readFile(path.join(root, "pages/NotFound.tsx"), "utf8");
+  assert.doesNotMatch(authPage, /console\.error/);
+  assert.match(authPage, /autoComplete="email"/);
+  assert.match(authPage, /autoComplete="current-password"/);
+  assert.doesNotMatch(notFound, /console\.error|useEffect/);
+  assert.match(notFound, /<Link to="\/"/);
+});
+
+test("financial read failures cannot masquerade as zero or empty state", async () => {
+  const dashboard = await readFile(path.join(root, "pages/Index.tsx"), "utf8");
+  const receivables = await readFile(path.join(root, "pages/Receivables.tsx"), "utf8");
+  const payables = await readFile(path.join(root, "pages/Payables.tsx"), "utf8");
+  const payablesHook = await readFile(path.join(root, "hooks/usePayables.ts"), "utf8");
+  const banking = await readFile(path.join(root, "pages/Banking.tsx"), "utf8");
+  const periods = await readFile(path.join(root, "pages/PeriodClose.tsx"), "utf8");
+  const ledger = await readFile(path.join(root, "pages/GeneralLedger.tsx"), "utf8");
+
+  assert.match(dashboard, /summaryUnavailable[\s\S]*?Counts are hidden; do not interpret missing values as zero/);
+  assert.match(receivables, /statsUnavailable[\s\S]*?Counts and totals are hidden; do not interpret missing values as zero/);
+  assert.match(payables, /summary\.error[\s\S]*?Counts are hidden; do not interpret missing values as zero/);
+  assert.match(payablesHook, /error:\s*vendors\.error[\s\S]*?paymentRuns\.error/);
+  assert.match(banking, /accountsError \|\| transactionsError[\s\S]*?Counts are hidden; do not interpret missing values as zero/);
+  assert.match(periods, /isError[\s\S]*?Do not infer that no periods are configured/);
+  assert.match(ledger, /accountsError[\s\S]*?Do not infer an empty ledger/);
+  assert.match(ledger, /entriesError[\s\S]*?Do not infer that no entries exist/);
 });
 
 test("browser identity is sign-in-only and cannot write identity tables directly", async () => {
@@ -426,6 +494,11 @@ test("unverified modules are unreachable from active routes and dashboard claims
   const dashboard = await readFile(path.join(root, "pages/Index.tsx"), "utf8");
   assert.match(dashboard, /TAPAANO is not production-ready/);
   assert.doesNotMatch(dashboard, /useDashboardStats|Total Receivables|Total Payables|Bank Balance|RevenueChart|ARAgingChart/);
+
+  const ledger = await readFile(path.join(root, "pages/GeneralLedger.tsx"), "utf8");
+  assert.doesNotMatch(ledger, /MultiBookAccounting|IntercompanyElimination|multi-book|intercompany/i);
+  assert.doesNotMatch(ledger, /useAccountBalances|Total Assets|Total Liabilities|Total Equity/);
+  assert.match(ledger, /Authoritative report export is not available/);
 
   const settings = await readFile(path.join(root, "pages/Settings.tsx"), "utf8");
   assert.doesNotMatch(settings, /TeamSettings|SecuritySettings|SOXControls|NextDayMigration|DecisionDeskTabsSettings/);

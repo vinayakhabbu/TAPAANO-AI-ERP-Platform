@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Sparkles, Mail, Lock } from "lucide-react";
+import { reportClientError } from "@/lib/clientDiagnostics";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -29,8 +30,8 @@ const Auth = () => {
       toast.success("Welcome back!");
       navigate("/");
     } catch (error: unknown) {
-      console.error("Auth error:", error);
-      toast.error(error instanceof Error ? error.message : "Authentication failed");
+      reportClientError("Authentication failed", error);
+      toast.error("Sign-in failed. Check your credentials or contact your administrator.");
     } finally {
       setLoading(false);
     }
@@ -44,8 +45,8 @@ const Auth = () => {
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-glow">
             <Sparkles className="h-7 w-7 text-primary-foreground" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-foreground">FinanceAI</h1>
-          <p className="text-sm text-muted-foreground">AI-First Finance ERP</p>
+          <h1 className="mt-4 text-2xl font-bold text-foreground">TAPAANO</h1>
+          <p className="text-sm text-muted-foreground">Controlled finance operations</p>
         </div>
 
         {/* Form Card */}
@@ -66,6 +67,7 @@ const Auth = () => {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@company.com"
                   value={formData.email}
                   onChange={(e) =>
@@ -84,6 +86,7 @@ const Auth = () => {
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) =>

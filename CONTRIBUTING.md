@@ -27,8 +27,8 @@ Please be respectful and considerate in all interactions. We aim to maintain a w
 1. **Fork and Clone**
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/finance-erp.git
-   cd finance-erp
+   git clone https://github.com/YOUR_USERNAME/TAPAANO-AI-ERP-Platform.git
+   cd TAPAANO-AI-ERP-Platform
    ```
 
 2. **Create a Branch**
@@ -46,6 +46,8 @@ Please be respectful and considerate in all interactions. We aim to maintain a w
 4. **Test Your Changes**
 
    ```bash
+   npm test
+   npm run typecheck
    npm run lint
    npm run build
    ```
@@ -59,14 +61,14 @@ Please be respectful and considerate in all interactions. We aim to maintain a w
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- Node.js 20.19+ or 22.12+
+- npm
 - Git
 
 ### Local Development
 
 ```bash
-npm install
+npm ci --legacy-peer-deps
 npm run dev
 ```
 

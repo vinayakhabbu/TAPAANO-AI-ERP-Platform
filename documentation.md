@@ -165,6 +165,9 @@ Pull requests and pushes to `main` also run these gates plus the production
 build in a read-only Node 22 GitHub Actions workflow. A separate credential-free
 job applies all 63 migrations twice to a disposable local Supabase stack,
 compares public-schema dumps, runs database lint, and always destroys the stack.
+The latest hosted run on `main` passed. The release command additionally
+validates public Supabase configuration before building, and a separate security
+workflow is configured to perform dependency review and CodeQL analysis.
 
 ## Deployment gates
 
@@ -175,13 +178,15 @@ Do not deploy until all of the following are complete:
   data. The empty-stack full-chain rehearsal is complete.
 - Verify managed Supabase RLS, grants, Auth triggers, PostgREST schema cache,
   Realtime publication, Edge JWT behavior, and two-session concurrency.
-- Complete the missing accounting vertical slices.
-- Eliminate the remaining lint warning debt and obtain a successful production
-  build in the supported hosted Node 22 environment.
+- Freeze the production scope to the verified vertical slices; keep every other
+  workflow unavailable until it receives equivalent accounting and authorization
+  controls.
+- Triage the 89 visible lint warnings and resolve any warning that touches the
+  release scope. The supported hosted Node 22 production build is green.
 - Perform finance/security review, backup and rollback rehearsal, and explicit
   release approval.
 
-Recovery checkpoints are published through reviewed pull requests on
-`recovery/production-readiness`; inspect Git history for exact merge status. No
-recovery migration, Edge function, or application deployment has been
-performed.
+Recovery checkpoints were merged to `main` through reviewed pull requests;
+inspect Git history for exact status. See `PRODUCTION_READINESS.md` for the
+current evidence checklist. No recovery migration, Edge function, or application
+deployment has been performed.

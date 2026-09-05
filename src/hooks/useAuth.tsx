@@ -1,7 +1,9 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_AUTH_STORAGE_KEY, supabase } from "@/integrations/supabase/client";
+import { safeBrowserStorage } from "@/lib/browserStorage";
+import { reportClientError } from "@/lib/clientDiagnostics";
 
 interface Profile {
   id: string;
@@ -42,62 +44,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signingOutRef = useRef(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (signingOutRef.current && session) return;
-        const epoch = ++identityEpoch.current;
-        currentUserId.current = session?.user.id ?? null;
-        setSession(session);
-        setUser(session?.user ?? null);
+    let active = true;
 
-        if (session?.user) {
-          setTimeout(() => {
-            void fetchProfile(session.user.id, epoch);
-          }, 0);
-        } else {
+    const fetchProfile = async (userId: string, epoch: number) => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, org_id, display_name, role")
+          .eq("id", userId)
+          .single();
+
+        if (error) throw error;
+        if (active && identityEpoch.current === epoch && currentUserId.current === userId) {
+          setProfile(data);
+        }
+      } catch (error) {
+        reportClientError("Profile initialization failed", error);
+        if (active && identityEpoch.current === epoch && currentUserId.current === userId) {
           setProfile(null);
         }
+      } finally {
+        if (active && identityEpoch.current === epoch && currentUserId.current === userId) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const applySession = (nextSession: Session | null, deferred: boolean) => {
+      if (!active || (signingOutRef.current && nextSession)) return;
+      const epoch = ++identityEpoch.current;
+      const nextUserId = nextSession?.user.id ?? null;
+      currentUserId.current = nextUserId;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setProfile(null);
+
+      if (!nextSession?.user) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      const startProfileFetch = () => void fetchProfile(nextSession.user.id, epoch);
+      if (deferred) {
+        setTimeout(startProfileFetch, 0);
+      } else {
+        startProfileFetch();
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        applySession(session, true);
       }
     );
 
     const initialEpoch = identityEpoch.current;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (signingOutRef.current || identityEpoch.current !== initialEpoch) return;
-      const epoch = ++identityEpoch.current;
-      currentUserId.current = session?.user.id ?? null;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        void fetchProfile(session.user.id, epoch);
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    });
+    void supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (!active || signingOutRef.current || identityEpoch.current !== initialEpoch) return;
+        if (error) {
+          reportClientError("Session initialization failed", error);
+          applySession(null, false);
+          return;
+        }
+        applySession(session, false);
+      })
+      .catch((error: unknown) => {
+        if (!active || signingOutRef.current || identityEpoch.current !== initialEpoch) return;
+        reportClientError("Session initialization failed", error);
+        applySession(null, false);
+      });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
-
-  const fetchProfile = async (userId: string, epoch: number) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching profile:", error);
-        return;
-      }
-
-      if (identityEpoch.current === epoch && currentUserId.current === userId) {
-        setProfile(data);
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-    }
-  };
 
   const signOut = async () => {
     if (signingOutRef.current) return;
@@ -108,15 +131,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setLoading(false);
 
     try {
       await queryClient.cancelQueries();
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) throw error;
     } finally {
       try {
         await queryClient.cancelQueries();
       } finally {
+        safeBrowserStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY);
+        safeBrowserStorage.removeItem(`${SUPABASE_AUTH_STORAGE_KEY}-code-verifier`);
+        safeBrowserStorage.removeItem(`${SUPABASE_AUTH_STORAGE_KEY}-user`);
         queryClient.clear();
         signingOutRef.current = false;
         setSigningOut(false);

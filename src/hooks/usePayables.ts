@@ -292,5 +292,8 @@ export const usePayablesSummary = () => {
       || postedCredits.isLoading || postedPayments.isLoading
       || paymentCorrections.isLoading || paymentReplacements.isLoading
       || paymentRuns.isLoading,
+    error: vendors.error || bills.error || postedBills.error || postedCredits.error
+      || postedPayments.error || paymentCorrections.error || paymentReplacements.error
+      || paymentRuns.error,
   };
 };

@@ -15,6 +15,9 @@ const Index = () => {
   const bankAccounts = useBankAccounts();
   const periods = useAccountingPeriods();
   const loading = receivables.isLoading || payables.isLoading || bankAccounts.isLoading || periods.isLoading;
+  const summaryUnavailable = Boolean(
+    receivables.error || payables.error || bankAccounts.error || periods.error,
+  );
   const openPeriods = periods.data?.filter((period) => period.status === "OPEN").length ?? 0;
 
   const cards = [
@@ -31,16 +34,29 @@ const Index = () => {
         <AlertTitle>TAPAANO is not production-ready</AlertTitle>
         <AlertDescription>
           Only the journal/period foundation and the narrow zero-tax,
-          functional-currency invoice and full-credit paths are authoritative. All other
-          financial modules are either read-only preservation metadata or unavailable.
+          functional-currency invoice, bill, full-credit, manual full-settlement,
+          correction, and one-time replacement paths are authoritative. All other
+          financial capabilities are read-only preservation metadata or unavailable.
         </AlertDescription>
       </Alert>
+
+      {summaryUnavailable ? (
+        <Alert variant="destructive" className="mt-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Operational summary unavailable</AlertTitle>
+          <AlertDescription>
+            One or more tenant-scoped reads failed. Counts are hidden; do not interpret missing values as zero.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ label, value, href, icon: Icon }) => (
           <div key={label} className="rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Icon className="h-4 w-4" />{label}</div>
-            {loading ? <Skeleton className="mt-3 h-8 w-16" /> : <p className="mt-3 text-2xl font-bold">{value}</p>}
+            {loading ? <Skeleton className="mt-3 h-8 w-16" /> : (
+              <p className="mt-3 text-2xl font-bold">{summaryUnavailable ? "Unavailable" : value}</p>
+            )}
             <Button asChild variant="link" className="mt-2 h-auto p-0"><Link to={href}>View boundary</Link></Button>
           </div>
         ))}

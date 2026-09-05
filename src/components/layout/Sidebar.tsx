@@ -24,9 +24,12 @@ import {
   Calculator,
   Users,
   TrendingUp,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuth } from "@/hooks/useAuth";
+import { safeBrowserStorage } from "@/lib/browserStorage";
 
 const navCategories = [
   {
@@ -88,11 +91,22 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const { user, profile, signOut, signingOut } = useAuth();
   const navRef = useRef<HTMLElement>(null);
   const SCROLL_KEY = "sidebar-nav-scroll-top";
+  const identityLabel = profile?.display_name?.trim() || user?.email || "Signed-in user";
+  const roleLabel = profile?.role
+    ? profile.role.replace(/_/g, " ")
+    : "Tenant member";
+  const initials = identityLabel
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
 
   useEffect(() => {
-    const saved = localStorage.getItem(SCROLL_KEY);
+    const saved = safeBrowserStorage.getItem(SCROLL_KEY);
     if (saved && navRef.current) {
       navRef.current.scrollTop = Number(saved);
     }
@@ -100,7 +114,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const handleNavScroll = () => {
     if (!navRef.current) return;
-    localStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
+    safeBrowserStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
   };
 
   return (
@@ -118,13 +132,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {!collapsed && (
           <div className="overflow-hidden">
             <h1 className="text-lg font-semibold text-foreground">TAPAANO</h1>
-            <p className="text-xs text-muted-foreground">AI ERP Platform</p>
+            <p className="text-xs text-muted-foreground">Controlled Finance ERP</p>
           </div>
         )}
       </div>
 
       {/* Toggle Button */}
       <Button
+        type="button"
+        aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
         variant="ghost"
         size="icon"
         onClick={onToggle}
@@ -210,15 +226,27 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div className="border-t border-sidebar-border p-4">
         <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-            AC
+            {initials}
           </div>
           {!collapsed && (
             <div className="flex-1 overflow-hidden">
-              <p className="truncate text-sm font-medium text-foreground">Acme Corp</p>
-              <p className="truncate text-xs text-muted-foreground">Controller</p>
+              <p className="truncate text-sm font-medium text-foreground">{identityLabel}</p>
+              <p className="truncate text-xs capitalize text-muted-foreground">{roleLabel}</p>
             </div>
           )}
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size={collapsed ? "icon" : "sm"}
+          className={cn("mt-3 text-muted-foreground", !collapsed && "w-full justify-start")}
+          aria-label="Sign out"
+          disabled={signingOut}
+          onClick={() => void signOut().catch(() => undefined)}
+        >
+          <LogOut className="h-4 w-4" />
+          {!collapsed && <span>{signingOut ? "Signing out…" : "Sign out"}</span>}
+        </Button>
       </div>
     </aside>
   );

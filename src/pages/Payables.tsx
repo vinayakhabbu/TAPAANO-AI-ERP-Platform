@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useBills, usePayablesSummary, usePaymentRuns, usePostedSupplierBills, usePostedSupplierCredits, usePostedSupplierPaymentCorrections, usePostedSupplierPaymentReplacements, usePostedSupplierPayments } from "@/hooks/usePayables";
 
 const Payables = () => {
-  const { data: bills = [], isLoading: billsLoading } = useBills();
+  const { data: bills = [], isLoading: billsLoading, isError: billsError } = useBills();
   const {
     data: postedBills = [],
     isLoading: postedBillsLoading,
@@ -30,7 +30,7 @@ const Payables = () => {
     data: paymentReplacements = [],
     isError: paymentReplacementsError,
   } = usePostedSupplierPaymentReplacements();
-  const { data: paymentRuns = [], isLoading: runsLoading } = usePaymentRuns();
+  const { data: paymentRuns = [], isLoading: runsLoading, isError: runsError } = usePaymentRuns();
   const summary = usePayablesSummary();
   const postedHistoryError = postedBillsError || postedCreditsError
     || postedPaymentsError || paymentCorrectionsError || paymentReplacementsError;
@@ -53,6 +53,16 @@ const Payables = () => {
         </AlertDescription>
       </Alert>
 
+      {summary.error ? (
+        <Alert variant="destructive" className="mt-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Payables summary unavailable</AlertTitle>
+          <AlertDescription>
+            One or more tenant-scoped reads failed. Counts are hidden; do not interpret missing values as zero.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         {[
           ["Verified posted bills", summary.postedBillCount],
@@ -67,7 +77,7 @@ const Payables = () => {
           <div key={label} className="rounded-xl border border-border bg-card p-5">
             <p className="text-sm text-muted-foreground">{label}</p>
             {summary.isLoading ? <Skeleton className="mt-2 h-8 w-14" /> : (
-              <p className="mt-2 text-2xl font-bold">{value}</p>
+              <p className="mt-2 text-2xl font-bold">{summary.error ? "Unavailable" : value}</p>
             )}
           </div>
         ))}
@@ -160,7 +170,8 @@ const Payables = () => {
           <Table>
             <TableHeader><TableRow><TableHead>Bill</TableHead><TableHead>Vendor</TableHead><TableHead>Issue date</TableHead><TableHead>Due date</TableHead><TableHead>Evidence</TableHead></TableRow></TableHeader>
             <TableBody>
-              {billsLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
+              {billsError ? <TableRow><TableCell colSpan={5} className="h-24 text-center text-destructive">Legacy bill metadata is unavailable.</TableCell></TableRow>
+                : billsLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
                 : bills.length === 0 ? <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No legacy bill headers.</TableCell></TableRow>
                 : bills.map((bill) => (
                   <TableRow key={bill.id}>
@@ -185,7 +196,8 @@ const Payables = () => {
           <Table>
             <TableHeader><TableRow><TableHead>Run</TableHead><TableHead>Date</TableHead><TableHead>Recorded state</TableHead><TableHead>Evidence</TableHead></TableRow></TableHeader>
             <TableBody>
-              {runsLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
+              {runsError ? <TableRow><TableCell colSpan={4} className="h-24 text-center text-destructive">Legacy payment-run metadata is unavailable.</TableCell></TableRow>
+                : runsLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
                 : paymentRuns.length === 0 ? <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No legacy payment-run headers.</TableCell></TableRow>
                 : paymentRuns.map((run) => (
                   <TableRow key={run.id}>

@@ -1,27 +1,16 @@
 import { useState } from "react";
-import { Bell, Search, ChevronDown, Moon, Sun, Check } from "lucide-react";
+import { Search, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { CommandPalette } from "./CommandPalette";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, subMonths } from "date-fns";
 
 interface HeaderProps {
   subtitle?: string;
 }
 
 export function Header({ subtitle }: HeaderProps) {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [commandOpen, setCommandOpen] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState(new Date());
-
-  // Generate last 12 months for period selection
-  const periods = Array.from({ length: 12 }, (_, i) => subMonths(new Date(), i));
 
   return (
     <>
@@ -34,6 +23,8 @@ export function Header({ subtitle }: HeaderProps) {
         <div className="flex items-center gap-3">
           {/* Search */}
           <button
+            type="button"
+            aria-label="Open command search"
             onClick={() => setCommandOpen(true)}
             className="relative hidden sm:flex items-center"
           >
@@ -48,64 +39,16 @@ export function Header({ subtitle }: HeaderProps) {
 
           {/* Theme Toggle */}
           <Button
+            type="button"
             variant="ghost"
             size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           >
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-muted-foreground" />
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-muted-foreground" />
             <span className="sr-only">Toggle theme</span>
           </Button>
 
-          {/* Notifications */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="end">
-              <div className="border-b border-border p-3">
-                <h4 className="font-medium text-foreground">Notifications</h4>
-                <p className="text-xs text-muted-foreground">0 unread</p>
-              </div>
-              <div className="p-8 text-center">
-                <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No notifications yet</p>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Period Selector */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2 border-border text-sm hidden sm:flex">
-                <span className="text-muted-foreground">Period:</span>
-                <span className="font-medium">{format(selectedPeriod, "MMM yyyy")}</span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-48 p-1" align="end">
-              <ScrollArea className="h-[280px]">
-                {periods.map((period) => (
-                  <button
-                    key={period.toISOString()}
-                    onClick={() => setSelectedPeriod(period)}
-                    className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-muted ${
-                      format(selectedPeriod, "yyyy-MM") === format(period, "yyyy-MM")
-                        ? "bg-muted text-foreground"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {format(period, "MMMM yyyy")}
-                    {format(selectedPeriod, "yyyy-MM") === format(period, "yyyy-MM") && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
-                  </button>
-                ))}
-              </ScrollArea>
-            </PopoverContent>
-          </Popover>
         </div>
       </header>
     </>
