@@ -25,6 +25,7 @@
           { "context": "verify" },
           { "context": "migration-rehearsal" },
           { "context": "production-dependency-audit" },
+          { "context": "dependency-review" },
           { "context": "codeql" }
         ]
       }

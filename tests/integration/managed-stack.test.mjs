@@ -34,7 +34,7 @@ test("full migration stack supports authenticated finance reads and the browser"
   const db = new pg.Client({ connectionString: dbUrl });
   await db.connect();
   let browser, server;
-  const ids = Object.fromEntries(["orgA", "orgB", "adminA", "adminB", "usd", "eur", "ar", "revenue", "customer"].map((key) => [key, randomUUID()]));
+  const ids = Object.fromEntries(["orgA", "orgB", "adminA", "adminB", "usd", "eur", "ar", "revenue", "cash", "ap", "expense", "customer", "vendor"].map((key) => [key, randomUUID()]));
   const emailA = "integration-a@tapaano.test", emailB = "integration-b@tapaano.test";
   const password = "Synthetic-local-test-" + randomUUID();
   try {
@@ -56,7 +56,9 @@ test("full migration stack supports authenticated finance reads and the browser"
     }
     await db.query("INSERT INTO public.entities(id,org_id,name,currency) VALUES($1,$3,'USD entity','USD'),($2,$3,'EUR entity','EUR')", [ids.usd, ids.eur, ids.orgA]);
     await db.query("INSERT INTO public.accounts(id,org_id,code,name,account_type) VALUES($1,$3,'1100','AR','asset'),($2,$3,'4000','Revenue','revenue')", [ids.ar, ids.revenue, ids.orgA]);
+    await db.query("INSERT INTO public.accounts(id,org_id,code,name,account_type) VALUES($1,$4,'1000','Cash','asset'),($2,$4,'2000','AP','liability'),($3,$4,'5000','Expense','expense')", [ids.cash, ids.ap, ids.expense, ids.orgA]);
     await db.query("INSERT INTO public.customers(id,org_id,name) VALUES($1,$2,'Synthetic buyer')", [ids.customer, ids.orgA]);
+    await db.query("INSERT INTO public.vendors(id,org_id,name) VALUES($1,$2,'Synthetic supplier')", [ids.vendor, ids.orgA]);
     await db.query("INSERT INTO public.customers(org_id,name) SELECT $1,'Synthetic customer ' || i FROM generate_series(1,1005) i", [ids.orgA]);
     await db.query("INSERT INTO public.customers(org_id,name) VALUES($1,'Other tenant buyer')", [ids.orgB]);
     await db.query("COMMIT");
@@ -77,17 +79,19 @@ test("full migration stack supports authenticated finance reads and the browser"
       p_invoice_number: number, p_issue_date: "2026-09-06", p_due_date: "2026-09-20", p_currency: currency,
       p_tax: 0, p_notes: null, p_lines: [{ description: "Synthetic service", quantity: "1", unit_price: "100" }], p_idempotency_key: number });
     const usdPayload = invoice(ids.usd, "USD", "INTEGRATION-USD");
+    let usdInvoice;
     await t.test("concurrent independent API requests create one idempotent invoice", async () => {
       const secondSession = createClient(api, status.ANON_KEY, options);
       const { error } = await secondSession.auth.signInWithPassword({ email: emailA, password });
       assert.equal(error, null);
       const posted = await Promise.all([rpc(clientA, "post_customer_invoice", usdPayload), rpc(secondSession, "post_customer_invoice", usdPayload)]);
       assert.equal(posted[0], posted[1]);
+      usdInvoice = posted[0];
       const { rows: [row] } = await db.query(`SELECT count(DISTINCT i.id)::int AS invoices, sum(l.debit)::text AS debit, sum(l.credit)::text AS credit
         FROM public.invoices i JOIN public.journal_lines l ON l.journal_entry_id=i.journal_entry_id WHERE i.invoice_number=$1`, [usdPayload.p_invoice_number]);
       assert.equal(row.invoices, 1); assert.equal(row.debit, "100.00"); assert.equal(row.credit, "100.00");
     });
-    await rpc(clientA, "post_customer_invoice", invoice(ids.eur, "EUR", "INTEGRATION-EUR"));
+    const eurInvoice = await rpc(clientA, "post_customer_invoice", invoice(ids.eur, "EUR", "INTEGRATION-EUR"));
     await t.test("the exact browser ledger projection succeeds with contained-table grants", async () => {
       const { data, error } = await clientA.from("journal_entries").select(JOURNAL_HISTORY_SELECT).eq("org_id", ids.orgA).limit(20);
       assert.equal(error, null, error?.message); assert.equal(data.length, 2);
@@ -108,6 +112,32 @@ test("full migration stack supports authenticated finance reads and the browser"
       assert.equal((await rpc(clientB, "get_tenant_operational_summary")).invoiceCount, 0);
       await rpc(clientA, "record_client_diagnostic", { p_event_code: "render_failed", p_release_sha: "unversioned" });
       assert.equal((await clientB.from("client_diagnostic_buckets").select("event_code")).data.length, 0);
+    });
+    await t.test("authenticated commits validate AR/AP receipts, credits, corrections, and replacements", async () => {
+      await rpc(clientA, "configure_entity_customer_receipt_accounts", { p_entity_id: ids.usd, p_cash_account_id: ids.cash, p_idempotency_key: "receipt-controls" });
+      const receipt = await rpc(clientA, "post_customer_receipt", { p_invoice_id: usdInvoice, p_receipt_number: "RECEIPT-USD", p_receipt_date: "2026-09-07", p_currency: "USD", p_reference: null, p_idempotency_key: "receipt-usd" });
+      const receiptCorrection = await rpc(clientA, "post_customer_receipt_correction", { p_receipt_id: receipt, p_correction_number: "RECEIPT-CORRECTION", p_correction_date: "2026-09-08", p_reason: "Synthetic correction", p_idempotency_key: "receipt-correction" });
+      await rpc(clientA, "post_customer_receipt_replacement", { p_correction_id: receiptCorrection, p_replacement_number: "RECEIPT-REPLACEMENT", p_replacement_date: "2026-09-09", p_reference: null, p_idempotency_key: "receipt-replacement" });
+      await rpc(clientA, "post_customer_credit_note", { p_invoice_id: eurInvoice, p_credit_note_number: "CREDIT-EUR", p_credit_date: "2026-09-07", p_reason: "Synthetic credit", p_idempotency_key: "credit-eur" });
+
+      await rpc(clientA, "configure_entity_supplier_bill_accounts", { p_entity_id: ids.usd, p_ap_account_id: ids.ap, p_expense_account_id: ids.expense, p_idempotency_key: "bill-controls" });
+      await rpc(clientA, "configure_entity_supplier_payment_accounts", { p_entity_id: ids.usd, p_cash_account_id: ids.cash, p_idempotency_key: "payment-controls" });
+      const billPayload = (number) => ({ p_entity_id: ids.usd, p_vendor_id: ids.vendor, p_bill_number: number, p_issue_date: "2026-09-06", p_due_date: "2026-09-20", p_currency: "USD", p_tax: 0, p_notes: null, p_lines: [{ description: "Synthetic purchase", quantity: "1", unit_price: "100" }], p_idempotency_key: number });
+      const bill = await rpc(clientA, "post_supplier_bill", billPayload("BILL-USD"));
+      const payment = await rpc(clientA, "post_supplier_payment", { p_bill_id: bill, p_payment_number: "PAYMENT-USD", p_payment_date: "2026-09-07", p_currency: "USD", p_reference: null, p_idempotency_key: "payment-usd" });
+      const paymentCorrection = await rpc(clientA, "post_supplier_payment_correction", { p_payment_id: payment, p_correction_number: "PAYMENT-CORRECTION", p_correction_date: "2026-09-08", p_reason: "Synthetic correction", p_idempotency_key: "payment-correction" });
+      await rpc(clientA, "post_supplier_payment_replacement", { p_correction_id: paymentCorrection, p_replacement_number: "PAYMENT-REPLACEMENT", p_replacement_date: "2026-09-09", p_reference: null, p_idempotency_key: "payment-replacement" });
+      const creditedBill = await rpc(clientA, "post_supplier_bill", billPayload("BILL-CREDIT"));
+      await rpc(clientA, "post_supplier_bill_credit", { p_bill_id: creditedBill, p_credit_note_number: "SUPPLIER-CREDIT", p_credit_date: "2026-09-07", p_reason: "Synthetic credit", p_idempotency_key: "supplier-credit" });
+      const { rows } = await db.query(`SELECT e.id FROM public.journal_entries e LEFT JOIN public.journal_lines l ON l.journal_entry_id=e.id
+        WHERE e.org_id=$1 AND e.status='posted' GROUP BY e.id HAVING count(l.id)<2 OR sum(l.debit)<>sum(l.credit)`, [ids.orgA]);
+      assert.deepEqual(rows, [], "Every committed document must have a balanced journal");
+      const summary = await rpc(clientA, "get_tenant_operational_summary");
+      assert.equal(summary.invoiceCount, 2); assert.equal(summary.postedBillCount, 2);
+      for (const key of ["fullReceiptCount", "receiptCorrectionCount", "receiptReplacementCount", "fullCreditCount", "postedPaymentCount", "paymentCorrectionCount", "paymentReplacementCount", "postedCreditCount"]) {
+        assert.equal(summary[key], 1, key + " must reflect the committed document");
+      }
+      assert.deepEqual(summary.postedInvoiceTotals, [{ currency: "EUR", total: "100.00" }, { currency: "USD", total: "100.00" }]);
     });
     await t.test("browser login loads dashboard, ledger, and separate currency totals", async () => {
       server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "4173", "--strictPort"], {

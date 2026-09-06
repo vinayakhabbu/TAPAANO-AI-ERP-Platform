@@ -23,7 +23,7 @@ GRANT SELECT ON public.client_diagnostic_buckets TO authenticated;
 CREATE OR REPLACE FUNCTION public.record_client_diagnostic(p_event_code text, p_release_sha text)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
-DECLARE v_org uuid:=public.get_user_org_id(); v_actor uuid:=auth.uid(); v_now timestamptz:=clock_timestamp();
+DECLARE v_org uuid:=public.get_user_org_id(); v_actor uuid:=auth.uid(); v_now timestamptz:=clock_timestamp(); v_recorded integer;
 BEGIN
   IF v_actor IS NULL OR v_org IS NULL THEN
     RAISE EXCEPTION 'tenant membership is unavailable' USING ERRCODE='42501';
@@ -36,7 +36,10 @@ BEGIN
     VALUES(v_org,v_actor,p_event_code,date_trunc('hour',v_now),p_release_sha,1,v_now)
   ON CONFLICT (org_id,actor_id,event_code,bucket_start) DO UPDATE
     SET occurrences=LEAST(public.client_diagnostic_buckets.occurrences+1,1000),
-        release_sha=EXCLUDED.release_sha,last_seen_at=EXCLUDED.last_seen_at;
+        release_sha=EXCLUDED.release_sha,last_seen_at=EXCLUDED.last_seen_at
+    WHERE public.client_diagnostic_buckets.last_seen_at <= EXCLUDED.last_seen_at-interval '1 minute';
+  GET DIAGNOSTICS v_recorded = ROW_COUNT;
+  IF v_recorded=0 THEN RETURN; END IF;
   -- Bounded cleanup keeps only the recent diagnostic window during normal use.
   DELETE FROM public.client_diagnostic_buckets WHERE ctid IN (
     SELECT ctid FROM public.client_diagnostic_buckets

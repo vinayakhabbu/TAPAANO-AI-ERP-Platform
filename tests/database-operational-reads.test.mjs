@@ -101,7 +101,7 @@ test("diagnostics derive tenant and actor, redact payload surface, and protect c
     const { rows: [row] } = await db.query("SELECT * FROM public.client_diagnostic_buckets");
     assert.equal(row.org_id, orgA);
     assert.equal(row.actor_id, viewerA);
-    assert.equal(row.occurrences, 2);
+    assert.equal(row.occurrences, 1, "Repeated requests must not bypass the server throttle");
     assert.equal(row.event_code, "render_failed");
     await actor(db, adminB);
     assert.equal((await db.query("SELECT * FROM public.client_diagnostic_buckets")).rows.length, 0);

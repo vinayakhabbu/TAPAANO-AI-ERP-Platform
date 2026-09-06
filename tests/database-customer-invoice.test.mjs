@@ -204,6 +204,30 @@ async function prepare(db) {
   await db.exec(`SELECT public.configure_entity_invoice_accounts('${ids.entityA}', '${ids.arA}', '${ids.revenueA}', 'ar-control-v1');`);
 }
 
+test("authenticated invoice commit executes deferred validators without exposing them as RPCs", async () => {
+  const { db } = await createDb();
+  try {
+    await prepare(db);
+    const sql = `SELECT public.post_customer_invoice(
+      '${ids.entityA}', '${ids.customerA}', 'INV-AUTH-COMMIT', '2026-08-25', '2026-09-24',
+      'USD', 0, null, '${invoiceLines}'::jsonb, 'invoice:auth-commit') AS id`;
+    await db.exec("SET ROLE authenticated");
+    await assert.rejects(db.query(sql), /permission denied for function validate_customer_invoice_graph/);
+    await db.exec("RESET ROLE");
+    const migration = await readFile(new URL("../supabase/migrations/20260906030000_recovery_deferred_validation_privileges.sql", import.meta.url), "utf8");
+    await db.exec(migration);
+    await db.exec(migration);
+    const privileges = await db.query(`SELECT
+      has_function_privilege('authenticated','public.validate_customer_invoice_graph(uuid)','EXECUTE') AS graph,
+      has_function_privilege('authenticated','public.validate_customer_invoice_trigger()','EXECUTE') AS wrapper`);
+    assert.deepEqual(privileges.rows[0], { graph: false, wrapper: false });
+    await db.exec("SET ROLE authenticated");
+    const posted = await db.query(sql);
+    assert.ok(posted.rows[0].id);
+    assert.equal((await db.query("SELECT count(*)::int AS count FROM public.invoices")).rows[0].count, 1);
+  } finally { await db.close(); }
+});
+
 test("invoice migration replays and removes hostile invoice write grants", async () => {
   const { db, invoiceMigration } = await createDb();
   await db.exec(`GRANT INSERT, UPDATE, DELETE ON public.invoices TO authenticated, service_role;`);

@@ -19,7 +19,7 @@ become release evidence. Local verification used supported Node 22.23.2.
 - The exact npm lockfile type-checks, repository lint exits with zero errors and
   89 visible warnings, the production bundle builds, and `npm audit` reports
   zero known vulnerabilities after the framework security upgrade.
-- CI applies the 65-file migration history twice to an empty disposable Supabase
+- CI applies the 66-file migration history twice to an empty disposable Supabase
   stack, compares the schemas, lints the database, and always tears it down.
 - Unsupported accounting, banking, inventory, production, tax, payroll, AI, and
   autonomous workflows remain fail-closed or unreachable from active routes;
@@ -45,7 +45,10 @@ the application does not claim that a partial result is complete. The 50,000-row
 interactive-history boundary needs a filtered/paginated UI before larger tenants
 are supported. Operational totals remain database aggregates independent of it.
 
-Two additive migrations provide the summary RPC and sanitized diagnostic counters.
+Three additive migrations provide the summary RPC, sanitized diagnostic counters,
+and the deferred-validator execution correction found by the first full-stack run.
+Deferred trigger wrappers run with owner rights and a fixed search path; internal
+validators remain unavailable as client-callable RPCs.
 Apply them to staging before testing the matching frontend. Diagnostic events
 contain only an allowlisted failure code, server-derived tenant/user, release SHA,
 time bucket, and capped occurrence count. No exception messages, stack traces,
@@ -53,14 +56,16 @@ URLs, financial records, or credentials are transmitted. Unauthenticated failure
 remain sanitized local diagnostics. Configure `VITE_RELEASE_SHA` to the release
 commit. Tenant admins can read `client_diagnostic_buckets` through the authenticated
 API; owner-level monitoring can aggregate by event code, release, and time.
-Counters saturate at 1,000 events per actor/code/hour. Inserts perform bounded
+The server accepts at most one update per actor/code/minute within each hourly
+bucket, with a defensive ceiling of 1,000. Inserts perform bounded
 cleanup of rows older than seven days; operators should schedule the same retention
 cleanup during idle periods. These counters are operational signals, not audit
 records or confirmed counts of distinct failures. Alert routing, availability
 checks, ownership, and restore proof still require deployment-level configuration.
 
 CI now builds the release artifact with synthetic public configuration and runs
-real local Auth/PostgREST/browser checks plus a concurrent invoice retry against
+real local Auth/PostgREST/browser checks, authenticated AR/AP receipt/payment,
+credit, correction, and replacement commits, plus a concurrent invoice retry against
 the fully migrated disposable stack. Synthetic tenant bootstrap is confined to
 an empty loopback database. This is not production-data restore or managed-service
 acceptance evidence. Test outcomes must be taken from the exact PR/commit checks.
@@ -70,6 +75,9 @@ CI/security checks, and resolution of review threads, and blocks force pushes an
 branch deletion. Repository owners must import it under Settings → Rules → Rulesets
 and verify that it is active. Committing the JSON alone does not enforce it. The
 GitHub connection used for this review exposes no administration write action.
+The first PR run also confirmed that Dependency graph is disabled. Enable it under
+Settings → Advanced Security (security analysis) so the existing dependency-review
+gate can run; a successful npm audit does not activate this GitHub feature.
 
 ## Mandatory release gates
 
