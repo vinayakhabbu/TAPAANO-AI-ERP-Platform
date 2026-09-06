@@ -43,6 +43,13 @@ deployment, or application deployment has been performed.
   contract revenue, cash reconciliation and connected finance operations.
   Production acceptance remains outstanding.
 
+- Current finance increment: paged account drilldown, ledger income/balance
+  reports, exact currency-labelled recent journals, manual journal entry and
+  versioned period controls. Added migrations are append-only after the trial
+  balance foundation; aggregate and hosted checks must pass on the published
+  commit before integration. This does not complete all core-finance, subledger,
+  revenue, integration or production-acceptance requirements.
+
 ## Acceptance rules
 
 1. A cycle is complete only when its implementation and executable regressions

@@ -499,7 +499,6 @@ test("unverified modules are unreachable from active routes and dashboard claims
   const ledger = await readFile(path.join(root, "pages/GeneralLedger.tsx"), "utf8");
   assert.doesNotMatch(ledger, /MultiBookAccounting|IntercompanyElimination|multi-book|intercompany/i);
   assert.doesNotMatch(ledger, /useAccountBalances|Total Assets|Total Liabilities|Total Equity/);
-  assert.match(ledger, /Authoritative report export is not available/);
 
   const settings = await readFile(path.join(root, "pages/Settings.tsx"), "utf8");
   assert.doesNotMatch(settings, /TeamSettings|SecuritySettings|SOXControls|NextDayMigration|DecisionDeskTabsSettings/);

@@ -8432,6 +8432,15 @@ export type Database = {
       }
     }
     Functions: {
+      get_recent_posted_journals: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_account_ledger: {
+        Args: { p_entity_id: string; p_account_id: string; p_from_date: string; p_to_date: string; p_offset?: number; p_page_size?: number; p_expected_revision?: string }
+        Returns: Json
+      }
+      change_accounting_period: {
+        Args: { p_period_id: string; p_expected_version: number; p_to_status: string; p_reason: string; p_idempotency_key: string }
+        Returns: string
+      }
       get_entity_trial_balance: {
         Args: { p_entity_id: string; p_from_date: string; p_to_date: string }
         Returns: Json
@@ -8892,14 +8901,7 @@ export type Database = {
           relevance: number
         }[]
       }
-      transition_accounting_period: {
-        Args: {
-          p_period_id: string
-          p_reason: string
-          p_to_status: string
-        }
-        Returns: string
-      }
+
     }
     Enums: {
       account_type: "asset" | "liability" | "equity" | "revenue" | "expense"

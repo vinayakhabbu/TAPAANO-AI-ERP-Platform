@@ -1,5 +1,6 @@
 import { format } from "date-fns";
-import { Calendar, Lock, ShieldCheck } from "lucide-react";
+import { Calendar, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAccountingPeriods } from "@/hooks/usePeriodClose";
+import { useReportEntities } from "@/hooks/useTrialBalance";
+import { Button } from "@/components/ui/button";
+import { CreatePeriodForm, PeriodManagement, type SelectedPeriod } from "@/components/reports/PeriodControls";
 
 const statusStyle = {
   OPEN: "bg-green-100 text-green-800",
@@ -21,7 +25,10 @@ const statusStyle = {
 };
 
 const PeriodClose = () => {
-  const { data: periods = [], isLoading, isError } = useAccountingPeriods();
+  const { data: periods = [], isLoading, isError, isFetching, refetch } = useAccountingPeriods();
+  const entities = useReportEntities();
+  const [selected, setSelected] = useState<SelectedPeriod | null>(null);
+  const entityName = (id: string) => entities.data?.find(entity => entity.id === id)?.name ?? id;
   const openCount = periods.filter((period) => period.status === "OPEN").length;
 
   return (
@@ -42,13 +49,16 @@ const PeriodClose = () => {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Browser controls</CardDescription>
+              <CardDescription>Posting controls</CardDescription>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Lock className="h-4 w-4" /> Read-only
+                <ShieldCheck className="h-4 w-4" /> Versioned and audited
               </CardTitle>
             </CardHeader>
           </Card>
         </div>
+
+        <CreatePeriodForm />
+        {selected ? <PeriodManagement key={`${selected.id}:${selected.version}`} period={selected} entityName={entityName(selected.entity_id)} onClose={() => { setSelected(null); void refetch(); }} /> : null}
 
         <Card>
           <CardHeader>
@@ -57,8 +67,9 @@ const PeriodClose = () => {
               Controlled period history
             </CardTitle>
             <CardDescription>
-              Only OPEN periods accept controlled postings. HARD_CLOSED is terminal. Creation and transitions are not exposed by this browser.
+              Only OPEN periods accept postings. Soft close pauses posting and can be reopened. Hard close is permanent and requires a prior soft close.
             </CardDescription>
+            <Button variant="outline" className="w-fit" disabled={isFetching} onClick={() => { setSelected(null); void refetch(); }}>Refresh period history</Button>
           </CardHeader>
           <CardContent>
             <Table>
@@ -69,33 +80,35 @@ const PeriodClose = () => {
                   <TableHead>End</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Version</TableHead>
+                  <TableHead>Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isError ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-10 text-center text-destructive">
+                    <TableCell colSpan={6} className="py-10 text-center text-destructive">
                       Accounting-period history is unavailable. Do not infer that no periods are configured.
                     </TableCell>
                   </TableRow>
                 ) : isLoading ? (
-                  <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                 ) : periods.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                       <Calendar className="mx-auto mb-2 h-8 w-8" />
                       No authoritative accounting period is configured. Posting remains unavailable.
                     </TableCell>
                   </TableRow>
                 ) : periods.map((period) => (
                   <TableRow key={period.id}>
-                    <TableCell className="font-mono text-xs">{period.entity_id}</TableCell>
+                    <TableCell>{entityName(period.entity_id)}</TableCell>
                     <TableCell>{format(new Date(`${period.period_start}T00:00:00`), "MMM d, yyyy")}</TableCell>
                     <TableCell>{format(new Date(`${period.period_end}T00:00:00`), "MMM d, yyyy")}</TableCell>
                     <TableCell>
                       <Badge className={statusStyle[period.status]}>{period.status.replace("_", " ")}</Badge>
                     </TableCell>
                     <TableCell>{period.version}</TableCell>
+                    <TableCell><Button variant="outline" size="sm" disabled={isFetching} onClick={() => setSelected({ ...period })}>Period details</Button></TableCell>
                   </TableRow>
                 ))}
               </TableBody>

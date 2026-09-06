@@ -3,7 +3,7 @@ export type BalanceAmounts = Record<typeof balanceKeys[number], string>;
 export type TrialBalanceRequest = { entityId: string; fromDate: string; toDate: string };
 export type TrialBalanceRow = BalanceAmounts & { accountId: string; code: string; name: string; accountType: string };
 export type TrialBalance = TrialBalanceRequest & {
-  entityName: string; currency: string; generatedAt: string;
+  entityName: string; currency: string; generatedAt: string; revision: string;
   journalCount: number; periodJournalCount: number; draftJournalCount: number;
   rows: TrialBalanceRow[]; totals: BalanceAmounts;
 };
@@ -14,22 +14,23 @@ export function isReportDate(value: string): boolean {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-function cents(value: unknown): bigint {
+export function cents(value: unknown): bigint {
   if (typeof value !== "string" || !/^(0|[1-9]\d{0,35})\.\d{2}$/.test(value)) throw new Error("Invalid trial balance amount.");
   return BigInt(value.replace(".", ""));
 }
 
-function object(value: unknown): Record<string, unknown> {
+export function reportObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Trial balance is unavailable.");
   return value as Record<string, unknown>;
 }
 
 export function parseTrialBalance(value: unknown, request: TrialBalanceRequest): TrialBalance {
-  const report = object(value);
+  const report = reportObject(value);
   if (report.entityId !== request.entityId || report.fromDate !== request.fromDate || report.toDate !== request.toDate
     || !isReportDate(request.fromDate) || !isReportDate(request.toDate) || request.fromDate > request.toDate
     || typeof report.entityName !== "string" || !report.entityName.trim()
     || typeof report.currency !== "string" || !/^[A-Z]{3}$/.test(report.currency)
+    || typeof report.revision !== "string" || !/^[a-f0-9]{32}$/.test(report.revision)
     || typeof report.generatedAt !== "string" || !Number.isFinite(Date.parse(report.generatedAt)) || !Array.isArray(report.rows)) {
     throw new Error("Trial balance scope is invalid.");
   }
@@ -37,11 +38,11 @@ export function parseTrialBalance(value: unknown, request: TrialBalanceRequest):
     if (!Number.isSafeInteger(report[key]) || (report[key] as number) < 0) throw new Error("Invalid trial balance count.");
   }
   if ((report.periodJournalCount as number) > (report.journalCount as number)) throw new Error("Invalid trial balance count.");
-  const totals = object(report.totals);
+  const totals = reportObject(report.totals);
   const sums = Object.fromEntries(balanceKeys.map(key => [key, 0n])) as Record<typeof balanceKeys[number], bigint>;
   const ids = new Set<string>();
   for (const raw of report.rows) {
-    const row = object(raw);
+    const row = reportObject(raw);
     if (typeof row.accountId !== "string" || !row.accountId || ids.has(row.accountId)
       || typeof row.code !== "string" || !row.code || typeof row.name !== "string" || !row.name
       || !["asset", "liability", "equity", "revenue", "expense"].includes(row.accountType as string)) throw new Error("Invalid trial balance account.");
@@ -61,7 +62,7 @@ export function parseTrialBalance(value: unknown, request: TrialBalanceRequest):
   return report as TrialBalance;
 }
 
-function csvCell(value: string): string {
+export function csvCell(value: string): string {
   const safe = /^[\s]*[=+\-@]|^[\t\r\n]/.test(value) ? "'" + value : value;
   return '"' + safe.replace(/"/g, '""') + '"';
 }
@@ -72,6 +73,7 @@ export function trialBalanceCsv(report: TrialBalance): string {
     ["Ledger trial balance", report.entityName, report.entityId],
     ["Currency", report.currency, "From", report.fromDate, "Through", report.toDate],
     ["Generated at", report.generatedAt, "Posted journals", String(report.journalCount), "Drafts excluded", String(report.draftJournalCount)],
+    ["Revision", report.revision],
     ["Code", "Account", "Type", "Opening debit", "Opening credit", "Period debit", "Period credit", "Closing debit", "Closing credit"],
     ...report.rows.map(row => [row.code, row.name, row.accountType, ...balanceKeys.map(key => row[key])]),
     ["", "TOTAL", "", ...balanceKeys.map(key => report.totals[key])],

@@ -16,17 +16,16 @@ import { cn } from "@/lib/utils";
 import {
   Search,
   Plus,
-  Filter,
-  Download,
   ChevronRight,
   ChevronDown,
   Folder,
   FolderOpen,
-  Lock,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAccounts, useJournalEntries } from "@/hooks/useGeneralLedger";
-import { format } from "date-fns";
+import { Link } from "react-router-dom";
+import { ManualJournalForm } from "@/components/forms/ManualJournalForm";
+import { formatSignedAmount } from "@/lib/financeReports";
 
 const statusConfig = {
   draft: { label: "Draft", className: "bg-warning/10 text-warning" },
@@ -45,6 +44,7 @@ const typeConfig = {
 const GeneralLedger = () => {
   const [expandedAccounts, setExpandedAccounts] = useState<string[]>([]);
   const [accountSearch, setAccountSearch] = useState("");
+  const [tab, setTab] = useState("chart");
   const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useAccounts();
   const { data: journalEntries, isLoading: entriesLoading, isError: entriesError } = useJournalEntries();
   
@@ -123,13 +123,14 @@ const GeneralLedger = () => {
 
   return (
     <AppLayout title="General Ledger" subtitle="Chart of accounts and immutable posted-journal history">
-      <Tabs defaultValue="chart" className="space-y-6">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
         <TabsList className="h-auto flex-wrap gap-1 p-1 bg-muted/50">
           <TabsTrigger value="chart" className="gap-2 text-xs sm:text-sm">
             <Folder className="h-4 w-4" />
             <span className="hidden sm:inline">Chart of Accounts</span>
             <span className="sm:hidden">CoA</span>
           </TabsTrigger>
+          <TabsTrigger value="post">New journal</TabsTrigger>
           <TabsTrigger value="journals" className="gap-2 text-xs sm:text-sm">
             <FileOpen className="h-4 w-4" />
             <span className="hidden sm:inline">Journal Entries</span>
@@ -299,19 +300,11 @@ const GeneralLedger = () => {
             <div className="flex items-center justify-between border-b border-border p-4">
               <div>
                 <h3 className="text-lg font-semibold text-foreground">Journal Entries</h3>
-                <p className="text-sm text-muted-foreground">Most recent 20 journal entries</p>
+                <p className="text-sm text-muted-foreground">Most recent 20 verified posted journals</p>
               </div>
               <div className="flex items-center gap-3">
-                <Button variant="outline" size="icon" disabled title="Journal filtering is not available">
-                  <Filter className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" disabled title="Authoritative report export is not available">
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button className="gap-2" disabled title="Use only an audited workflow-specific posting path">
-                  <Lock className="h-4 w-4" />
-                  Posting unavailable
-                </Button>
+                <Button asChild variant="outline"><Link to="/reports">Browse account activity</Link></Button>
+                <Button onClick={() => setTab("post")}>New journal</Button>
               </div>
             </div>
 
@@ -354,24 +347,22 @@ const GeneralLedger = () => {
                   </TableRow>
                 ) : (
                   journalEntries?.map((entry) => {
-                    const status = statusConfig[entry.status as keyof typeof statusConfig] || statusConfig.draft;
-                    const totalDebit = entry.journal_lines?.reduce((sum, l) => sum + Number(l.debit || 0), 0) || 0;
-                    const totalCredit = entry.journal_lines?.reduce((sum, l) => sum + Number(l.credit || 0), 0) || 0;
+                    const status = statusConfig.posted;
 
                     return (
                       <TableRow key={entry.id} className="border-border">
                         <TableCell className="font-medium text-foreground">
-                          {entry.entry_number}
+                          {entry.entryNumber}<span className="block text-xs font-normal text-muted-foreground">{entry.entityName} · {entry.currency}</span>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {format(new Date(entry.entry_date), "yyyy-MM-dd")}
+                          {entry.entryDate}
                         </TableCell>
                         <TableCell className="text-foreground">{entry.memo || "—"}</TableCell>
                         <TableCell className="text-right font-medium text-foreground">
-                          ${totalDebit.toLocaleString()}
+                          {formatSignedAmount(entry.currency, entry.debit)}
                         </TableCell>
                         <TableCell className="text-right font-medium text-foreground">
-                          ${totalCredit.toLocaleString()}
+                          {formatSignedAmount(entry.currency, entry.credit)}
                         </TableCell>
                         <TableCell>
                           <Badge className={cn("font-medium", status.className)}>
@@ -389,6 +380,8 @@ const GeneralLedger = () => {
             </Table>
           </div>
         </TabsContent>
+
+        <TabsContent value="post"><ManualJournalForm /></TabsContent>
 
       </Tabs>
     </AppLayout>

@@ -93,6 +93,27 @@ documents, invent opening balances, close income/expense accounts, prove bank
 settlement, consolidate entities, or constitute statutory financial statements.
 All production-data and finance acceptance gates remain applicable.
 
+## Core finance implementation increment
+
+The finance reporting/close branch adds complete account-activity paging and
+exact running balances, income and balance-sheet views, controlled manual journal
+entry, and browser period creation/transitions/history. Recent journal summaries
+now use server-calculated decimal strings and explicit entity currencies. An
+account-ledger export stops when the report revision changes; exports over 50,000
+lines require narrower dates while interactive paging remains available.
+
+Statement views use the immutable account classifications already in the chart.
+They do not infer current/noncurrent categories, fiscal closing entries, cash-flow
+classification, disclosures or statutory presentation. Balance-sheet equity shows
+recorded equity and cumulative unclosed revenue/expense balances separately.
+Period locks remain distinct from completing the reconciliation and approval work
+of a financial close. These remaining Phase 2 requirements are still open.
+
+The next subledger increment is date-scoped AR/AP aging and reconciliation of
+supported invoices/bills, credits, receipts/payments, corrections and replacements.
+Partial allocations require a separate atomic posting implementation; document
+headers must not be treated as current outstanding balances.
+
 ## Immediate owner and deployment work
 
 1. Enable Dependency graph in repository security analysis settings and re-run
