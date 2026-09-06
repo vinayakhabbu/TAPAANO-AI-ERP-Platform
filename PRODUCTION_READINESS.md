@@ -19,7 +19,7 @@ become release evidence. Local verification used supported Node 22.23.2.
 - The exact npm lockfile type-checks, repository lint exits with zero errors and
   89 visible warnings, the production bundle builds, and `npm audit` reports
   zero known vulnerabilities after the framework security upgrade.
-- CI applies the 66-file migration history twice to an empty disposable Supabase
+- CI applies the 67-file migration history twice to an empty disposable Supabase
   stack, compares the schemas, lints the database, and always tears it down.
 - Unsupported accounting, banking, inventory, production, tax, payroll, AI, and
   autonomous workflows remain fail-closed or unreachable from active routes;
@@ -46,8 +46,9 @@ the application does not claim that a partial result is complete. The 50,000-row
 interactive-history boundary needs a filtered/paginated UI before larger tenants
 are supported. Operational totals remain database aggregates independent of it.
 
-Three additive migrations provide the summary RPC, sanitized diagnostic counters,
-and the deferred-validator execution correction found by the first full-stack run.
+Four additive migrations provide the summary RPC, sanitized diagnostic counters,
+the deferred-validator execution correction, and the supported AR/AP source codes
+missing from the historical journal constraint, found by full-stack verification.
 Deferred trigger wrappers run with owner rights and a fixed search path; internal
 validators remain unavailable as client-callable RPCs.
 Apply them to staging before testing the matching frontend. Diagnostic events
