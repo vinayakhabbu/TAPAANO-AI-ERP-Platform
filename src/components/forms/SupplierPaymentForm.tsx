@@ -69,6 +69,9 @@ export function SupplierPaymentForm({
       queryClient.invalidateQueries({ queryKey: ["posted-supplier-payment-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-supplier-bill-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["journal-history", user?.id, profile?.org_id] });
+      for (const key of ["subledger-aging", "trial-balance", "account-ledger"]) {
+        queryClient.invalidateQueries({ queryKey: [key, user?.id, profile?.org_id] });
+      }
       toast.success("Full supplier payment and AP journal posted atomically");
       setOpen(false);
       reset();

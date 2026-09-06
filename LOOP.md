@@ -1094,3 +1094,19 @@ script and browser startup boundary.
 Provide an authorized staging Supabase project or sanitized production-like
 restore, the chosen hosting platform, and named gate owners so the remaining
 external production evidence can be executed and retained.
+
+
+## 2026-09-06: finance priorities, second implementation increment
+
+- PR #25 merged ledger statements/drilldown/export, manual journal entry, and
+  versioned period creation/closing/history after hosted verification.
+- The next branch adds dated AR/AP aging with exact buckets, source validation,
+  GL comparison, complete paged exports, and posting-account setup. New postings
+  invalidate aging and ledger-report queries to avoid displaying stale balances.
+- SQL/runtime tests include 1,005 documents, exact large values, dated credits and
+  settlement corrections/replacements, report revisions, cross-tenant access,
+  damaged source evidence and manual control-account variances. Hosted browser
+  checks include all four account configurations and a lost-response retry.
+- This remains an implementation increment. Partial settlement, bank
+  reconciliation, contract revenue, integrations, consolidation and production
+  acceptance are still tracked in ERP_ROADMAP.md and PRODUCTION_READINESS.md.

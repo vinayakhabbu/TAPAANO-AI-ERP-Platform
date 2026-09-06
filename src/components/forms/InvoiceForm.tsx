@@ -140,6 +140,9 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
       queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-invoice-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["journal-history", user?.id, profile?.org_id] });
+      for (const key of ["subledger-aging", "trial-balance", "account-ledger"]) {
+        queryClient.invalidateQueries({ queryKey: [key, user?.id, profile?.org_id] });
+      }
       toast.success("Invoice and journal posted atomically");
       setOpen(false);
       reset();

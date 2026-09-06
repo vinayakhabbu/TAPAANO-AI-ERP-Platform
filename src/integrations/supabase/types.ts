@@ -8433,6 +8433,10 @@ export type Database = {
     }
     Functions: {
       get_recent_posted_journals: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_subledger_aging: {
+        Args: { p_entity_id: string; p_kind: string; p_as_of: string; p_offset?: number; p_page_size?: number; p_expected_revision?: string }
+        Returns: Json
+      }
       get_account_ledger: {
         Args: { p_entity_id: string; p_account_id: string; p_from_date: string; p_to_date: string; p_offset?: number; p_page_size?: number; p_expected_revision?: string }
         Returns: Json

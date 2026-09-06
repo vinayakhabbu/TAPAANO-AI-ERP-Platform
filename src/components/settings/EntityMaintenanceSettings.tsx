@@ -73,7 +73,7 @@ export function EntityMaintenanceSettings(){
         <div className="space-y-2"><Label htmlFor="entity-rename-reason">Audit reason</Label><Textarea id="entity-rename-reason" value={renameReason} onChange={(event)=>setRenameReason(event.target.value)} maxLength={500} required/></div>
         <Button type="submit" variant="outline" disabled={maintenance.renameEntity.isPending||!entityId||!renamedName.trim()||!renameReason.trim()}>{maintenance.renameEntity.isPending?"Renaming entity…":"Rename entity"}</Button>
       </form>
-      <p className="text-xs text-muted-foreground">New entities start without periods or accounting controls. Configure each supported accounting boundary separately before posting.</p>
+      <p className="text-xs text-muted-foreground">New entities start without periods or accounting controls. Use the Posting accounts tab and Period close to configure them before posting.</p>
     </CardContent>
   </Card>;
 }

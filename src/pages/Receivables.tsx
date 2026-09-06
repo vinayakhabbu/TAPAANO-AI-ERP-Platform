@@ -1,3 +1,4 @@
+import { SubledgerAging } from "@/components/reports/SubledgerAging";
 import { AlertTriangle, FileCheck2, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { InvoiceForm } from "@/components/forms/InvoiceForm";
@@ -52,10 +53,12 @@ const Receivables = () => {
           Settlement amounts are derived by PostgreSQL and are not bank-reconciled. A correction
           or replacement is not a refund or bank action. Generic repeat replacements, partial
           credits or receipts, overpayments, refunds, collections,
-          aging, tax, FX, quotations, sales-order conversion, shipping, subscriptions, and revenue
+          tax, FX, quotations, sales-order conversion, shipping, subscriptions, and revenue
           recognition are unavailable.
         </AlertDescription>
       </Alert>
+
+      <SubledgerAging kind="ar" />
 
       {statsUnavailable ? (
         <Alert variant="destructive" className="mt-6">

@@ -95,7 +95,7 @@ All production-data and finance acceptance gates remain applicable.
 
 ## Core finance implementation increment
 
-The finance reporting/close branch adds complete account-activity paging and
+PR #25, merged at `53abd35666c52abab9ec302549a836fc3c749ddb`, adds complete account-activity paging and
 exact running balances, income and balance-sheet views, controlled manual journal
 entry, and browser period creation/transitions/history. Recent journal summaries
 now use server-calculated decimal strings and explicit entity currencies. An
@@ -109,10 +109,18 @@ recorded equity and cumulative unclosed revenue/expense balances separately.
 Period locks remain distinct from completing the reconciliation and approval work
 of a financial close. These remaining Phase 2 requirements are still open.
 
-The next subledger increment is date-scoped AR/AP aging and reconciliation of
-supported invoices/bills, credits, receipts/payments, corrections and replacements.
-Partial allocations require a separate atomic posting implementation; document
-headers must not be treated as current outstanding balances.
+The next implemented increment provides date-scoped AR/AP aging and ledger
+comparison for supported invoices/bills, credits, receipts/payments, corrections
+and replacements. It includes revision-protected paging, complete CSV export and
+browser posting-account setup. The report derives balances from immutable dated
+source postings; document headers are not treated as current outstanding balances.
+Manual entries to a control account appear as explicit reconciliation variances.
+
+Partial allocations, customer/vendor credits on account, refunds, collections,
+bank statement import/matching/reconciliation and approval workflows remain open.
+Contract revenue, provider integrations and group consolidation remain subsequent
+milestones; no recurring billing or revenue-recognition schedule is implied by
+this reporting increment.
 
 ## Immediate owner and deployment work
 

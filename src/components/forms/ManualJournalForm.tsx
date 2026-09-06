@@ -24,7 +24,7 @@ export function ManualJournalForm() {
     mutationFn: async (payload: ReturnType<typeof prepareManualJournal>) => { const { data, error } = await supabase.rpc("post_manual_journal", payload); if (error) throw error; return data; },
     onSuccess: async (_id, payload) => {
       setPosted(payload.p_entry_number);
-      await Promise.all(["journal-history", "trial-balance", "account-ledger", "operational-summary"].map(key => cache.invalidateQueries({ queryKey: [key, user?.id, profile?.org_id] })));
+      await Promise.all(["journal-history", "trial-balance", "account-ledger", "subledger-aging", "operational-summary"].map(key => cache.invalidateQueries({ queryKey: [key, user?.id, profile?.org_id] })));
     },
   });
   if (profile?.role !== "admin" && profile?.role !== "moderator") return <p className="text-sm text-muted-foreground">Only administrators and moderators can post manual journals.</p>;
