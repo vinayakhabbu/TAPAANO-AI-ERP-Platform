@@ -7,24 +7,38 @@ reconciled accounting, tenant isolation, recoverable data, and supported operati
 Repository CI is evidence for implementation; it is not evidence of production-data
 correctness, statutory compliance, bank execution, or an operational service.
 
+The owner confirmed the **United States** as the first release market and
+**Rillet's customer market** as TAPAANO's target on 2026-09-06. Use
+[TARGET_CUSTOMER.md](./TARGET_CUSTOMER.md) for the researched customer definition,
+required outcomes, and explicit distinction between confirmed scope and delivery
+priorities. The initial focus is growing US SaaS, AI, digital-product and services
+finance teams; the broader enterprise and public-company market remains in scope.
+
 The existing recovery and PR #22 form the accounting foundation. PR #22 was merged
 to `main` at `bcc0658ac87bf90384c8f90e5b390379b7b3450b`. It passed 171 regressions,
 real Auth/API/browser integration, two complete migration replays, release builds,
 CodeQL, and npm audit. Dependency review remains blocked by the repository's
 disabled Dependency graph feature. Branch protections still need owner activation.
 
-## Business decisions required
+PR #23 added the entity-scoped trial balance and exact CSV export, merged to
+`main` at `578dc5e64e6358f5572b213b4bb11c94483f4184`. Its code passed 177 regressions,
+eight real Auth/API/browser integration scenarios, deterministic replay of all
+68 migrations, typecheck, lint, both builds, CodeQL and dependency audit. This
+completes the first reporting code boundary, not the production release.
 
-These have not been confirmed in the available project context. Do not invent
-tax, payroll, valuation, or statutory rules to fill these gaps.
+## Remaining implementation and onboarding inputs
+
+Country and target customer are now confirmed. The following customer-specific
+inputs still need validation before their affected workflows can be accepted.
+They do not block implementation of the shared US finance foundation. Do not
+invent tax, payroll, valuation, or statutory rules to fill these gaps.
 
 | Decision | Why it changes implementation |
 | --- | --- |
-| First release countries and legal entities | Tax registrations, invoice requirements, payroll rules, data residency, reporting |
-| Business type: services, distribution, manufacturing, or a defined combination | Required order, purchasing, warehouse, production, and costing workflows |
-| Accounting framework, fiscal calendars, opening balances, chart mappings | Financial statements, retained earnings, close, consolidation, reconciliation |
-| Supported currencies and precision | Current posting amounts use two decimal places; currency and FX policies need explicit scope |
-| Inventory valuation and tracking requirements | FIFO/weighted average, serial/lot/expiry tracking, negative stock, landed cost |
+| Legal entities, US states, registrations and tax-provider configuration | Customer-specific tax, invoice and reporting requirements; no single nationwide sales-tax assumption |
+| US GAAP policies, fiscal calendars, opening balances and chart mappings | Financial statements, retained earnings, close, consolidation and reconciliation |
+| Contract terms, performance obligations, usage sources and revenue policies | Billing, amendments, credits, deferred revenue and independently accepted recognition schedules |
+| Entity currencies, FX policies and precision | Current posting amounts use two decimal places; same-currency posting is not FX support |
 | Users, segregation of duties, transaction volume, retention and latency targets | Approval design, access controls, performance testing, audit storage |
 | Bank, payroll, tax and external system providers | Integration contracts, credentials, reconciliation, failure recovery |
 | Hosting, staging project, sanitized data, and release owners | Migration/restore rehearsals, operational monitoring, finance and security acceptance |
@@ -37,19 +51,25 @@ operator documentation. A menu entry or database table is not module completion.
 
 | Phase | Deliverable | Completion evidence / dependencies |
 | --- | --- | --- |
-| 1. Ledger reporting foundation | Entity/currency-scoped trial balance, opening/activity/closing balances, exact decimal CSV, explicit unavailable states | Actual posted AR/AP and offset journals reconcile; tenant/date boundaries, retired accounts, large histories and invalid lineage are tested |
-| 2. Core finance completion | Account-ledger drilldown and filtering; partial allocations/receipts/payments; credits/refunds; AR/AP aging; setup and period-close UI | Idempotent atomic posting, over-allocation prevention, concurrent settlement/close tests, subledger-to-GL reconciliation |
-| 3. Sales and procurement | Quote/order/fulfilment/invoice and requisition/approval/PO/receipt/bill workflows | Document lineage, approval separation, partial fulfilment, returns, cancellation, match tolerances and duplicate prevention |
-| 4. Inventory | Receipts, issues, transfers, counts, valuation and COGS | Agreed costing policy, atomic quantity/value movements, stock-to-GL reconciliation, concurrent depletion tests |
-| 5. Banking | Statement import, duplicate detection, matching, reconciliation; separately approved payment execution | Provider contracts, bank/subledger/GL reconciliation, signed callbacks, retries and execution status verified against the provider |
-| 6. Statements and localization | Trial-balance mappings into financial statements; fiscal close; FX and tax for selected countries | Agreed accounting framework, jurisdiction-specific rules, FX sources, independently checked calculations and finance acceptance |
-| 7. Payroll and industry workflows | Scoped payroll; manufacturing/BOM/MRP/WIP or service workflows as required by the selected business | Country and industry requirements, cost and liability reconciliation, approval and payment separation |
-| 8. Governed AI assistance | Tenant-scoped retrieval, explainable proposals, human approval before side effects | Grounded outputs, prompt-injection tests, access checks, immutable decision evidence, budget and rollback controls |
-| 9. Production acceptance | Data migration, restore, security/load tests, monitoring, incident response, UAT and release | Named owners and immutable evidence for every gate in PRODUCTION_READINESS.md |
+| 1. Ledger reporting foundation — code merged | Entity/currency-scoped trial balance, opening/activity/closing balances, exact decimal CSV, explicit unavailable states | Actual posted AR/AP and offset journals reconcile; tenant/date boundaries, retired accounts, large histories and invalid lineage are tested in PR #23 |
+| 2. Close-ready core finance | Complete account-ledger drilldown; approved statement mappings and income statement/balance sheet/cash-flow reports; setup, opening balances, period controls, recurring journals, accruals, prepaids and fixed assets | Reports and schedules reconcile to the GL; finance approves cutoff and retained-earnings treatment; closed-period and concurrent-posting tests pass |
+| 3. Subledgers and cash reconciliation | Partial allocations/receipts/payments, credits/refunds, AR/AP aging, statement import, duplicate detection, matching and reconciliation | Idempotent atomic posting, over-allocation prevention, concurrent settlement tests, bank/subledger/GL reconciliation and explicit unresolved exceptions |
+| 4. Contract billing and revenue | Approved contracts, subscription/usage/milestone billing, amendments, deferred revenue, recognition schedules and traceable recurring-revenue metrics | Documented revenue policies, independently checked examples, source usage completeness, exact schedule totals, contract-to-invoice-to-journal reconciliation |
+| 5. Connected finance operations | Billing/processor and CRM ingestion; spend, AP approvals and purchase commitments; payroll, tax and banking provider integrations | Verified provider contracts and callbacks, source ownership, idempotent retries, replay, sync visibility, control totals and accepted jurisdiction-specific behavior |
+| 6. Group and enterprise accounting | Intercompany workflows, consolidation, supported FX, fine-grained permissions, SSO and provisioning | Agreed elimination/translation policies, separate entity and consolidated reconciliation, access lifecycle tests and representative scale evidence |
+| 7. Governed AI assistance | Coding, matching, contract extraction and close proposals with tenant-scoped retrieval and human approval before side effects | Grounded outputs, prompt-injection tests, access checks, durable decision evidence, budget controls and deterministic posting validation |
+| 8. Production acceptance | Data migration, restore, security/load tests, monitoring, incident response, UAT and release | Named owners and immutable evidence for every applicable gate in PRODUCTION_READINESS.md; each customer uses only its accepted workflows |
 
-Operations work starts alongside Phase 1. It must not be postponed until the
-last feature is built. Tax/payroll/industry work follows the business decisions
-above; no universal jurisdiction or accounting policy is assumed.
+Integration architecture and operations work start alongside core finance.
+Required tax, payroll, currency and provider support must be accepted before
+onboarding customers that depend on it. Warehouse fulfilment, inventory valuation,
+manufacturing/MRP and native payroll/tax engines are later customer-driven additions;
+they are not prerequisites for this initial finance delivery sequence. Their
+existing containment remains necessary until each is implemented and verified.
+
+Phase ordering does not certify an earlier phase for enterprise or public-company
+use. Customer acceptance depends on all required workflows, controls and operating
+evidence, including later phases when applicable.
 
 ## Phase 1 implementation contract
 
@@ -77,7 +97,9 @@ All production-data and finance acceptance gates remain applicable.
 
 1. Enable Dependency graph in repository security analysis settings and re-run
    dependency review; import and activate `.github/rulesets/main.json`.
-2. Confirm the first production country's and business type's requirements.
+2. Select representative US finance acceptance fixtures and a first pilot cohort
+   within the confirmed customer scope; record its entity, contract, accounting,
+   state, provider, access and volume requirements.
 3. Provide an isolated staging project and sanitized representative data through
    the deployment workflow; keep credentials out of source and browser variables.
 4. Rehearse the full migration manifest, reconcile opening and subledger balances,

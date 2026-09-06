@@ -12,6 +12,12 @@ accounting periods, exact reversals, and narrow atomic customer-invoice,
 supplier-bill, receipt/payment, credit, and correction workflows. Other module screens may preserve historical/prototype data
 but must not be treated as authoritative accounting output.
 
+The product target is US finance and accounting teams in the customer market
+served by Rillet. Delivery initially prioritizes growing SaaS, AI, digital-product
+and services companies, with enterprise requirements in the broader scope. See
+[TARGET_CUSTOMER.md](./TARGET_CUSTOMER.md) for the customer definition and planned
+requirements; this target does not change the implementation status below.
+
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg)
@@ -205,8 +211,9 @@ See [documentation.md](./documentation.md) for comprehensive documentation inclu
 Use [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) for the evidence gates,
 release build, managed Supabase rehearsal, rollback, and deployment order. See
 [SECURITY.md](./SECURITY.md) before handling vulnerability reports or secrets.
-Use [ERP_ROADMAP.md](./ERP_ROADMAP.md) for the remaining module sequence and the
-business decisions needed to define a complete production release.
+Use [TARGET_CUSTOMER.md](./TARGET_CUSTOMER.md) for the confirmed US market and
+customer scope, and [ERP_ROADMAP.md](./ERP_ROADMAP.md) for the finance delivery
+sequence and remaining customer-specific acceptance inputs.
 
 ## Development
 

@@ -99,10 +99,16 @@ Database and runtime regressions cover complete histories, exact large decimals,
 lineage/balance failures, tenant isolation, and CSV formula escaping. Hosted tests
 exercise actual AR/AP posting results and browser report selection/export/failure.
 
-See [ERP_ROADMAP.md](./ERP_ROADMAP.md) for the remaining implementation sequence
-and the country, business, accounting, and operational decisions still required.
-The trial balance is a completed code boundary only after its exact hosted checks
-pass; it does not waive any of the release gates below.
+PR #23's exact hosted checks passed 177 regressions, eight real integration
+scenarios, deterministic migration replay, typecheck, lint, both builds, CodeQL
+and dependency audit. It merged at `578dc5e`; dependency review remains blocked
+by the disabled Dependency graph feature.
+
+The owner has confirmed the United States and Rillet's customer market as the
+product scope. See [TARGET_CUSTOMER.md](./TARGET_CUSTOMER.md) for that definition
+and [ERP_ROADMAP.md](./ERP_ROADMAP.md) for the remaining implementation sequence
+and customer-specific accounting and operational inputs. A completed trial-balance
+code boundary does not waive any of the release gates below.
 
 ## Mandatory release gates
 
