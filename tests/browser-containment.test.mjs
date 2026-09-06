@@ -484,9 +484,10 @@ test("banking exposes only tenant-scoped non-secret metadata and no execution pa
 
 test("unverified modules are unreachable from active routes and dashboard claims", async () => {
   const app = await readFile(path.join(root, "App.tsx"), "utf8");
-  for (const route of ["crm", "inventory", "reports", "production", "controlling", "service", "currency", "tax", "hr", "metrics"]) {
+  for (const route of ["crm", "inventory", "production", "controlling", "service", "currency", "tax", "hr", "metrics"]) {
     assert.match(app, new RegExp(`path="/${route}" element=\\{<ContainedModule`), route);
   }
+  assert.match(app, /path="\/reports" element=\{<TrialBalance/);
   for (const page of ["CRM", "Inventory", "FinancialReports", "Production", "Controlling", "ServiceManagement", "Currency", "TaxManagement", "HRPayroll", "InvestorMetrics"]) {
     assert.doesNotMatch(app, new RegExp(`import ${page} from`), page);
   }

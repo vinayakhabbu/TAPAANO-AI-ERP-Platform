@@ -21,6 +21,11 @@ but must not be treated as authoritative accounting output.
 
 ### Current implementation status
 
+- **Ledger reporting:** `/reports` provides a trial balance for one legal entity
+  and currency, including opening balances, period activity, closing balances,
+  and exact decimal CSV export. It rejects incomplete/unverified journal history.
+  Finance reconciliation and production acceptance remain required; statutory
+  statements and consolidation are separate, unfinished workflows.
 - **Verified locally:** tenant-scoped posted-journal reads; balanced,
   idempotent manual posting; exact-offset reversal; OPEN/SOFT_CLOSED/
   HARD_CLOSED period enforcement; and zero-tax, same-functional-currency
@@ -63,8 +68,7 @@ but must not be treated as authoritative accounting output.
   tax and FX posting,
   bank matching/reconciliation, inventory and production posting, payroll
   posting, organization maintenance, entity currency/lifecycle changes,
-  consolidation, and authoritative
-  financial reporting.
+  consolidation, and statutory financial statements.
 
 ### AI features
 
@@ -201,6 +205,8 @@ See [documentation.md](./documentation.md) for comprehensive documentation inclu
 Use [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) for the evidence gates,
 release build, managed Supabase rehearsal, rollback, and deployment order. See
 [SECURITY.md](./SECURITY.md) before handling vulnerability reports or secrets.
+Use [ERP_ROADMAP.md](./ERP_ROADMAP.md) for the remaining module sequence and the
+business decisions needed to define a complete production release.
 
 ## Development
 
