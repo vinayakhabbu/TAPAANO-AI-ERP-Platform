@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { publicEnvironment } from '@/config/publicEnvironment';
 import { safeBrowserStorage } from '@/lib/browserStorage';
+import { configureClientDiagnostics } from '@/lib/clientDiagnostics';
 import type { Database } from './types';
 
 if (!publicEnvironment.ok) {
@@ -25,3 +26,14 @@ export const supabase = createClient<Database>(
     },
   }
 );
+
+configureClientDiagnostics(async ({ code, release }) => {
+  const { data, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw new Error("Diagnostic authentication unavailable.");
+  if (!data.session) return;
+  const { error } = await supabase.rpc("record_client_diagnostic", {
+    p_event_code: code,
+    p_release_sha: release,
+  });
+  if (error) throw new Error("Diagnostic persistence unavailable.");
+});

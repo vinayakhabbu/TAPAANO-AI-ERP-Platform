@@ -299,7 +299,7 @@ const GeneralLedger = () => {
             <div className="flex items-center justify-between border-b border-border p-4">
               <div>
                 <h3 className="text-lg font-semibold text-foreground">Journal Entries</h3>
-                <p className="text-sm text-muted-foreground">Immutable posted-journal history</p>
+                <p className="text-sm text-muted-foreground">Most recent 20 journal entries</p>
               </div>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="icon" disabled title="Journal filtering is not available">

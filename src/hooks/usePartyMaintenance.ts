@@ -86,6 +86,7 @@ export function usePartyMaintenance() {
 
   const invalidate = async () => {
     await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, orgId] }),
       queryClient.invalidateQueries({ queryKey: ["customer-master-maintenance", user?.id, orgId] }),
       queryClient.invalidateQueries({ queryKey: ["vendor-master-maintenance", user?.id, orgId] }),
       queryClient.invalidateQueries({ queryKey: ["party-master-events", user?.id, orgId] }),

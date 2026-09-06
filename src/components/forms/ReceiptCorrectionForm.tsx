@@ -71,6 +71,7 @@ export function ReceiptCorrectionForm({
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({
         queryKey: ["posted-customer-receipt-correction-history", user?.id, profile?.org_id],
       });

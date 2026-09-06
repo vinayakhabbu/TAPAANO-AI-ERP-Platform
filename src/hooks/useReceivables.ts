@@ -1,3 +1,5 @@
+import { readAllRows } from "@/lib/readAllRows";
+import { useOperationalSummary } from "@/hooks/useOperationalSummary";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,17 +71,19 @@ export const useReceivables = () => {
   const { user, profile } = useAuth();
   const orgId = profile?.org_id;
   const ready = Boolean(user?.id && orgId);
+  const summary = useOperationalSummary();
 
   const customersQuery = useQuery({
     queryKey: ["receivables-customers", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("customers")
-        .select("id, name, email, credit_limit")
+        .select("id, name, email, credit_limit", { count: "exact" })
         .eq("org_id", orgId)
-        .order("name");
-      if (error) throw error;
+        .order("name")
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((customer): ReceivablesCustomer => ({
         id: customer.id,
         name: customer.name,
@@ -94,14 +98,15 @@ export const useReceivables = () => {
     queryKey: ["posted-invoice-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("invoices")
-        .select("id, invoice_number, issue_date, due_date, total, currency, journal_entry_id, customers(name)")
+        .select("id, invoice_number, issue_date, due_date, total, currency, journal_entry_id, customers(name)", { count: "exact" })
         .eq("org_id", orgId)
         .eq("accounting_status", "POSTED")
         .not("journal_entry_id", "is", null)
-        .order("issue_date", { ascending: false });
-      if (error) throw error;
+        .order("issue_date", { ascending: false })
+        .order("id")
+        .range(from, to));
 
       return (data ?? []).map((invoice): PostedInvoiceHistory => ({
         id: invoice.id,
@@ -121,13 +126,14 @@ export const useReceivables = () => {
     queryKey: ["posted-credit-note-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("customer_credit_notes")
-        .select("id, original_invoice_id, credit_note_number, issue_date, total, currency, journal_entry_id")
+        .select("id, original_invoice_id, credit_note_number, issue_date, total, currency, journal_entry_id", { count: "exact" })
         .eq("org_id", orgId)
         .not("journal_entry_id", "is", null)
-        .order("issue_date", { ascending: false });
-      if (error) throw error;
+        .order("issue_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((credit): PostedCreditNoteHistory => ({
         id: credit.id,
         originalInvoiceId: credit.original_invoice_id,
@@ -145,13 +151,14 @@ export const useReceivables = () => {
     queryKey: ["posted-customer-receipt-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("customer_receipts")
-        .select("id, invoice_id, receipt_number, receipt_date, amount, currency, receipt_reference, journal_entry_id")
+        .select("id, invoice_id, receipt_number, receipt_date, amount, currency, receipt_reference, journal_entry_id", { count: "exact" })
         .eq("org_id", orgId)
         .not("journal_entry_id", "is", null)
-        .order("receipt_date", { ascending: false });
-      if (error) throw error;
+        .order("receipt_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((receipt): PostedCustomerReceiptHistory => ({
         id: receipt.id,
         invoiceId: receipt.invoice_id,
@@ -170,13 +177,14 @@ export const useReceivables = () => {
     queryKey: ["posted-customer-receipt-correction-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("customer_receipt_corrections")
-        .select("id, original_receipt_id, correction_number, correction_date, amount, currency, reason, journal_entry_id")
+        .select("id, original_receipt_id, correction_number, correction_date, amount, currency, reason, journal_entry_id", { count: "exact" })
         .eq("org_id", orgId)
         .not("journal_entry_id", "is", null)
-        .order("correction_date", { ascending: false });
-      if (error) throw error;
+        .order("correction_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((correction): PostedCustomerReceiptCorrectionHistory => ({
         id: correction.id,
         originalReceiptId: correction.original_receipt_id,
@@ -195,13 +203,14 @@ export const useReceivables = () => {
     queryKey: ["posted-customer-receipt-replacement-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("customer_receipt_replacements")
-        .select("id, original_receipt_id, original_correction_id, invoice_id, replacement_number, replacement_date, amount, currency, reference, journal_entry_id")
+        .select("id, original_receipt_id, original_correction_id, invoice_id, replacement_number, replacement_date, amount, currency, reference, journal_entry_id", { count: "exact" })
         .eq("org_id", orgId)
         .not("journal_entry_id", "is", null)
-        .order("replacement_date", { ascending: false });
-      if (error) throw error;
+        .order("replacement_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((replacement): PostedCustomerReceiptReplacementHistory => ({
         id: replacement.id,
         originalReceiptId: replacement.original_receipt_id,
@@ -232,19 +241,19 @@ export const useReceivables = () => {
     receiptCorrections,
     receiptReplacements,
     stats: {
-      customerCount: customersQuery.data?.length ?? 0,
-      invoiceCount: invoices.length,
-      postedInvoiceTotal: invoices.reduce((sum, invoice) => sum + invoice.total, 0),
-      fullCreditCount: creditNotes.length,
-      fullReceiptCount: receipts.length,
-      receiptCorrectionCount: receiptCorrections.length,
-      receiptReplacementCount: receiptReplacements.length,
+      customerCount: summary.data?.customerCount ?? 0,
+      invoiceCount: summary.data?.invoiceCount ?? 0,
+      postedInvoiceTotals: summary.data?.postedInvoiceTotals ?? [],
+      fullCreditCount: summary.data?.fullCreditCount ?? 0,
+      fullReceiptCount: summary.data?.fullReceiptCount ?? 0,
+      receiptCorrectionCount: summary.data?.receiptCorrectionCount ?? 0,
+      receiptReplacementCount: summary.data?.receiptReplacementCount ?? 0,
     },
-    isLoading: customersQuery.isLoading || postedInvoicesQuery.isLoading
+    isLoading: summary.isLoading || customersQuery.isLoading || postedInvoicesQuery.isLoading
       || postedCreditNotesQuery.isLoading || postedCustomerReceiptsQuery.isLoading
       || postedCustomerReceiptCorrectionsQuery.isLoading
       || postedCustomerReceiptReplacementsQuery.isLoading,
-    error: customersQuery.error || postedInvoicesQuery.error
+    error: summary.error || customersQuery.error || postedInvoicesQuery.error
       || postedCreditNotesQuery.error || postedCustomerReceiptsQuery.error
       || postedCustomerReceiptCorrectionsQuery.error
       || postedCustomerReceiptReplacementsQuery.error,

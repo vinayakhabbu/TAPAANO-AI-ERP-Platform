@@ -64,6 +64,7 @@ export function CreditNoteForm({ invoiceId, invoiceNumber, invoiceIssueDate }: C
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-credit-note-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-invoice-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["journal-history", user?.id, profile?.org_id] });

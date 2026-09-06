@@ -71,6 +71,7 @@ export function SupplierPaymentCorrectionForm({
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({
         queryKey: ["posted-supplier-payment-correction-history", user?.id, profile?.org_id],
       });

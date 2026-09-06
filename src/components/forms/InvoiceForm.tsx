@@ -137,6 +137,7 @@ export function InvoiceForm({ trigger, defaultSalesOrderId, defaultShipmentId }:
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-invoice-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["journal-history", user?.id, profile?.org_id] });
       toast.success("Invoice and journal posted atomically");

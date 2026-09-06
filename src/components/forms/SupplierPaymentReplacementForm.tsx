@@ -71,6 +71,7 @@ export function SupplierPaymentReplacementForm({
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({
         queryKey: ["posted-supplier-payment-replacement-history", user?.id, profile?.org_id],
       });

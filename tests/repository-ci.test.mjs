@@ -17,7 +17,7 @@ test("CI is read-only and verifies the locked repository on Node 22", async () =
   assert.match(workflow, /npm run build/);
 
   assert.doesNotMatch(workflow, /secrets\./);
-  assert.doesNotMatch(workflow, /deploy|publish/i);
+  assert.doesNotMatch(workflow, /run:\s*(?:npm publish|supabase (?:link|db push|functions deploy))/i);
   assert.doesNotMatch(workflow, /permissions:\s*write|contents:\s*write/);
 });
 
@@ -31,6 +31,9 @@ test("CI rehearses migrations only in a disposable local Supabase stack", async 
   assert.equal(workflow.match(/supabase db dump --local --schema public/g)?.length, 2);
   assert.match(workflow, /diff --unified \/tmp\/schema-first\.sql \/tmp\/schema-replay\.sql/);
   assert.match(workflow, /supabase db lint --local --level error/);
+  assert.match(workflow, /npm run test:integration/);
+  assert.match(workflow, /playwright install --with-deps chromium/);
+  assert.match(workflow, /npm run build:release/);
   assert.match(workflow, /if: always\(\)[\s\S]*supabase stop --no-backup/);
 
   assert.doesNotMatch(workflow, /SUPABASE_ACCESS_TOKEN|DB_PASSWORD|PROJECT_ID/);
