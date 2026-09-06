@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { JOURNAL_HISTORY_SELECT } from "@/lib/journalQuery";
+import { readAllRows } from "@/lib/readAllRows";
 
 export const useAccounts = () => {
   const { user, profile } = useAuth();
@@ -8,14 +10,14 @@ export const useAccounts = () => {
     queryKey: ["ledger-accounts", user?.id, profile?.org_id],
     queryFn: async () => {
       if (!user?.id || !profile?.org_id) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("accounts")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("org_id", profile.org_id)
         .eq("is_active", true)
-        .order("code");
-
-      if (error) throw error;
+        .order("code")
+        .order("id")
+        .range(from, to));
       return data;
     },
     enabled: Boolean(user?.id && profile?.org_id),
@@ -30,23 +32,10 @@ export const useJournalEntries = () => {
       if (!user?.id || !profile?.org_id) return [];
       const { data, error } = await supabase
         .from("journal_entries")
-        .select(`
-          *,
-          journal_lines(
-            id,
-            debit,
-            credit,
-            memo,
-            cost_center_id,
-            internal_order_id,
-            profit_center_id,
-            wbs_element_id,
-            account:accounts(name, code, controlling_category),
-            cost_center:cost_centers(code, name)
-          )
-        `)
+        .select(JOURNAL_HISTORY_SELECT)
         .eq("org_id", profile.org_id)
         .order("entry_date", { ascending: false })
+        .order("id")
         .limit(20);
 
       if (error) throw error;

@@ -1,3 +1,6 @@
+import { useOperationalSummary } from "@/hooks/useOperationalSummary";
+import { readAllRows } from "@/lib/readAllRows";
+import { LEGACY_BILL_SELECT, POSTED_BILL_SELECT } from "@/lib/documentQueries";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -74,12 +77,13 @@ export const useVendors = () => {
     queryKey: ["vendors", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("vendors")
-        .select("id, name, email, phone, address, payment_terms")
+        .select("id, name, email, phone, address, payment_terms", { count: "exact" })
         .eq("org_id", orgId)
-        .order("name");
-      if (error) throw error;
+        .order("name")
+        .order("id")
+        .range(from, to));
       return data as Vendor[];
     },
     enabled: Boolean(user?.id && orgId),
@@ -93,13 +97,14 @@ export const useBills = () => {
     queryKey: ["legacy-bill-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("bills")
-        .select("id, bill_number, issue_date, due_date, total, currency, status, vendors(name)")
+        .select(LEGACY_BILL_SELECT, { count: "exact" })
         .eq("org_id", orgId)
         .eq("accounting_status", "UNVERIFIED_LEGACY")
-        .order("issue_date", { ascending: false });
-      if (error) throw error;
+        .order("issue_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return data ?? [];
     },
     enabled: Boolean(user?.id && orgId),
@@ -113,14 +118,15 @@ export const usePostedSupplierBills = () => {
     queryKey: ["posted-supplier-bill-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("bills")
-        .select("id, bill_number, issue_date, due_date, total, currency, journal_entry_id, vendors(name)")
+        .select(POSTED_BILL_SELECT, { count: "exact" })
         .eq("org_id", orgId)
         .eq("accounting_status", "POSTED")
         .not("journal_entry_id", "is", null)
-        .order("issue_date", { ascending: false });
-      if (error) throw error;
+        .order("issue_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((bill): PostedSupplierBill => ({
         id: bill.id,
         billNumber: bill.bill_number,
@@ -143,12 +149,13 @@ export const usePostedSupplierCredits = () => {
     queryKey: ["posted-supplier-credit-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("supplier_bill_credit_notes")
-        .select("id, original_bill_id, credit_note_number, issue_date, total, currency, journal_entry_id")
+        .select("id, original_bill_id, credit_note_number, issue_date, total, currency, journal_entry_id", { count: "exact" })
         .eq("org_id", orgId)
-        .order("issue_date", { ascending: false });
-      if (error) throw error;
+        .order("issue_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((credit): PostedSupplierCredit => ({
         id: credit.id,
         originalBillId: credit.original_bill_id,
@@ -170,12 +177,13 @@ export const usePostedSupplierPayments = () => {
     queryKey: ["posted-supplier-payment-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("supplier_payments")
-        .select("id, bill_id, payment_number, payment_date, amount, currency, payment_reference, journal_entry_id")
+        .select("id, bill_id, payment_number, payment_date, amount, currency, payment_reference, journal_entry_id", { count: "exact" })
         .eq("org_id", orgId)
-        .order("payment_date", { ascending: false });
-      if (error) throw error;
+        .order("payment_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((payment): PostedSupplierPayment => ({
         id: payment.id,
         billId: payment.bill_id,
@@ -198,13 +206,14 @@ export const usePostedSupplierPaymentCorrections = () => {
     queryKey: ["posted-supplier-payment-correction-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("supplier_payment_corrections")
-        .select("id, original_payment_id, correction_number, correction_date, amount, currency, reason, journal_entry_id")
+        .select("id, original_payment_id, correction_number, correction_date, amount, currency, reason, journal_entry_id", { count: "exact" })
         .eq("org_id", orgId)
         .not("journal_entry_id", "is", null)
-        .order("correction_date", { ascending: false });
-      if (error) throw error;
+        .order("correction_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((correction): PostedSupplierPaymentCorrection => ({
         id: correction.id,
         originalPaymentId: correction.original_payment_id,
@@ -227,13 +236,14 @@ export const usePostedSupplierPaymentReplacements = () => {
     queryKey: ["posted-supplier-payment-replacement-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("supplier_payment_replacements")
-        .select("id, original_payment_id, original_correction_id, bill_id, replacement_number, replacement_date, amount, currency, reference, journal_entry_id")
+        .select("id, original_payment_id, original_correction_id, bill_id, replacement_number, replacement_date, amount, currency, reference, journal_entry_id", { count: "exact" })
         .eq("org_id", orgId)
         .not("journal_entry_id", "is", null)
-        .order("replacement_date", { ascending: false });
-      if (error) throw error;
+        .order("replacement_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return (data ?? []).map((replacement): PostedSupplierPaymentReplacement => ({
         id: replacement.id,
         originalPaymentId: replacement.original_payment_id,
@@ -258,12 +268,13 @@ export const usePaymentRuns = () => {
     queryKey: ["legacy-payment-run-history", user?.id, orgId],
     queryFn: async () => {
       if (!user?.id || !orgId) return [];
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) => supabase
         .from("payment_runs")
-        .select("id, run_number, run_date, status")
+        .select("id, run_number, run_date, status", { count: "exact" })
         .eq("org_id", orgId)
-        .order("run_date", { ascending: false });
-      if (error) throw error;
+        .order("run_date", { ascending: false })
+        .order("id")
+        .range(from, to));
       return data ?? [];
     },
     enabled: Boolean(user?.id && orgId),
@@ -271,29 +282,17 @@ export const usePaymentRuns = () => {
 };
 
 export const usePayablesSummary = () => {
-  const vendors = useVendors();
-  const bills = useBills();
-  const postedBills = usePostedSupplierBills();
-  const postedCredits = usePostedSupplierCredits();
-  const postedPayments = usePostedSupplierPayments();
-  const paymentCorrections = usePostedSupplierPaymentCorrections();
-  const paymentReplacements = usePostedSupplierPaymentReplacements();
-  const paymentRuns = usePaymentRuns();
+  const summary = useOperationalSummary();
   return {
-    vendorCount: vendors.data?.length ?? 0,
-    billHeaderCount: bills.data?.length ?? 0,
-    postedBillCount: postedBills.data?.length ?? 0,
-    postedCreditCount: postedCredits.data?.length ?? 0,
-    postedPaymentCount: postedPayments.data?.length ?? 0,
-    paymentCorrectionCount: paymentCorrections.data?.length ?? 0,
-    paymentReplacementCount: paymentReplacements.data?.length ?? 0,
-    paymentRunHistoryCount: paymentRuns.data?.length ?? 0,
-    isLoading: vendors.isLoading || bills.isLoading || postedBills.isLoading
-      || postedCredits.isLoading || postedPayments.isLoading
-      || paymentCorrections.isLoading || paymentReplacements.isLoading
-      || paymentRuns.isLoading,
-    error: vendors.error || bills.error || postedBills.error || postedCredits.error
-      || postedPayments.error || paymentCorrections.error || paymentReplacements.error
-      || paymentRuns.error,
+    vendorCount: summary.data?.vendorCount ?? 0,
+    billHeaderCount: summary.data?.billHeaderCount ?? 0,
+    postedBillCount: summary.data?.postedBillCount ?? 0,
+    postedCreditCount: summary.data?.postedCreditCount ?? 0,
+    postedPaymentCount: summary.data?.postedPaymentCount ?? 0,
+    paymentCorrectionCount: summary.data?.paymentCorrectionCount ?? 0,
+    paymentReplacementCount: summary.data?.paymentReplacementCount ?? 0,
+    paymentRunHistoryCount: summary.data?.paymentRunHistoryCount ?? 0,
+    isLoading: summary.isLoading,
+    error: summary.error,
   };
 };

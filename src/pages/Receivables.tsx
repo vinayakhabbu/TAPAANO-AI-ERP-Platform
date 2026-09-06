@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useReceivables } from "@/hooks/useReceivables";
+import { formatCurrencyTotal } from "@/lib/operationalSummary";
 
 const Receivables = () => {
   const {
@@ -88,8 +89,14 @@ const Receivables = () => {
           <p className="mt-1 text-xs text-muted-foreground">Exact-offset corrections, not refunds</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm text-muted-foreground">Gross posted invoice total</p>
-          {renderStat(stats.postedInvoiceTotal, "w-28")}
+          <p className="text-sm text-muted-foreground">Gross posted invoices by currency</p>
+          {isLoading ? <Skeleton className="mt-2 h-8 w-28" /> : statsUnavailable ? (
+            <p className="mt-2 text-lg font-bold">Unavailable</p>
+          ) : stats.postedInvoiceTotals.length === 0 ? (
+            <p className="mt-2 text-sm">No posted invoices</p>
+          ) : stats.postedInvoiceTotals.map(({ currency, total }) => (
+            <p key={currency} className="mt-2 break-words text-lg font-bold">{formatCurrencyTotal(currency, total)}</p>
+          ))}
           <p className="mt-1 text-xs text-muted-foreground">Not an outstanding receivable or aging balance</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">

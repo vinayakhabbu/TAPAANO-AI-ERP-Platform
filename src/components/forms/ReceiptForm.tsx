@@ -72,6 +72,7 @@ export function ReceiptForm({
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-customer-receipt-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-invoice-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["journal-history", user?.id, profile?.org_id] });

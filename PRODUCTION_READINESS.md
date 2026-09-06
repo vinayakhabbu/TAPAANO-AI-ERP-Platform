@@ -19,7 +19,7 @@ become release evidence. Local verification used supported Node 22.23.2.
 - The exact npm lockfile type-checks, repository lint exits with zero errors and
   89 visible warnings, the production bundle builds, and `npm audit` reports
   zero known vulnerabilities after the framework security upgrade.
-- CI applies the 63-file migration history twice to an empty disposable Supabase
+- CI applies the 67-file migration history twice to an empty disposable Supabase
   stack, compares the schemas, lints the database, and always tears it down.
 - Unsupported accounting, banking, inventory, production, tax, payroll, AI, and
   autonomous workflows remain fail-closed or unreachable from active routes;
@@ -34,6 +34,52 @@ become release evidence. Local verification used supported Node 22.23.2.
 - The ordinary build artifact permits same-origin network connections only. The
   release build validates an origin-only Supabase URL and generates a CSP whose
   HTTPS and WebSocket destinations are pinned to that exact origin.
+
+## September 6 review corrections
+
+The review corrections remove the ledger's inaccessible cost-center join, make
+ledger and invoice/bill API relationships explicit where foreign keys overlap, move
+operational counts and currency-separated decimal totals into a tenant-scoped
+invoker RPC, and read AR/AP history through counted pages. A changing count,
+duplicate row, failed page, or history above 50,000 rows is reported as unavailable;
+the application does not claim that a partial result is complete. The 50,000-row
+interactive-history boundary needs a filtered/paginated UI before larger tenants
+are supported. Operational totals remain database aggregates independent of it.
+
+Four additive migrations provide the summary RPC, sanitized diagnostic counters,
+the deferred-validator execution correction, and the supported AR/AP source codes
+missing from the historical journal constraint, found by full-stack verification.
+Deferred trigger wrappers run with owner rights and a fixed search path; internal
+validators remain unavailable as client-callable RPCs.
+Apply them to staging before testing the matching frontend. Diagnostic events
+contain only an allowlisted failure code, server-derived tenant/user, release SHA,
+time bucket, and capped occurrence count. No exception messages, stack traces,
+URLs, financial records, or credentials are transmitted. Unauthenticated failures
+remain sanitized local diagnostics. Configure `VITE_RELEASE_SHA` to the release
+commit. Tenant admins can read `client_diagnostic_buckets` through the authenticated
+API; owner-level monitoring can aggregate by event code, release, and time.
+The server accepts at most one update per actor/code/minute within each hourly
+bucket, with a defensive ceiling of 1,000. Inserts perform bounded
+cleanup of rows older than seven days; operators should schedule the same retention
+cleanup during idle periods. These counters are operational signals, not audit
+records or confirmed counts of distinct failures. Alert routing, availability
+checks, ownership, and restore proof still require deployment-level configuration.
+
+CI now builds the release artifact with synthetic public configuration and runs
+real local Auth/PostgREST/browser checks, authenticated AR/AP receipt/payment,
+credit, correction, and replacement commits, plus a concurrent invoice retry against
+the fully migrated disposable stack. Synthetic tenant bootstrap is confined to
+an empty loopback database. This is not production-data restore or managed-service
+acceptance evidence. Test outcomes must be taken from the exact PR/commit checks.
+
+The importable `.github/rulesets/main.json` requires a reviewed PR, current passing
+CI/security checks, and resolution of review threads, and blocks force pushes and
+branch deletion. Repository owners must import it under Settings → Rules → Rulesets
+and verify that it is active. Committing the JSON alone does not enforce it. The
+GitHub connection used for this review exposes no administration write action.
+The first PR run also confirmed that Dependency graph is disabled. Enable it under
+Settings → Advanced Security (security analysis) so the existing dependency-review
+gate can run; a successful npm audit does not activate this GitHub feature.
 
 ## Mandatory release gates
 

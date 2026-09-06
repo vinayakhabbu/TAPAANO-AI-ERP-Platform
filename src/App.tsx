@@ -1,12 +1,13 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Outlet, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { reportClientError } from "@/lib/clientDiagnostics";
 
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -20,7 +21,10 @@ const Help = lazy(() => import("./pages/Help"));
 const ContainedModule = lazy(() => import("./pages/ContainedModule"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: (error) => reportClientError("Data read failed", error) }),
+  mutationCache: new MutationCache({ onError: (error) => reportClientError("Data write failed", error) }),
+});
 
 function AuthenticatedRoute() {
   const { user, profile, loading, signingOut, signOut } = useAuth();

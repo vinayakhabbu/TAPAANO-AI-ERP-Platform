@@ -98,7 +98,7 @@ export function useDashboardStats() {
     },
     // Receivables
     receivables: {
-      postedInvoiceTotal: arStats.postedInvoiceTotal,
+      postedInvoiceTotals: arStats.postedInvoiceTotals,
       customerCount: arStats.customerCount,
       invoiceCount: arStats.invoiceCount,
     },

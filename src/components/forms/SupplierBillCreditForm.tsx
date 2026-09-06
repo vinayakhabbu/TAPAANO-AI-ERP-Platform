@@ -57,6 +57,7 @@ export function SupplierBillCreditForm({ billId, billNumber, billIssueDate }: Su
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-supplier-credit-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-supplier-bill-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["journal-history", user?.id, profile?.org_id] });

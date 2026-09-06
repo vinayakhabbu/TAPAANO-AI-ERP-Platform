@@ -4,7 +4,7 @@ import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const migrationsDirectory = new URL("../supabase/migrations/", import.meta.url);
-const expectedManifestHash = "b74288feed052461e981240110995d63cda3113c6af1e327aac89d8dc9a94eb1";
+const expectedManifestHash = "20a07676a5a0ceb0b8b695a85e8bc01b736dbfa7cae1610518b191670d7dc326";
 
 async function migrationManifest() {
   const names = (await readdir(migrationsDirectory))
@@ -28,7 +28,7 @@ test("the ordered migration manifest is explicit and review-gated", async () => 
   const { names, hash } = await migrationManifest();
   const recoveryNames = names.filter((name) => /^20260825\d{6}_recovery_/.test(name));
 
-  assert.equal(names.length, 63);
+  assert.equal(names.length, 67);
   assert.equal(new Set(names).size, names.length);
   assert.equal(recoveryNames.length, 22);
   assert.deepEqual(

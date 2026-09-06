@@ -4,27 +4,17 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useReceivables } from "@/hooks/useReceivables";
-import { usePayablesSummary } from "@/hooks/usePayables";
-import { useBankAccounts } from "@/hooks/useBanking";
-import { useAccountingPeriods } from "@/hooks/usePeriodClose";
+import { useOperationalSummary } from "@/hooks/useOperationalSummary";
 
 const Index = () => {
-  const receivables = useReceivables();
-  const payables = usePayablesSummary();
-  const bankAccounts = useBankAccounts();
-  const periods = useAccountingPeriods();
-  const loading = receivables.isLoading || payables.isLoading || bankAccounts.isLoading || periods.isLoading;
-  const summaryUnavailable = Boolean(
-    receivables.error || payables.error || bankAccounts.error || periods.error,
-  );
-  const openPeriods = periods.data?.filter((period) => period.status === "OPEN").length ?? 0;
-
+  const summary = useOperationalSummary();
+  const loading = summary.isLoading;
+  const summaryUnavailable = Boolean(summary.error);
   const cards = [
-    { label: "Journal-linked posted invoices", value: receivables.stats.invoiceCount, href: "/ar", icon: FileCheck2 },
-    { label: "Open accounting periods", value: openPeriods, href: "/close", icon: BookLock },
-    { label: "Legacy bill headers", value: payables.billHeaderCount, href: "/ap", icon: ReceiptText },
-    { label: "Bank metadata rows", value: bankAccounts.data?.length ?? 0, href: "/banking", icon: Landmark },
+    { label: "Journal-linked posted invoices", value: summary.data?.invoiceCount, href: "/ar", icon: FileCheck2 },
+    { label: "Open accounting periods", value: summary.data?.openPeriodCount, href: "/close", icon: BookLock },
+    { label: "Legacy bill headers", value: summary.data?.billHeaderCount, href: "/ap", icon: ReceiptText },
+    { label: "Bank metadata rows", value: summary.data?.bankAccountCount, href: "/banking", icon: Landmark },
   ];
 
   return (

@@ -71,6 +71,7 @@ export function ReceiptReplacementForm({
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operational-summary", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({
         queryKey: ["posted-customer-receipt-replacement-history", user?.id, profile?.org_id],
       });

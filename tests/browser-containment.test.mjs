@@ -266,7 +266,7 @@ test("financial read failures cannot masquerade as zero or empty state", async (
   assert.match(dashboard, /summaryUnavailable[\s\S]*?Counts are hidden; do not interpret missing values as zero/);
   assert.match(receivables, /statsUnavailable[\s\S]*?Counts and totals are hidden; do not interpret missing values as zero/);
   assert.match(payables, /summary\.error[\s\S]*?Counts are hidden; do not interpret missing values as zero/);
-  assert.match(payablesHook, /error:\s*vendors\.error[\s\S]*?paymentRuns\.error/);
+  assert.match(payablesHook, /error:\s*summary\.error/);
   assert.match(banking, /accountsError \|\| transactionsError[\s\S]*?Counts are hidden; do not interpret missing values as zero/);
   assert.match(periods, /isError[\s\S]*?Do not infer that no periods are configured/);
   assert.match(ledger, /accountsError[\s\S]*?Do not infer an empty ledger/);

@@ -8432,6 +8432,14 @@ export type Database = {
       }
     }
     Functions: {
+      record_client_diagnostic: {
+        Args: { p_event_code: string; p_release_sha: string }
+        Returns: undefined
+      }
+      get_tenant_operational_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       cancel_tenant_invitation: {
         Args: { p_invitation_id: string; p_reason: string }
         Returns: string

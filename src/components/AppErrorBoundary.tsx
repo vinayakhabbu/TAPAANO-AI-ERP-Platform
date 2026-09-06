@@ -24,7 +24,8 @@ export class AppErrorBoundary extends Component<Props, State> {
           <p className="text-sm font-medium text-destructive">Application unavailable</p>
           <h1 className="mt-2 text-2xl font-semibold">TAPAANO could not load safely.</h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            No operation was submitted. Reload the application; if the problem continues, contact your administrator.
+            Your last action may have completed. Reload and check its status before retrying;
+            if the problem continues, contact your administrator.
           </p>
           <button
             className="mt-6 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
