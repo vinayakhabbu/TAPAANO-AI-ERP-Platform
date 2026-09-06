@@ -13,6 +13,7 @@ const { POSTED_INVOICE_SELECT, POSTED_BILL_SELECT, LEGACY_BILL_SELECT } = await 
 const { readAllRows } = await loadTypescript("../../src/lib/readAllRows.ts");
 const { parseTrialBalance } = await loadTypescript("../../src/lib/trialBalance.ts");
 const { parseAccountLedger, accountLedgerCsv, deriveLedgerStatements, parsePostedJournals } = await loadTypescript("../../src/lib/financeReports.ts");
+const { parseAgingReport, agingCsv } = await loadTypescript("../../src/lib/subledgerAging.ts");
 
 function requireLoopback(value) {
   const url = new URL(value);
@@ -162,6 +163,19 @@ test("full migration stack supports authenticated finance reads and the browser"
       assert.deepEqual((await rpc(clientA, "get_entity_trial_balance", { ...args, p_to_date: "2026-09-05" })).rows, []);
       const denied = await clientB.rpc("get_entity_trial_balance", args);
       assert.ok(denied.error); assert.equal(denied.error.code, "42501");
+    });
+    await t.test("AR/AP aging reconciles dated source history through the real tenant API", async () => {
+      for (const kind of ["ar", "ap"]) {
+        for (const [day, total] of [[6, kind === "ar" ? "100.00" : "200.00"], [7, "0.00"], [8, "100.00"], [9, "0.00"]]) {
+          const request = { entityId: ids.usd, kind, asOf: "2026-09-0" + day, offset: 0, pageSize: 100 };
+          const data = await rpc(clientA, "get_subledger_aging", { p_entity_id: ids.usd, p_kind: kind, p_as_of: request.asOf });
+          const report = parseAgingReport(data, request);
+          assert.equal(report.outstanding, total); assert.equal(report.ledgerBalance, total); assert.equal(report.reconciled, true);
+          assert.ok(agingCsv([report]).includes('"TOTAL OUTSTANDING","' + total + '"'));
+        }
+      }
+      const foreign = await clientB.rpc("get_subledger_aging", { p_entity_id: ids.usd, p_kind: "ar", p_as_of: "2026-09-08" });
+      assert.equal(foreign.error?.code, "42501");
     });
     await t.test("account drilldown and ledger statements reconcile real posted journals across pages", async () => {
       const scope = { entityId: ids.usd, fromDate: "2026-09-01", toDate: "2026-09-30" };
@@ -334,6 +348,73 @@ test("full migration stack supports authenticated finance reads and the browser"
       await page.getByRole("button", { name: "Apply period change", exact: true }).click();
       await page.getByRole("region", { name: "Manage accounting period", exact: true }).waitFor({ state: "hidden" });
       await november.getByText("HARD CLOSED", { exact: true }).waitFor();
+
+      for (const kind of ["ar", "ap"]) {
+        await page.goto(origin + "/" + kind);
+        const region = page.getByRole("region", { name: kind === "ar" ? "Receivables aging" : "Payables aging", exact: true });
+        await region.getByLabel("Aging entity", { exact: true }).selectOption(ids.usd);
+        await region.getByLabel("Aging as of", { exact: true }).fill("2026-09-08");
+        await region.getByRole("button", { name: "Generate aging", exact: true }).click();
+        await region.getByText("Subledger agrees with the ledger", { exact: true }).waitFor();
+        await region.getByRole("cell", { name: kind === "ar" ? /INTEGRATION-USD/ : /BILL-USD/ }).waitFor();
+        const [download] = await Promise.all([page.waitForEvent("download"), region.getByRole("button", { name: "Download aging CSV", exact: true }).click()]);
+        assert.match(download.suggestedFilename(), new RegExp("^" + kind + "-aging-.*-2026-09-08\\.csv$"));
+        const stream = await download.createReadStream(); const chunks = []; for await (const chunk of stream) chunks.push(chunk);
+        const csv = Buffer.concat(chunks).toString("utf8");
+        assert.ok(csv.includes('"As of","2026-09-08","Currency","USD"'));
+        assert.ok(csv.includes('"TOTAL OUTSTANDING","100.00"'));
+        await page.route("**/rest/v1/rpc/get_subledger_aging", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Synthetic aging failure" }) }));
+        await region.getByRole("button", { name: "Generate aging", exact: true }).click();
+        await region.getByText("Aging unavailable", { exact: true }).waitFor();
+        assert.equal(await region.getByRole("button", { name: "Download aging CSV", exact: true }).count(), 0);
+        await page.unroute("**/rest/v1/rpc/get_subledger_aging");
+        await region.getByLabel("Aging entity", { exact: true }).selectOption(ids.eur);
+        assert.equal(await region.getByLabel("Aging result", { exact: true }).count(), 0);
+      }
+
+      await page.goto(origin + "/settings");
+      await page.getByLabel("New entity name", { exact: true }).fill("Browser setup entity");
+      await page.getByLabel("Audit reason", { exact: true }).first().fill("Synthetic posting setup acceptance");
+      await page.getByRole("button", { name: "Create entity", exact: true }).click();
+      await page.getByText("Browser setup entity", { exact: true }).first().waitFor();
+      const setupEntity = (await db.query("SELECT id FROM public.entities WHERE org_id=$1 AND name='Browser setup entity'", [ids.orgA])).rows[0].id;
+      await page.getByRole("tab", { name: "Posting accounts", exact: true }).click();
+      await page.getByLabel("Posting entity", { exact: true }).selectOption(setupEntity);
+      const invoiceSetup = page.getByRole("region", { name: "Invoice posting accounts", exact: true });
+      await invoiceSetup.getByLabel("AR control account", { exact: true }).selectOption(ids.ar);
+      await invoiceSetup.getByLabel("Invoice revenue account", { exact: true }).selectOption(ids.revenue);
+      assert.equal(await invoiceSetup.getByRole("button", { name: "Save posting accounts", exact: true }).isEnabled(), false);
+      await invoiceSetup.getByRole("checkbox").check();
+      const attempts = [];
+      await page.route("**/rest/v1/rpc/configure_entity_invoice_accounts", async route => {
+        attempts.push(route.request().postDataJSON());
+        if (attempts.length === 1) {
+          const committed = await route.fetch(); assert.equal(committed.ok(), true);
+          await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Synthetic lost response after commit" }) });
+        } else await route.continue();
+      });
+      await invoiceSetup.getByRole("button", { name: "Save posting accounts", exact: true }).click();
+      await invoiceSetup.getByText("Account setup not confirmed", { exact: true }).waitFor();
+      await invoiceSetup.getByRole("button", { name: "Retry account setup", exact: true }).click();
+      await invoiceSetup.getByText(/These mappings are immutable/).waitFor();
+      assert.equal(attempts.length, 2); assert.deepEqual(attempts[0], attempts[1]);
+      await page.unroute("**/rest/v1/rpc/configure_entity_invoice_accounts");
+      for (const [title, selections] of [
+        ["Customer receipt account", [["Customer receipt cash clearing", ids.cash]]],
+        ["Bill posting accounts", [["AP control account", ids.ap], ["Bill expense account", ids.expense]]],
+        ["Supplier payment account", [["Supplier payment cash clearing", ids.cash]]],
+      ]) {
+        const region = page.getByRole("region", { name: title, exact: true });
+        for (const [label, id] of selections) await region.getByLabel(label, { exact: true }).selectOption(id);
+        await region.getByRole("checkbox").check();
+        await region.getByRole("button", { name: "Save posting accounts", exact: true }).click();
+        await region.getByText(/These mappings are immutable/).waitFor();
+      }
+      for (const table of ["entity_invoice_account_controls", "entity_customer_receipt_controls", "entity_supplier_bill_account_controls", "entity_supplier_payment_controls"]) {
+        const { rows } = await db.query(`SELECT org_id,configured_by FROM public.${table} WHERE entity_id=$1`, [setupEntity]);
+        assert.deepEqual(rows, [{ org_id: ids.orgA, configured_by: ids.adminA }]);
+      }
+      assert.equal(await page.getByRole("button", { name: "Save posting accounts", exact: true }).count(), 0);
       assert.deepEqual(failures, []);
     });
   } finally {

@@ -79,6 +79,9 @@ export function SupplierPaymentReplacementForm({
         queryKey: ["posted-supplier-payment-correction-history", user?.id, profile?.org_id],
       });
       queryClient.invalidateQueries({ queryKey: ["journal-history", user?.id, profile?.org_id] });
+      for (const key of ["subledger-aging", "trial-balance", "account-ledger"]) {
+        queryClient.invalidateQueries({ queryKey: [key, user?.id, profile?.org_id] });
+      }
       toast.success("Replacement supplier payment and exact journal posted atomically");
       setOpen(false);
       reset();

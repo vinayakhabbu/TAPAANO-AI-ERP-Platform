@@ -1,3 +1,4 @@
+import { SubledgerAging } from "@/components/reports/SubledgerAging";
 import { AlertTriangle, FileCheck2, FileWarning, Landmark, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BillForm } from "@/components/forms/BillForm";
@@ -47,11 +48,13 @@ const Payables = () => {
           replacement after that correction are supported. Payments use cash clearing and are not bank-reconciled.
           A correction or replacement is not a refund, recall, or bank action.
           Generic repeat replacements remain unavailable. Bank execution, approval,
-          matching, PO/receipt conversion, tax, FX, partial credits or payments, refunds, aging,
+          matching, PO/receipt conversion, tax, FX, partial credits or payments, refunds,
           and automated settlement remain unavailable.
           Legacy rows remain frozen metadata and are not included in verified posted history.
         </AlertDescription>
       </Alert>
+
+      <SubledgerAging kind="ap" />
 
       {summary.error ? (
         <Alert variant="destructive" className="mt-6">

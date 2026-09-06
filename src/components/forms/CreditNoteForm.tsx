@@ -68,6 +68,9 @@ export function CreditNoteForm({ invoiceId, invoiceNumber, invoiceIssueDate }: C
       queryClient.invalidateQueries({ queryKey: ["posted-credit-note-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["posted-invoice-history", user?.id, profile?.org_id] });
       queryClient.invalidateQueries({ queryKey: ["journal-history", user?.id, profile?.org_id] });
+      for (const key of ["subledger-aging", "trial-balance", "account-ledger"]) {
+        queryClient.invalidateQueries({ queryKey: [key, user?.id, profile?.org_id] });
+      }
       toast.success("Full credit note and reversal journal posted atomically");
       setOpen(false);
       reset();

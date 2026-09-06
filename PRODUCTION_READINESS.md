@@ -206,6 +206,44 @@ support those conventions. Other hosts must reproduce the same SPA fallback,
 cache policy, exact-origin CSP, HSTS, frame, MIME-sniffing, referrer, and
 permissions headers.
 
+## Subledger aging and posting-account setup increment
+
+`20260906090000_finance_subledger_aging.sql` brings the manifest to 72 migrations.
+Deploy it before the matching UI. Aging reads one tenant/entity/currency/date
+snapshot under caller policies, validates source/event/journal links and each
+source's control-account amount, and compares outstanding documents with the
+ledger. It derives balances from dated immutable postings, not `amount_paid`.
+Retired accounts and parties remain historical references.
+
+Aging uses calendar days after the due date. Documents due on the as-of date are
+current. Credits, settlements, corrections and replacements affect balances on
+their own dates. This version supports existing full settlement workflows only.
+Invalid source graphs and non-draft unverified legacy documents block reporting;
+unposted drafts are excluded and counted. Manual control-account adjustments
+produce an explicit variance rather than silently changing document balances.
+
+The API aggregates all history before returning pages of up to 200 documents.
+The client validates exact decimals, bucket membership, scope and completeness;
+exports additionally check every page, revision, unique document and total. CSV
+export is explicitly limited to 50,000 open documents. Interactive paging remains
+available beyond that; representative-volume performance acceptance is still
+required. Legacy history screens retain their separately documented limits.
+
+Posting-account setup uses existing guarded immutable configuration RPCs. Each
+invoice, receipt, bill and payment mapping is saved separately with actor/time
+evidence. The UI requires review of permanent mappings, retains retry payloads,
+and displays existing mappings instead of attempting edits. This does not connect
+banking or payment services. New postings invalidate active aging/ledger reports.
+
+All 193 local regressions passed, along with TypeScript and lint (zero errors,
+89 existing warnings). Added SQL/runtime coverage includes 1,005 open documents,
+exact large amounts, date/bucket cutoffs, historical settlements and corrections,
+changed revisions, incomplete exports, tenant isolation, damaged source evidence
+and control-account variances. Hosted integration covers JWT aging, browser CSV
+and read failures, all four setup flows, and a lost-response retry after commit.
+Use exact-commit CI results for hosted validation. Production accounting,
+deployment, load, restore and repository-settings gates remain outstanding.
+
 ## Deployment order
 
 1. Freeze the release commit and evidence set; take and verify the rollback

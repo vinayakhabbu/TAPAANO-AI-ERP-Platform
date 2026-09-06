@@ -1,3 +1,4 @@
+import { PostingAccountSettings } from "@/components/settings/PostingAccountSettings";
 import { BotOff, Building2, ContactRound, KeyRound, LibraryBig, Users } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,12 +11,13 @@ import { PartyMaintenanceSettings } from "@/components/settings/PartyMaintenance
 import { EntityMaintenanceSettings } from "@/components/settings/EntityMaintenanceSettings";
 
 const Settings = () => (
-  <AppLayout title="Settings" subtitle="Controlled tenant identity administration and disabled privileged configuration">
+  <AppLayout title="Settings" subtitle="Organization, ledger setup and access">
     <Tabs defaultValue="organization" className="space-y-6">
-      <TabsList>
+      <TabsList className="h-auto flex-wrap justify-start">
         <TabsTrigger value="organization" className="gap-2"><Building2 className="h-4 w-4" />Organization</TabsTrigger>
         <TabsTrigger value="members" className="gap-2"><Users className="h-4 w-4" />Members</TabsTrigger>
         <TabsTrigger value="accounts" className="gap-2"><LibraryBig className="h-4 w-4" />Accounts</TabsTrigger>
+        <TabsTrigger value="posting">Posting accounts</TabsTrigger>
         <TabsTrigger value="parties" className="gap-2"><ContactRound className="h-4 w-4" />Customers & vendors</TabsTrigger>
         <TabsTrigger value="credentials" className="gap-2"><KeyRound className="h-4 w-4" />Credentials</TabsTrigger>
         <TabsTrigger value="autonomy" className="gap-2"><BotOff className="h-4 w-4" />Autonomy</TabsTrigger>
@@ -23,6 +25,7 @@ const Settings = () => (
       <TabsContent value="organization"><div className="space-y-6"><OrganizationSettings /><EntityMaintenanceSettings /></div></TabsContent>
       <TabsContent value="members"><RoleAdministrationSettings /></TabsContent>
       <TabsContent value="accounts"><AccountMaintenanceSettings /></TabsContent>
+      <TabsContent value="posting"><PostingAccountSettings /></TabsContent>
       <TabsContent value="parties"><PartyMaintenanceSettings /></TabsContent>
       <TabsContent value="credentials"><APIKeysSettings /></TabsContent>
       <TabsContent value="autonomy"><AutoApprovalSettings /></TabsContent>

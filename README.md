@@ -36,6 +36,15 @@ requirements; this target does not change the implementation status below.
   cumulative unclosed earnings. Finance must approve opening balances, adjusting
   and closing entries, and presentation. Cash-flow statements, disclosures,
   statutory reporting and consolidation remain separate unfinished workflows.
+- **AR/AP aging and setup:** `/ar` and `/ap` report outstanding posted documents
+  as of a selected date, with current/1–30/31–60/61–90/91+ day buckets and exact
+  totals. Dated credits, receipts/payments, corrections and replacements determine
+  balances. Reports compare with the entity's AR/AP control account and display
+  variances, preserve revisions across pages, and export all open documents up to
+  50,000 rows. Active unverified legacy history blocks aging; unposted drafts are
+  excluded and counted. Settings → Posting accounts lets admins/moderators select
+  permanent invoice, bill and cash-clearing mappings through the existing guarded
+  RPCs. Setup records retain actor/time evidence and same-request retries.
 - **Manual journals and periods:** administrators/moderators can post balanced
   2–500-line journals in an open period, create non-overlapping periods, soft
   close/reopen them, and permanently close a previously soft-closed period.
@@ -78,7 +87,7 @@ requirements; this target does not change the implementation status below.
   immutable or unavailable.
 - **Unavailable or unverified:** generic repeat or partial replacement receipts,
   partial receipts or receipt corrections, overpayments, refunds,
-  customer aging/collections, tax and FX invoice posting, partial supplier
+  customer collections, tax and FX invoice posting, partial supplier
   credits/payments, generic repeat or partial replacement payments, partial
   payment corrections, refunds,
   approval, matching, bank execution/reconciliation,
