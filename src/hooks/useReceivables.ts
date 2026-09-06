@@ -1,4 +1,5 @@
 import { readAllRows } from "@/lib/readAllRows";
+import { POSTED_INVOICE_SELECT } from "@/lib/documentQueries";
 import { useOperationalSummary } from "@/hooks/useOperationalSummary";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,7 +101,7 @@ export const useReceivables = () => {
       if (!user?.id || !orgId) return [];
       const data = await readAllRows((from, to) => supabase
         .from("invoices")
-        .select("id, invoice_number, issue_date, due_date, total, currency, journal_entry_id, customers(name)", { count: "exact" })
+        .select(POSTED_INVOICE_SELECT, { count: "exact" })
         .eq("org_id", orgId)
         .eq("accounting_status", "POSTED")
         .not("journal_entry_id", "is", null)

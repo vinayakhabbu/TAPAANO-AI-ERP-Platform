@@ -1,5 +1,6 @@
 import { useOperationalSummary } from "@/hooks/useOperationalSummary";
 import { readAllRows } from "@/lib/readAllRows";
+import { LEGACY_BILL_SELECT, POSTED_BILL_SELECT } from "@/lib/documentQueries";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -98,7 +99,7 @@ export const useBills = () => {
       if (!user?.id || !orgId) return [];
       const data = await readAllRows((from, to) => supabase
         .from("bills")
-        .select("id, bill_number, issue_date, due_date, total, currency, status, vendors(name)", { count: "exact" })
+        .select(LEGACY_BILL_SELECT, { count: "exact" })
         .eq("org_id", orgId)
         .eq("accounting_status", "UNVERIFIED_LEGACY")
         .order("issue_date", { ascending: false })
@@ -119,7 +120,7 @@ export const usePostedSupplierBills = () => {
       if (!user?.id || !orgId) return [];
       const data = await readAllRows((from, to) => supabase
         .from("bills")
-        .select("id, bill_number, issue_date, due_date, total, currency, journal_entry_id, vendors(name)", { count: "exact" })
+        .select(POSTED_BILL_SELECT, { count: "exact" })
         .eq("org_id", orgId)
         .eq("accounting_status", "POSTED")
         .not("journal_entry_id", "is", null)

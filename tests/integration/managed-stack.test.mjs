@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import { loadTypescript } from "../helpers/load-typescript.mjs";
 
 const { JOURNAL_HISTORY_SELECT } = await loadTypescript("../../src/lib/journalQuery.ts");
+const { POSTED_INVOICE_SELECT, POSTED_BILL_SELECT, LEGACY_BILL_SELECT } = await loadTypescript("../../src/lib/documentQueries.ts");
 const { readAllRows } = await loadTypescript("../../src/lib/readAllRows.ts");
 
 function requireLoopback(value) {
@@ -115,18 +116,18 @@ test("full migration stack supports authenticated finance reads and the browser"
     });
     await t.test("authenticated commits validate AR/AP receipts, credits, corrections, and replacements", async () => {
       await rpc(clientA, "configure_entity_customer_receipt_accounts", { p_entity_id: ids.usd, p_cash_account_id: ids.cash, p_idempotency_key: "receipt-controls" });
-      const receipt = await rpc(clientA, "post_customer_receipt", { p_invoice_id: usdInvoice, p_receipt_number: "RECEIPT-USD", p_receipt_date: "2026-09-07", p_currency: "USD", p_reference: null, p_idempotency_key: "receipt-usd" });
+      const receipt = await rpc(clientA, "post_customer_receipt", { p_invoice_id: usdInvoice, p_receipt_number: "RECEIPT-USD", p_receipt_date: "2026-09-07", p_currency: "USD", p_reference: "Synthetic reference", p_idempotency_key: "receipt-usd" });
       const receiptCorrection = await rpc(clientA, "post_customer_receipt_correction", { p_receipt_id: receipt, p_correction_number: "RECEIPT-CORRECTION", p_correction_date: "2026-09-08", p_reason: "Synthetic correction", p_idempotency_key: "receipt-correction" });
-      await rpc(clientA, "post_customer_receipt_replacement", { p_correction_id: receiptCorrection, p_replacement_number: "RECEIPT-REPLACEMENT", p_replacement_date: "2026-09-09", p_reference: null, p_idempotency_key: "receipt-replacement" });
+      await rpc(clientA, "post_customer_receipt_replacement", { p_correction_id: receiptCorrection, p_replacement_number: "RECEIPT-REPLACEMENT", p_replacement_date: "2026-09-09", p_reference: "Synthetic reference", p_idempotency_key: "receipt-replacement" });
       await rpc(clientA, "post_customer_credit_note", { p_invoice_id: eurInvoice, p_credit_note_number: "CREDIT-EUR", p_credit_date: "2026-09-07", p_reason: "Synthetic credit", p_idempotency_key: "credit-eur" });
 
       await rpc(clientA, "configure_entity_supplier_bill_accounts", { p_entity_id: ids.usd, p_ap_account_id: ids.ap, p_expense_account_id: ids.expense, p_idempotency_key: "bill-controls" });
       await rpc(clientA, "configure_entity_supplier_payment_accounts", { p_entity_id: ids.usd, p_cash_account_id: ids.cash, p_idempotency_key: "payment-controls" });
       const billPayload = (number) => ({ p_entity_id: ids.usd, p_vendor_id: ids.vendor, p_bill_number: number, p_issue_date: "2026-09-06", p_due_date: "2026-09-20", p_currency: "USD", p_tax: 0, p_notes: null, p_lines: [{ description: "Synthetic purchase", quantity: "1", unit_price: "100" }], p_idempotency_key: number });
       const bill = await rpc(clientA, "post_supplier_bill", billPayload("BILL-USD"));
-      const payment = await rpc(clientA, "post_supplier_payment", { p_bill_id: bill, p_payment_number: "PAYMENT-USD", p_payment_date: "2026-09-07", p_currency: "USD", p_reference: null, p_idempotency_key: "payment-usd" });
+      const payment = await rpc(clientA, "post_supplier_payment", { p_bill_id: bill, p_payment_number: "PAYMENT-USD", p_payment_date: "2026-09-07", p_currency: "USD", p_reference: "Synthetic reference", p_idempotency_key: "payment-usd" });
       const paymentCorrection = await rpc(clientA, "post_supplier_payment_correction", { p_payment_id: payment, p_correction_number: "PAYMENT-CORRECTION", p_correction_date: "2026-09-08", p_reason: "Synthetic correction", p_idempotency_key: "payment-correction" });
-      await rpc(clientA, "post_supplier_payment_replacement", { p_correction_id: paymentCorrection, p_replacement_number: "PAYMENT-REPLACEMENT", p_replacement_date: "2026-09-09", p_reference: null, p_idempotency_key: "payment-replacement" });
+      await rpc(clientA, "post_supplier_payment_replacement", { p_correction_id: paymentCorrection, p_replacement_number: "PAYMENT-REPLACEMENT", p_replacement_date: "2026-09-09", p_reference: "Synthetic reference", p_idempotency_key: "payment-replacement" });
       const creditedBill = await rpc(clientA, "post_supplier_bill", billPayload("BILL-CREDIT"));
       await rpc(clientA, "post_supplier_bill_credit", { p_bill_id: creditedBill, p_credit_note_number: "SUPPLIER-CREDIT", p_credit_date: "2026-09-07", p_reason: "Synthetic credit", p_idempotency_key: "supplier-credit" });
       const { rows } = await db.query(`SELECT e.id FROM public.journal_entries e LEFT JOIN public.journal_lines l ON l.journal_entry_id=e.id
@@ -139,7 +140,15 @@ test("full migration stack supports authenticated finance reads and the browser"
       }
       assert.deepEqual(summary.postedInvoiceTotals, [{ currency: "EUR", total: "100.00" }, { currency: "USD", total: "100.00" }]);
     });
-    await t.test("browser login loads dashboard, ledger, and separate currency totals", async () => {
+    await t.test("the browser invoice and bill projections resolve their customer/vendor joins", async () => {
+      for (const [table, projection, party, name] of [["invoices", POSTED_INVOICE_SELECT, "customers", "Synthetic buyer"], ["bills", POSTED_BILL_SELECT, "vendors", "Synthetic supplier"], ["bills", LEGACY_BILL_SELECT, "vendors", "Synthetic supplier"]]) {
+        const { data, error } = await clientA.from(table).select(projection).eq("org_id", ids.orgA);
+        assert.equal(error, null, table + ": " + (error?.message ?? ""));
+        assert.equal(data.length, 2);
+        assert.ok(data.every(row => row[party]?.name === name));
+      }
+    });
+    await t.test("browser login loads dashboard, ledger, AR/AP histories, and separate currency totals", async () => {
       server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "4173", "--strictPort"], {
         env: { ...process.env, VITE_SUPABASE_URL: api, VITE_SUPABASE_PUBLISHABLE_KEY: status.ANON_KEY }, stdio: "ignore",
       });
@@ -163,8 +172,13 @@ test("full migration stack supports authenticated finance reads and the browser"
       await page.goto(origin + "/gl");
       await page.getByRole("tab", { name: /Journal Entries/ }).click();
       await page.getByText("INTEGRATION-USD", { exact: false }).first().waitFor();
-      assert.equal(await page.getByText("Journal history unavailable", { exact: false }).count(), 0);
+      assert.equal(await page.getByText("Journal history is unavailable", { exact: false }).count(), 0);
+      await page.goto(origin + "/ap");
+      await page.getByText("BILL-USD", { exact: true }).waitFor();
+      await page.getByText("BILL-CREDIT", { exact: true }).waitFor();
       await page.goto(origin + "/ar");
+      await page.getByText("INTEGRATION-USD", { exact: true }).waitFor();
+      await page.getByText("INTEGRATION-EUR", { exact: true }).waitFor();
       await page.getByText("USD 100.00", { exact: true }).waitFor();
       await page.getByText("EUR 100.00", { exact: true }).waitFor();
       await page.route("**/rest/v1/rpc/get_tenant_operational_summary", (route) => route.fulfill({

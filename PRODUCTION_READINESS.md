@@ -37,7 +37,8 @@ become release evidence. Local verification used supported Node 22.23.2.
 
 ## September 6 review corrections
 
-The review corrections remove the ledger's inaccessible cost-center join, move
+The review corrections remove the ledger's inaccessible cost-center join, make
+ledger and invoice/bill API relationships explicit where foreign keys overlap, move
 operational counts and currency-separated decimal totals into a tenant-scoped
 invoker RPC, and read AR/AP history through counted pages. A changing count,
 duplicate row, failed page, or history above 50,000 rows is reported as unavailable;
