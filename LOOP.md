@@ -35,10 +35,13 @@ deployment, or application deployment has been performed.
 - Next dependency: rehearse against a sanitized data-bearing copy, then run
   managed-service, concurrency, security, finance, backup, and rollback gates.
 - September 6 continuation: PR #22 merged at `bcc0658` with confirmed posting/read
-  fixes and real Auth/API/browser gates. The next code phase adds an entity-scoped
-  ledger trial balance and exact CSV export; consult its exact commit checks for
-  validation. `ERP_ROADMAP.md` records the remaining implementation sequence and
-  unresolved business scope. Production acceptance remains outstanding.
+  fixes and real Auth/API/browser gates. PR #23 merged at `578dc5e` with the
+  entity-scoped ledger trial balance and exact CSV export; its exact checks passed
+  177 regressions, eight real integration scenarios, migration replay and builds.
+  The owner confirmed a US release for Rillet's customer market.
+  `TARGET_CUSTOMER.md` records that scope and `ERP_ROADMAP.md` prioritizes close,
+  contract revenue, cash reconciliation and connected finance operations.
+  Production acceptance remains outstanding.
 
 ## Acceptance rules
 
