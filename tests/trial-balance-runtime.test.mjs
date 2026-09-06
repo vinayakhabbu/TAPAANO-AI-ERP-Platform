@@ -6,7 +6,7 @@ const scope = { entityId: "entity-a", fromDate: "2026-02-01", toDate: "2026-02-2
 function report() {
   const debit = { openingDebit: "10049999999999989.95", openingCredit: "0.00", periodDebit: "10.10", periodCredit: "0.00", closingDebit: "10050000000000000.05", closingCredit: "0.00" };
   const credit = { openingDebit: "0.00", openingCredit: debit.openingDebit, periodDebit: "0.00", periodCredit: debit.periodDebit, closingDebit: "0.00", closingCredit: debit.closingDebit };
-  return { ...scope, entityName: "Example", currency: "USD", generatedAt: "2026-09-06T12:00:00Z", journalCount: 1006, periodJournalCount: 1, draftJournalCount: 0,
+  return { ...scope, entityName: "Example", currency: "USD", generatedAt: "2026-09-06T12:00:00Z", revision: "a".repeat(32), journalCount: 1006, periodJournalCount: 1, draftJournalCount: 0,
     rows: [{ accountId: "a", code: "1000", name: "Cash", accountType: "asset", ...debit }, { accountId: "b", code: "4000", name: "Revenue", accountType: "revenue", ...credit }],
     totals: { openingDebit: debit.openingDebit, openingCredit: credit.openingCredit, periodDebit: debit.periodDebit, periodCredit: credit.periodCredit, closingDebit: debit.closingDebit, closingCredit: credit.closingCredit } };
 }

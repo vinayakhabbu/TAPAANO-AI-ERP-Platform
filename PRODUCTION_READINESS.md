@@ -112,6 +112,38 @@ code boundary does not waive any of the release gates below.
 
 ## Mandatory release gates
 
+### Finance reporting and period-control increment
+
+The next three additive migrations bring the manifest to 71 files:
+`20260906060000_finance_account_ledger.sql`,
+`20260906070000_finance_period_controls.sql`, and
+`20260906080000_finance_manual_journal.sql`. They add report content revisions,
+paged account activity, exact recent-journal summaries, checked period transitions,
+append-only period evidence and serialized manual-journal retries. Apply all three
+before the matching frontend. The old three-argument `transition_accounting_period`
+RPC is revoked from API roles; callers must use `change_accounting_period` with
+an expected version and request key. Direct hard close from OPEN is not supported
+by that public workflow. Report revisions are consistency tokens, not credentials.
+
+The income statement and balance sheet are ledger views using recorded account
+types. They include recorded adjustments and closing entries rather than guessing
+which manual entries represent fiscal closing. They do not form a complete set
+of financial statements or establish US GAAP compliance. Finance must review the
+chart, opening balances, closing entries, presentation and disclosures. For the
+distinction between statement purposes, see the
+[SEC's financial statements guide](https://www.sec.gov/about/reports-publications/investorpubsbegfinstmtguide).
+Cash-flow classification, detailed approved presentation mappings, recurring
+schedules, fixed assets and close checklists remain implementation work.
+
+Regressions exercise histories over 1,000 entries, exact large/negative balances,
+revision changes, complete exports, stale period versions, request conflicts,
+terminal close and role isolation. Full-stack checks exercise independent API
+posting/close races, real statement/drilldown output, and browser journal and
+period workflows. Use the exact PR checks as implementation evidence; none of
+these checks substitutes for the data-bearing and operational gates below.
+
+### Release acceptance
+
 Each gate needs a named owner, date, immutable evidence link, and explicit
 pass/fail result. Do not waive a failure by editing legacy data without an
 approved reconciliation record.

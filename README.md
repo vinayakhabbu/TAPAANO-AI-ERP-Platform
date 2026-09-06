@@ -27,11 +27,22 @@ requirements; this target does not change the implementation status below.
 
 ### Current implementation status
 
-- **Ledger reporting:** `/reports` provides a trial balance for one legal entity
-  and currency, including opening balances, period activity, closing balances,
-  and exact decimal CSV export. It rejects incomplete/unverified journal history.
-  Finance reconciliation and production acceptance remain required; statutory
-  statements and consolidation are separate, unfinished workflows.
+- **Ledger reporting:** `/reports` provides a trial balance, ledger income
+  statement and balance sheet for one legal entity and currency. Account
+  drilldown includes complete paged activity, exact running balances and CSV
+  export. A content revision prevents mixing changed histories during paging or
+  export. Reports reject incomplete/unverified journals. Income uses the selected
+  range's recorded revenue/expense activity; the balance sheet separately presents
+  cumulative unclosed earnings. Finance must approve opening balances, adjusting
+  and closing entries, and presentation. Cash-flow statements, disclosures,
+  statutory reporting and consolidation remain separate unfinished workflows.
+- **Manual journals and periods:** administrators/moderators can post balanced
+  2–500-line journals in an open period, create non-overlapping periods, soft
+  close/reopen them, and permanently close a previously soft-closed period.
+  Period changes require a reason, expected version and durable retry key.
+  Period history is append-only. Posting and closing share database locks;
+  concurrent retries return the original committed result. A period lock does
+  not itself complete reconciliation or finance close reviews.
 - **Verified locally:** tenant-scoped posted-journal reads; balanced,
   idempotent manual posting; exact-offset reversal; OPEN/SOFT_CLOSED/
   HARD_CLOSED period enforcement; and zero-tax, same-functional-currency

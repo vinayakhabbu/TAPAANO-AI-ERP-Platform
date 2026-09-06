@@ -22,3 +22,15 @@ export const useAccountingPeriods = () => {
     enabled: Boolean(user?.id && profile?.org_id),
   });
 };
+
+export function usePeriodEvents(periodId: string | null) {
+  const { user, profile } = useAuth();
+  return useQuery({
+    queryKey: ["accounting-period-events", user?.id, profile?.org_id, periodId],
+    enabled: Boolean(user?.id && profile?.org_id && periodId),
+    queryFn: ({ signal }) => readAllRows((from, to) => supabase.from("accounting_period_events")
+      .select("id,period_version,from_status,to_status,reason,actor_id,created_at", { count: "exact" })
+      .eq("org_id", profile!.org_id!).eq("accounting_period_id", periodId!)
+      .order("period_version", { ascending: false }).order("id").range(from, to).abortSignal(signal)),
+  });
+}

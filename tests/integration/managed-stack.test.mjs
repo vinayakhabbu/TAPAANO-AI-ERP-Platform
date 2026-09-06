@@ -12,6 +12,7 @@ const { JOURNAL_HISTORY_SELECT } = await loadTypescript("../../src/lib/journalQu
 const { POSTED_INVOICE_SELECT, POSTED_BILL_SELECT, LEGACY_BILL_SELECT } = await loadTypescript("../../src/lib/documentQueries.ts");
 const { readAllRows } = await loadTypescript("../../src/lib/readAllRows.ts");
 const { parseTrialBalance } = await loadTypescript("../../src/lib/trialBalance.ts");
+const { parseAccountLedger, accountLedgerCsv, deriveLedgerStatements, parsePostedJournals } = await loadTypescript("../../src/lib/financeReports.ts");
 
 function requireLoopback(value) {
   const url = new URL(value);
@@ -162,7 +163,52 @@ test("full migration stack supports authenticated finance reads and the browser"
       const denied = await clientB.rpc("get_entity_trial_balance", args);
       assert.ok(denied.error); assert.equal(denied.error.code, "42501");
     });
-    await t.test("browser loads finance histories and scoped trial balances with safe export and error states", async () => {
+    await t.test("account drilldown and ledger statements reconcile real posted journals across pages", async () => {
+      const scope = { entityId: ids.usd, fromDate: "2026-09-01", toDate: "2026-09-30" };
+      const report = parseTrialBalance(await rpc(clientA, "get_entity_trial_balance", { p_entity_id: scope.entityId, p_from_date: scope.fromDate, p_to_date: scope.toDate }), scope);
+      const statements = deriveLedgerStatements(report);
+      assert.equal(statements.revenue.total, "100.00"); assert.equal(statements.expenses.total, "100.00"); assert.equal(statements.netIncome, "0.00");
+      assert.equal(statements.assets.total, "0.00"); assert.equal(statements.liabilitiesAndEquity, "0.00");
+      const pages = [];
+      for (let offset = 0; offset < 6; offset += 2) {
+        const request = { ...scope, accountId: ids.cash, revision: report.revision, pageSize: 2, offset };
+        const data = await rpc(clientA, "get_account_ledger", { p_entity_id: ids.usd, p_account_id: ids.cash, p_from_date: scope.fromDate, p_to_date: scope.toDate, p_page_size: 2, p_offset: offset, p_expected_revision: report.revision });
+        const page = parseAccountLedger(data, request); assert.equal(page.lineCount, 6); pages.push(page);
+      }
+      assert.ok(accountLedgerCsv(pages).includes('"TOTAL","","","","","300.00","300.00","0.00"'));
+      const foreign = await clientB.rpc("get_account_ledger", { p_entity_id: ids.usd, p_account_id: ids.cash, p_from_date: scope.fromDate, p_to_date: scope.toDate });
+      assert.equal(foreign.error?.code, "42501");
+      const recent = parsePostedJournals(await rpc(clientA, "get_recent_posted_journals"));
+      assert.equal(recent.length, 12); assert.deepEqual(new Set(recent.map(entry => entry.currency)), new Set(["USD", "EUR"]));
+      assert.deepEqual(await rpc(clientB, "get_recent_posted_journals"), []);
+    });
+    await t.test("independent API sessions retry journals and period changes safely, including a posting-close race", async () => {
+      const second = createClient(api, status.ANON_KEY, options);
+      assert.equal((await second.auth.signInWithPassword({ email: emailA, password })).error, null);
+      const period = await rpc(clientA, "create_accounting_period", { p_entity_id: ids.usd, p_period_start: "2026-10-01", p_period_end: "2026-10-31", p_idempotency_key: "october" });
+      const journal = { p_entity_id: ids.usd, p_entry_number: "MANUAL-RETRY", p_entry_date: "2026-10-05", p_memo: "Manual concurrency fixture", p_lines: [{ account_id: ids.cash, debit: "20.25", credit: "0.00" }, { account_id: ids.revenue, debit: "0.00", credit: "20.25" }], p_idempotency_key: "manual-concurrent" };
+      const journals = await Promise.all([rpc(clientA, "post_manual_journal", journal), rpc(second, "post_manual_journal", journal)]);
+      assert.equal(journals[0], journals[1]);
+      const transition = { p_period_id: period, p_expected_version: 1, p_to_status: "SOFT_CLOSED", p_reason: "Reviewed October", p_idempotency_key: "soft-october" };
+      const transitions = await Promise.all([rpc(clientA, "change_accounting_period", transition), rpc(second, "change_accounting_period", transition)]);
+      assert.equal(transitions[0], transitions[1]);
+      assert.equal((await clientA.rpc("change_accounting_period", { ...transition, p_to_status: "OPEN", p_idempotency_key: "stale" })).error?.code, "40001");
+      assert.equal((await clientB.rpc("change_accounting_period", transition)).error?.code, "42501");
+      assert.equal((await clientA.rpc("transition_accounting_period", { p_period_id: period, p_to_status: "OPEN", p_reason: "Bypass version" })).error?.code, "42501");
+      await rpc(clientA, "change_accounting_period", { ...transition, p_expected_version: 2, p_to_status: "OPEN", p_idempotency_key: "reopen-october" });
+      const raceJournal = { ...journal, p_entry_number: "POST-CLOSE-RACE", p_idempotency_key: "post-close-race" };
+      const [posting, closing] = await Promise.all([clientA.rpc("post_manual_journal", raceJournal), second.rpc("change_accounting_period", { ...transition, p_expected_version: 3, p_idempotency_key: "race-close" })]);
+      assert.equal(closing.error, null);
+      if (posting.error) assert.match(posting.error.message, /OPEN accounting period/);
+      const count = (await db.query("SELECT count(*)::int AS n FROM public.journal_entries WHERE entry_number='POST-CLOSE-RACE'")).rows[0].n;
+      assert.equal(count, posting.error ? 0 : 1);
+      const hard = { ...transition, p_expected_version: 4, p_to_status: "HARD_CLOSED", p_idempotency_key: "hard-october" };
+      assert.equal(await rpc(clientA, "change_accounting_period", hard), period); assert.equal(await rpc(second, "change_accounting_period", hard), period);
+      assert.equal((await db.query("SELECT count(*)::int AS n FROM public.accounting_period_events WHERE accounting_period_id=$1", [period])).rows[0].n, 5);
+      assert.ok((await clientA.rpc("post_manual_journal", { ...journal, p_entry_number: "CLOSED-BLOCKED", p_idempotency_key: "closed-blocked" })).error);
+      assert.equal(await rpc(clientA, "post_manual_journal", journal), journals[0], "original request remains safely retryable after close");
+    });
+    await t.test("browser loads finance histories, statement drilldown, journal entry and period controls", async () => {
       server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "4173", "--strictPort"], {
         env: { ...process.env, VITE_SUPABASE_URL: api, VITE_SUPABASE_PUBLISHABLE_KEY: status.ANON_KEY }, stdio: "ignore",
       });
@@ -212,8 +258,8 @@ test("full migration stack supports authenticated finance reads and the browser"
       await page.getByLabel("Legal entity", { exact: true }).selectOption(ids.usd);
       await page.getByLabel("From date", { exact: true }).fill("2026-09-01");
       await page.getByLabel("Through date", { exact: true }).fill("2026-09-30");
-      await page.getByRole("button", { name: "Generate trial balance", exact: true }).click();
-      await page.getByRole("region", { name: "Trial balance result", exact: true }).waitFor();
+      await page.getByRole("button", { name: "Generate report", exact: true }).click();
+      await page.getByRole("region", { name: "Financial report result", exact: true }).waitFor();
       assert.equal(await page.getByTestId("trial-total-closingDebit").textContent(), "USD 100.00");
       assert.equal(await page.getByTestId("trial-total-periodDebit").textContent(), "USD 1,000.00");
       const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download CSV", exact: true }).click()]);
@@ -223,17 +269,71 @@ test("full migration stack supports authenticated finance reads and the browser"
       const csv = Buffer.concat(chunks).toString("utf8");
       assert.ok(csv.includes('"Currency","USD","From","2026-09-01","Through","2026-09-30"'));
       assert.ok(csv.includes('"","TOTAL","","0.00","0.00","1000.00","1000.00","100.00","100.00"'));
+      await page.getByLabel("Report view", { exact: true }).selectOption("income");
+      assert.equal(await page.getByTestId("statement-net-income").textContent(), "USD 0.00");
+      assert.equal(await page.getByTestId("statement-revenue").textContent(), "USD 100.00");
+      await page.getByRole("button", { name: "Revenue", exact: true }).click();
+      await page.getByRole("region", { name: "Account ledger", exact: true }).waitFor();
+      await page.getByRole("button", { name: "Download account CSV", exact: true }).waitFor();
+      const [ledgerDownload] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download account CSV", exact: true }).click()]);
+      assert.match(ledgerDownload.suggestedFilename(), /^account-ledger-/);
+      const ledgerStream = await ledgerDownload.createReadStream(); const ledgerChunks = []; for await (const chunk of ledgerStream) ledgerChunks.push(chunk);
+      assert.ok(Buffer.concat(ledgerChunks).toString("utf8").includes('"TOTAL","","","","","0.00","100.00","-100.00"'));
+      await page.getByRole("button", { name: "Back to report", exact: true }).click();
+      await page.getByLabel("Report view", { exact: true }).selectOption("balance");
+      assert.equal(await page.getByTestId("statement-liabilities-and-equity").textContent(), "USD 0.00");
+      await page.route("**/rest/v1/rpc/get_account_ledger", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Synthetic ledger failure" }) }));
+      await page.getByRole("button", { name: "Cash", exact: true }).click();
+      await page.getByText("Account ledger unavailable", { exact: true }).waitFor();
+      assert.equal(await page.getByRole("button", { name: "Download account CSV", exact: true }).count(), 0);
+      await page.getByRole("button", { name: "Back to report", exact: true }).click();
+      await page.unroute("**/rest/v1/rpc/get_account_ledger");
+      await page.getByLabel("Report view", { exact: true }).selectOption("trial");
       await page.getByLabel("Legal entity", { exact: true }).selectOption(ids.eur);
-      await page.getByRole("region", { name: "Trial balance result", exact: true }).waitFor({ state: "hidden" });
+      await page.getByRole("region", { name: "Financial report result", exact: true }).waitFor({ state: "hidden" });
       assert.equal(await page.getByRole("button", { name: "Download CSV", exact: true }).count(), 0);
-      await page.getByRole("button", { name: "Generate trial balance", exact: true }).click();
-      await page.getByRole("region", { name: "Trial balance result", exact: true }).waitFor();
+      await page.getByRole("button", { name: "Generate report", exact: true }).click();
+      await page.getByRole("region", { name: "Financial report result", exact: true }).waitFor();
       assert.equal(await page.getByTestId("trial-total-closingDebit").textContent(), "EUR 0.00");
       await page.route("**/rest/v1/rpc/get_entity_trial_balance", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Synthetic report failure" }) }));
-      await page.getByRole("button", { name: "Generate trial balance", exact: true }).click();
+      await page.getByRole("button", { name: "Generate report", exact: true }).click();
       await page.getByText("Trial balance unavailable", { exact: true }).waitFor();
-      assert.equal(await page.getByRole("region", { name: "Trial balance result", exact: true }).count(), 0);
+      assert.equal(await page.getByRole("region", { name: "Financial report result", exact: true }).count(), 0);
       assert.equal(await page.getByRole("button", { name: "Download CSV", exact: true }).count(), 0);
+      await page.unroute("**/rest/v1/rpc/get_entity_trial_balance");
+      await page.unroute("**/rest/v1/rpc/get_tenant_operational_summary");
+      await page.goto(origin + "/close");
+      await page.getByLabel("Period entity", { exact: true }).selectOption(ids.usd);
+      await page.getByLabel("Period start", { exact: true }).fill("2026-11-01");
+      await page.getByLabel("Period end", { exact: true }).fill("2026-11-30");
+      await page.getByRole("button", { name: "Create period", exact: true }).click();
+      await page.getByText("Accounting period created.", { exact: true }).waitFor();
+      await page.goto(origin + "/gl");
+      await page.getByRole("tab", { name: "New journal", exact: true }).click();
+      await page.getByLabel("Journal entity", { exact: true }).selectOption(ids.usd);
+      await page.getByLabel("Journal reference", { exact: true }).fill("BROWSER-ADJUSTMENT");
+      await page.getByLabel("Journal date", { exact: true }).fill("2026-11-05");
+      await page.getByLabel("Account line 1", { exact: true }).selectOption(ids.cash);
+      await page.getByLabel("Debit line 1", { exact: true }).fill("45.67");
+      await page.getByLabel("Account line 2", { exact: true }).selectOption(ids.revenue);
+      await page.getByLabel("Credit line 2", { exact: true }).fill("45.67");
+      await page.getByRole("button", { name: "Post balanced journal", exact: true }).click();
+      await page.getByText("Journal BROWSER-ADJUSTMENT posted.", { exact: true }).waitFor();
+      await page.goto(origin + "/close");
+      const november = page.getByRole("row").filter({ hasText: "Nov 1, 2026" });
+      await november.getByRole("button", { name: "Period details", exact: true }).click();
+      await page.getByLabel("Reason for change", { exact: true }).fill("November close review complete");
+      await page.getByRole("button", { name: "Apply period change", exact: true }).click();
+      await page.getByRole("region", { name: "Manage accounting period", exact: true }).waitFor({ state: "hidden" });
+      await november.getByText("SOFT CLOSED", { exact: true }).waitFor();
+      await november.getByRole("button", { name: "Period details", exact: true }).click();
+      await page.getByLabel("New status", { exact: true }).selectOption("HARD_CLOSED");
+      await page.getByLabel("Reason for change", { exact: true }).fill("Final November close approved");
+      assert.equal(await page.getByRole("button", { name: "Apply period change", exact: true }).isEnabled(), false);
+      await page.getByRole("checkbox", { name: /completed the required close reviews/ }).check();
+      await page.getByRole("button", { name: "Apply period change", exact: true }).click();
+      await page.getByRole("region", { name: "Manage accounting period", exact: true }).waitFor({ state: "hidden" });
+      await november.getByText("HARD CLOSED", { exact: true }).waitFor();
       assert.deepEqual(failures, []);
     });
   } finally {
