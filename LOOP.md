@@ -34,6 +34,11 @@ deployment, or application deployment has been performed.
   disposable local Supabase stack.
 - Next dependency: rehearse against a sanitized data-bearing copy, then run
   managed-service, concurrency, security, finance, backup, and rollback gates.
+- September 6 continuation: PR #22 merged at `bcc0658` with confirmed posting/read
+  fixes and real Auth/API/browser gates. The next code phase adds an entity-scoped
+  ledger trial balance and exact CSV export; consult its exact commit checks for
+  validation. `ERP_ROADMAP.md` records the remaining implementation sequence and
+  unresolved business scope. Production acceptance remains outstanding.
 
 ## Acceptance rules
 

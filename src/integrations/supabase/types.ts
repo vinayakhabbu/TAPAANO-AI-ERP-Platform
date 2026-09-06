@@ -8432,6 +8432,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_entity_trial_balance: {
+        Args: { p_entity_id: string; p_from_date: string; p_to_date: string }
+        Returns: Json
+      }
       record_client_diagnostic: {
         Args: { p_event_code: string; p_release_sha: string }
         Returns: undefined

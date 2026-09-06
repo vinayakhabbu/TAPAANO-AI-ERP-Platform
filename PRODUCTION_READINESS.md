@@ -7,19 +7,19 @@ quality gate is healthy, but the data-bearing managed-service, operational, and
 organizational evidence below has not been completed. A green build is necessary
 but is not a release approval.
 
-Hosted baseline: 2026-08-29, commit `c4cecfb`. Local hardening review:
-2026-09-05; these worktree changes need review and hosted gates before they
-become release evidence. Local verification used supported Node 22.23.2.
+Verified review baseline: PR #22, commit `8b908d7`, merged to `main` at
+`bcc0658` on 2026-09-06. New phases require checks on their own exact commits
+before they become release evidence. Verification uses supported Node 22.
 
 ## Evidence already present
 
-- The latest hosted Node 22 CI run on `main` passed.
-- The aggregate suite passes 161 accounting, authorization, browser-containment,
-  Edge-boundary, migration-manifest, and CI-safety regressions.
+- PR #22 passed hosted Node 22 CI, 171 accounting, authorization,
+  browser-containment, Edge-boundary, migration-manifest, and CI-safety regressions,
+  plus all seven real Auth/API/browser integration scenarios.
 - The exact npm lockfile type-checks, repository lint exits with zero errors and
   89 visible warnings, the production bundle builds, and `npm audit` reports
   zero known vulnerabilities after the framework security upgrade.
-- CI applies the 67-file migration history twice to an empty disposable Supabase
+- CI applies the current migration history twice to an empty disposable Supabase
   stack, compares the schemas, lints the database, and always tears it down.
 - Unsupported accounting, banking, inventory, production, tax, payroll, AI, and
   autonomous workflows remain fail-closed or unreachable from active routes;
@@ -80,6 +80,29 @@ GitHub connection used for this review exposes no administration write action.
 The first PR run also confirmed that Dependency graph is disabled. Enable it under
 Settings → Advanced Security (security analysis) so the existing dependency-review
 gate can run; a successful npm audit does not activate this GitHub feature.
+
+## Ledger reporting phase
+
+The 68-file manifest adds `20260906050000_recovery_trial_balance.sql` after the
+four PR #22 migrations. It provides an entity-scoped invoker-rights trial balance
+and an index for posted journal date reads. Apply it to staging before the
+matching frontend. Index creation and constraint/history scans need timing and
+lock evidence on representative data before production deployment.
+
+The report shows exact opening balances, date-range debit/credit activity, and
+closing balances, with CSV export. It includes retired accounts and dated offset
+journals, excludes and counts drafts, and rejects invalid or unverified posted
+history. It does not perform opening-balance or subledger reconciliation, fiscal
+close, FX translation, consolidation, or statutory statement preparation.
+Browser scope changes and failed refreshes remove previous report/export data.
+Database and runtime regressions cover complete histories, exact large decimals,
+lineage/balance failures, tenant isolation, and CSV formula escaping. Hosted tests
+exercise actual AR/AP posting results and browser report selection/export/failure.
+
+See [ERP_ROADMAP.md](./ERP_ROADMAP.md) for the remaining implementation sequence
+and the country, business, accounting, and operational decisions still required.
+The trial balance is a completed code boundary only after its exact hosted checks
+pass; it does not waive any of the release gates below.
 
 ## Mandatory release gates
 

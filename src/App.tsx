@@ -14,6 +14,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Receivables = lazy(() => import("./pages/Receivables"));
 const Payables = lazy(() => import("./pages/Payables"));
 const GeneralLedger = lazy(() => import("./pages/GeneralLedger"));
+const TrialBalance = lazy(() => import("./pages/TrialBalance"));
 const Banking = lazy(() => import("./pages/Banking"));
 const PeriodClose = lazy(() => import("./pages/PeriodClose"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -77,7 +78,7 @@ function AppRoutes() {
           <Route path="/ap" element={<Payables />} />
           <Route path="/inventory" element={<ContainedModule title="Inventory" reason="Stock, transfer, count, receipt, valuation, and COGS workflows are not atomic or ledger-backed." />} />
           <Route path="/gl" element={<GeneralLedger />} />
-          <Route path="/reports" element={<ContainedModule title="Financial reports" reason="Authoritative subledgers and report reconciliation are incomplete." />} />
+          <Route path="/reports" element={<TrialBalance />} />
           <Route path="/banking" element={<Banking />} />
           <Route path="/close" element={<PeriodClose />} />
           <Route path="/production" element={<ContainedModule title="Production" reason="Backflush, goods receipt, WIP, variance, and capacity histories are unverified." />} />

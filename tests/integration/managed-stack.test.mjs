@@ -11,6 +11,7 @@ import { loadTypescript } from "../helpers/load-typescript.mjs";
 const { JOURNAL_HISTORY_SELECT } = await loadTypescript("../../src/lib/journalQuery.ts");
 const { POSTED_INVOICE_SELECT, POSTED_BILL_SELECT, LEGACY_BILL_SELECT } = await loadTypescript("../../src/lib/documentQueries.ts");
 const { readAllRows } = await loadTypescript("../../src/lib/readAllRows.ts");
+const { parseTrialBalance } = await loadTypescript("../../src/lib/trialBalance.ts");
 
 function requireLoopback(value) {
   const url = new URL(value);
@@ -148,7 +149,20 @@ test("full migration stack supports authenticated finance reads and the browser"
         assert.ok(data.every(row => row[party]?.name === name));
       }
     });
-    await t.test("browser login loads dashboard, ledger, AR/AP histories, and separate currency totals", async () => {
+    await t.test("trial balance reconciles real AR/AP postings, offsets, date boundaries, and tenant isolation", async () => {
+      const args = { p_entity_id: ids.usd, p_from_date: "2026-09-01", p_to_date: "2026-09-30" };
+      const report = parseTrialBalance(await rpc(clientA, "get_entity_trial_balance", args), { entityId: ids.usd, fromDate: args.p_from_date, toDate: args.p_to_date });
+      assert.equal(report.journalCount, 10);
+      assert.deepEqual(report.totals, { openingDebit: "0.00", openingCredit: "0.00", periodDebit: "1000.00", periodCredit: "1000.00", closingDebit: "100.00", closingCredit: "100.00" });
+      const later = await rpc(clientA, "get_entity_trial_balance", { ...args, p_from_date: "2026-09-07" });
+      assert.equal(later.totals.openingDebit, "300.00"); assert.equal(later.totals.periodDebit, "700.00"); assert.equal(later.totals.closingDebit, "100.00");
+      const eur = await rpc(clientA, "get_entity_trial_balance", { ...args, p_entity_id: ids.eur });
+      assert.equal(eur.currency, "EUR"); assert.equal(eur.journalCount, 2); assert.equal(eur.totals.closingDebit, "0.00");
+      assert.deepEqual((await rpc(clientA, "get_entity_trial_balance", { ...args, p_to_date: "2026-09-05" })).rows, []);
+      const denied = await clientB.rpc("get_entity_trial_balance", args);
+      assert.ok(denied.error); assert.equal(denied.error.code, "42501");
+    });
+    await t.test("browser loads finance histories and scoped trial balances with safe export and error states", async () => {
       server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "4173", "--strictPort"], {
         env: { ...process.env, VITE_SUPABASE_URL: api, VITE_SUPABASE_PUBLISHABLE_KEY: status.ANON_KEY }, stdio: "ignore",
       });
@@ -194,6 +208,32 @@ test("full migration stack supports authenticated finance reads and the browser"
         await delay(100);
       }
       assert.ok(captured, "Failed browser reads must produce a sanitized operational event");
+      await page.goto(origin + "/reports");
+      await page.getByLabel("Legal entity", { exact: true }).selectOption(ids.usd);
+      await page.getByLabel("From date", { exact: true }).fill("2026-09-01");
+      await page.getByLabel("Through date", { exact: true }).fill("2026-09-30");
+      await page.getByRole("button", { name: "Generate trial balance", exact: true }).click();
+      await page.getByRole("region", { name: "Trial balance result", exact: true }).waitFor();
+      assert.equal(await page.getByTestId("trial-total-closingDebit").textContent(), "USD 100.00");
+      assert.equal(await page.getByTestId("trial-total-periodDebit").textContent(), "USD 1,000.00");
+      const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download CSV", exact: true }).click()]);
+      assert.match(download.suggestedFilename(), /^trial-balance-.*-2026-09-01-2026-09-30\.csv$/);
+      const stream = await download.createReadStream();
+      const chunks = []; for await (const chunk of stream) chunks.push(chunk);
+      const csv = Buffer.concat(chunks).toString("utf8");
+      assert.ok(csv.includes('"Currency","USD","From","2026-09-01","Through","2026-09-30"'));
+      assert.ok(csv.includes('"","TOTAL","","0.00","0.00","1000.00","1000.00","100.00","100.00"'));
+      await page.getByLabel("Legal entity", { exact: true }).selectOption(ids.eur);
+      await page.getByRole("region", { name: "Trial balance result", exact: true }).waitFor({ state: "hidden" });
+      assert.equal(await page.getByRole("button", { name: "Download CSV", exact: true }).count(), 0);
+      await page.getByRole("button", { name: "Generate trial balance", exact: true }).click();
+      await page.getByRole("region", { name: "Trial balance result", exact: true }).waitFor();
+      assert.equal(await page.getByTestId("trial-total-closingDebit").textContent(), "EUR 0.00");
+      await page.route("**/rest/v1/rpc/get_entity_trial_balance", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Synthetic report failure" }) }));
+      await page.getByRole("button", { name: "Generate trial balance", exact: true }).click();
+      await page.getByText("Trial balance unavailable", { exact: true }).waitFor();
+      assert.equal(await page.getByRole("region", { name: "Trial balance result", exact: true }).count(), 0);
+      assert.equal(await page.getByRole("button", { name: "Download CSV", exact: true }).count(), 0);
       assert.deepEqual(failures, []);
     });
   } finally {
