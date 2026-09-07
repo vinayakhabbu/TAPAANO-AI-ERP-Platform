@@ -11,14 +11,21 @@ Verified review baseline: PR #22, commit `8b908d7`, merged to `main` at
 `bcc0658` on 2026-09-06. New phases require checks on their own exact commits
 before they become release evidence. Verification uses supported Node 22.
 
-Current functional baseline: PR #28, merged at
-`91ff65254e487165071ef8e68ccc79a8a6da8415`. Its exact checks passed 202
-regressions, 12 authenticated integration scenarios, both builds, two deterministic
-replays of all 73 migrations, CodeQL and the production dependency audit.
-Dependency review still fails because Dependency graph is disabled; the supplied
-branch ruleset still requires owner activation. Partial AR/AP allocations are now
-supported with dated capacity controls and stable retries. This supersedes the
-older full-settlement-only scope described in historical increments below.
+Current merged functional baseline: PR #34 at
+`b6cd35dc6bbd9ddfd9a9078fbf0a9df6a22e169c`. Its exact gates passed 238
+regressions, 18 authenticated integration scenarios, both builds, two deterministic
+replays of all 81 migrations, database lint, CodeQL, production dependency audit and
+populated restore of 47 financial source graphs. It includes partial settlements,
+bank reconciliation, contracts/usage/revenue, approvals, signed integrations,
+asset/accrual schedules, fiscal close, intercompany and currency consolidation.
+
+The financial-statement increment adds approved account mappings and native/group
+cash flow. Its release evidence must come from its own exact PR checks. See
+[Finance delivery status](FINANCE_DELIVERY_STATUS.md) for the implemented workflow
+boundaries and remaining release dependencies. Dependency review remains blocked
+by disabled Dependency graph; the supplied main ruleset needs owner activation.
+Historical phase descriptions below record earlier scopes and are superseded by
+the later feature-specific acceptance sections.
 
 ## Evidence already present
 
@@ -30,8 +37,9 @@ older full-settlement-only scope described in historical increments below.
   zero known vulnerabilities after the framework security upgrade.
 - CI applies the current migration history twice to an empty disposable Supabase
   stack, compares the schemas, lints the database, and always tears it down.
-- Unsupported accounting, banking, inventory, production, tax, payroll, AI, and
-  autonomous workflows remain fail-closed or unreachable from active routes;
+- Workflows outside the implemented finance contract, including native inventory,
+  manufacturing, tax calculation, payroll and autonomous AI posting, remain
+  fail-closed or unreachable from active routes;
   the active shell exposes no simulated tenant, role, period, or notification state.
 - Authentication initialization fails closed when its session or tenant-profile
   read fails, sign-out clears tenant query data and its namespaced local session,
@@ -372,3 +380,20 @@ The synthetic browser/restore scenario includes US and EUR member books, matched
 services, independently reviewed investment elimination and group approval retries.
 It does not establish customer accounting policies, representative throughput,
 native transaction-currency remeasurement or support for noncontrolling interests.
+
+## Financial statement acceptance
+
+FINANCE_STATEMENTS.md describes approved native/group presentation, source cash
+allocations, restricted-cash mapping and exact cash/ledger reconciliation. Activate
+statement policies for **every** production entity and reporting group; migration
+compatibility leaves unconfigured legacy close behavior intact. Complete source
+classifications before closing, accept current/noncurrent presentation and the cash
+perimeter, and review financing, tax, interest and noncash disclosure policies.
+
+The synthetic statement scenario exercises browser setup and mixed cash payments,
+independent/concurrent approval, failed-response retries, CSV controls, unavailable
+reports, fiscal closing and a frozen US/EUR consolidated packet. Recovery validates
+statement-policy and cash-classification graphs as well as the preceding source
+families. These gates qualify code behavior. Customer policy notes, representative
+scale, live provider completeness, managed backup/restore, security configuration
+and go-live authorization remain separate release requirements.

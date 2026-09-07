@@ -14,6 +14,8 @@ export type Database = {
   }
   public: {
     Tables: {
+      finance_statement_policies: { Row: { id: string; org_id: string; entity_id: string; group_id: string | null; version: number; mappings: Json; cash_accounts: string[]; request_id: string }; Insert: never; Update: never; Relationships: [] }
+      finance_cash_classifications: { Row: { id: string; org_id: string; entity_id: string; line_id: string; version: number; policy_id: string; allocations: Json; request_id: string }; Insert: never; Update: never; Relationships: [] }
       finance_groups: { Row: { id: string; org_id: string; entity_id: string; reference: string; name: string; currency: string; starts_on: string; member_ids: string[]; cta_account_id: string; request_id: string; terms: Json }; Insert: never; Update: never; Relationships: [] }
       finance_group_adjustments: { Row: { id: string; org_id: string; group_id: string; as_of: string; reference: string; lines: Json; source_journals: string[]; request_id: string; reversal_date: string | null; reversal_request: string | null }; Insert: never; Update: never; Relationships: [] }
       finance_consolidations: { Row: { id: string; org_id: string; group_id: string; starts_on: string; ends_on: string; rates: Json; report: Json; request_id: string; active: boolean; reopen_request: string | null }; Insert: never; Update: never; Relationships: [] }
@@ -8447,6 +8449,9 @@ export type Database = {
       }
     }
     Functions: {
+      get_statement_policy_context: { Args: { p_entity: string; p_group?: string | null }; Returns: Json }
+      get_entity_cash_flow: { Args: { p_entity: string; p_from: string; p_through: string }; Returns: Json }
+      get_entity_financial_statements: { Args: { p_entity: string; p_from: string; p_through: string }; Returns: Json }
       get_group_adjustment_sources: { Args: { p_group: string; p_search?: string }; Returns: Json }
       get_intercompany_report: { Args: { p_entity: string; p_as_of: string }; Returns: Json }
       get_consolidation_rate_requirements: { Args: { p_group: string; p_from: string; p_through: string }; Returns: Json }

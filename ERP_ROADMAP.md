@@ -250,3 +250,20 @@ matched-pair and manual eliminations, retained earnings, approved snapshots and
 consolidated cutoff controls. FINANCE_GROUPS.md describes its accepted-policy
 boundaries. Approved statement mappings and cash-flow reports remain next, alongside
 the production acceptance and provider/onboarding requirements already recorded.
+
+## Mapped statements and cash flow increment
+
+PR #34 merged intercompany and consolidation at
+`b6cd35dc6bbd9ddfd9a9078fbf0a9df6a22e169c`: 238 regressions, 18 authenticated
+integration scenarios, 81 deterministic migrations, both builds, CodeQL, production
+dependency audit and 47 restored source graphs passed. Dependency review remains
+blocked by the repository's disabled Dependency graph setting.
+
+The statement increment adds independently approved account presentation, immutable
+cash allocations, mixed-payment splits, internal-transfer controls, native and group
+cash flows, restricted cash, explicit FX/rounding controls and frozen statement
+packets. FINANCE_STATEMENTS.md defines behavior and capacity. These complete the
+previously identified statement-mapping and cash-classification implementation gaps.
+The four finance priorities now have concrete workflows and acceptance scenarios;
+production release still requires the owner settings, managed staging, representative
+opening balances, provider activation and finance/security sign-off listed above.

@@ -20,6 +20,7 @@ const FinanceOperations = lazy(() => import("./pages/FinanceOperations"));
 const FinanceIntegrations = lazy(() => import("./pages/FinanceIntegrations"));
 const FinanceSchedules = lazy(() => import("./pages/FinanceSchedules"));
 const IntercompanyFinance = lazy(() => import("./pages/IntercompanyFinance"));
+const FinancialStatements = lazy(() => import("./pages/FinancialStatements"));
 const FinanceConsolidation = lazy(() => import("./pages/FinanceConsolidation"));
 const FinanceClose = lazy(() => import("./pages/FinanceClose"));
 const Banking = lazy(() => import("./pages/Banking"));
@@ -92,6 +93,7 @@ function AppRoutes() {
           <Route path="/finance-integrations" element={<FinanceIntegrations />} />
           <Route path="/finance-schedules" element={<FinanceSchedules />} />
           <Route path="/intercompany" element={<IntercompanyFinance />} />
+          <Route path="/financial-statements" element={<FinancialStatements />} />
           <Route path="/consolidation" element={<FinanceConsolidation />} />
           <Route path="/finance-close" element={<FinanceClose />} />
           <Route path="/close" element={<PeriodClose />} />

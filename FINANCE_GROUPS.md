@@ -110,6 +110,7 @@ is not presented as a newly accepted current report. No live deployment is perfo
 by this code, and production volume, opening balances, FX sources and accounting
 acceptance remain governed by PRODUCTION_READINESS.md.
 
-Approved statement presentation and cash-flow classification continue in the next
-finance increment. Basic chart-based income and balance-sheet totals here do not
-invent current/noncurrent categories, cash-flow classifications or disclosures.
+Approved statement presentation and native/group cash-flow classification are
+defined in FINANCE_STATEMENTS.md. Activate policies for every member and group.
+Final reports retain the approved mapped packet and cash controls; ordinary
+chart-based reports remain available for legacy migration comparison.
