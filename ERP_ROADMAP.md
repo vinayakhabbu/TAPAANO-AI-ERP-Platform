@@ -205,3 +205,13 @@ reviews. It preserves frozen legacy bank history. See [Finance workflows](FINANC
 for its cutover assumptions, data limits and provider boundaries. Contract billing,
 revenue recognition, general approvals/integrations and consolidation continue in
 the remaining delivery sequence; this increment does not complete that scope.
+
+## Contract billing and finance approval increment
+
+Bank import and independent reconciliation are merged in PR #30. The next increment
+adds approved fixed/usage contracts, recurring billing cycles, revenue schedules,
+unbilled/deferred accounting, prospective amendments, full unpaid contract credits
+and enforceable journal/payment approval policies. See FINANCE_WORKFLOWS.md for the
+implemented accounting policies, source controls and explicit modification limits.
+Provider integration and group/consolidation delivery continue next; managed staging
+and finance/security acceptance are still required for a production release.

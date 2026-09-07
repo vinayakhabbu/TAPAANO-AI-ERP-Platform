@@ -51,9 +51,9 @@ const Receivables = () => {
           Full exact credit notes and manual full or partial receipts are supported for verified invoices.
           Each receipt supports one exact correction and one server-derived replacement.
           Record partial allocations from aging; the server checks the available balance across dated history.
-          Receipts are not bank-reconciled. Corrections and replacements are accounting entries, not refunds or bank actions.
+          Receipts are not bank-reconciled by posting; review their cash entries in Banking. Corrections and replacements are accounting entries, not refunds or bank actions.
           Partial credits, overpayments, refunds, collections, tax, FX, quotations, sales-order conversion,
-          shipping, subscriptions, and revenue recognition remain unavailable.
+          and shipping remain unavailable here. Approved subscriptions and revenue recognition are available under Contracts and Revenue.
         </AlertDescription>
       </Alert>
 
@@ -83,7 +83,7 @@ const Receivables = () => {
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Receipts recorded</p>
           {renderStat(stats.fullReceiptCount)}
-          <p className="mt-1 text-xs text-muted-foreground">Manual accounting records; not bank-reconciled</p>
+          <p className="mt-1 text-xs text-muted-foreground">Manual accounting records; review Banking for reconciliation</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Full credit notes</p>
