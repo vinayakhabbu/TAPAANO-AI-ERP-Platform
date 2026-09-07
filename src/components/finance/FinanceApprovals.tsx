@@ -9,7 +9,7 @@ import {Button} from '@/components/ui/button';
 import type {Json} from '@/integrations/supabase/types';
 
 const labels:Record<string,string>={MANUAL_JOURNAL:'Manual journal',SUPPLIER_PAYMENT:'Supplier payment',APPROVAL_POLICY:'Posting approval policy',CONTRACT_CREATE:'Contract approval',CONTRACT_BILL:'Contract invoice',CONTRACT_RECOGNIZE:'Revenue recognition',CONTRACT_USAGE_CLOSE:'Usage completeness review',CONTRACT_CREDIT:'Contract credit',CONTRACT_AMEND:'Contract amendment'};
-function Evidence({value,names}:{value:Json;names:Map<string,string>}){
+export function Evidence({value,names}:{value:Json;names:Map<string,string>}){
  if(value===null||value===undefined)return <span>—</span>;
  if(Array.isArray(value))return <ul className="space-y-2">{value.map((v,i)=><li key={i} className="rounded border p-2"><Evidence value={v} names={names}/></li>)}</ul>;
  if(typeof value==='object')return <dl className="grid gap-2 sm:grid-cols-2">{Object.entries(value).map(([k,v])=><div key={k}><dt className="text-sm text-muted-foreground">{k.replace(/_/g,' ')}</dt><dd><Evidence value={v??null} names={names}/></dd></div>)}</dl>;

@@ -1,0 +1,71 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {createHmac,randomUUID} from 'node:crypto';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {setTimeout as delay} from 'node:timers/promises';
+
+export async function qualifyProviderWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email,password,api}){
+ assert.ok(['127.0.0.1','localhost'].includes(new URL(api).hostname));
+ const entity=await rpc(clientA,'create_tenant_entity',{p_name:'Integration acceptance entity',p_currency:'USD',p_reason:'Synthetic provider acceptance',p_idempotency_key:'provider-entity'});
+ const account=async(code)=>rpc(clientA,'create_tenant_account',{p_code:code,p_name:'Provider clearing '+code,p_account_type:'asset',p_parent_id:null,p_reason:'Synthetic provider control',p_idempotency_key:'provider-account-'+code});
+ const clearing=await account('1195'),adapterClearing=await account('1196');
+ await rpc(clientA,'configure_entity_invoice_accounts',{p_entity_id:entity,p_ar_account_id:ids.ar,p_revenue_account_id:ids.revenue,p_idempotency_key:'provider-ar'});
+ await rpc(clientA,'configure_entity_customer_receipt_accounts',{p_entity_id:entity,p_cash_account_id:ids.cash,p_idempotency_key:'provider-cash'});
+ await rpc(clientA,'create_accounting_period',{p_entity_id:entity,p_period_start:'2026-01-01',p_period_end:'2026-12-31',p_idempotency_key:'provider-year'});
+ const register=await rpc(clientA,'create_cash_register',{p_entity_id:entity,p_account_id:ids.cash,p_name:'Provider settlement bank'});
+ const invoice=await rpc(clientA,'post_customer_invoice',{p_entity_id:entity,p_customer_id:ids.customer,p_invoice_number:'PROVIDER-ACCEPTANCE',p_issue_date:'2026-01-01',p_due_date:'2026-01-31',p_currency:'USD',p_tax:0,p_notes:null,p_lines:[{description:'Synthetic source',quantity:'1',unit_price:'100.00'}],p_idempotency_key:'provider-invoice'});
+ let sequence=0;
+ const request=(kind,payload)=>rpc(clientA,'request_finance_action',{p_entity_id:entity,p_kind:kind,p_payload:payload,p_reason:'Synthetic verified source',p_key:'provider-action-'+(++sequence)});
+ const approve=async(kind,payload)=>rpc(clientReviewer,'decide_finance_action',{p_request_id:await request(kind,payload),p_decision:'APPROVE',p_reason:'Independent provider source review'});
+ await approve('APPROVAL_POLICY',{journals_required:true,payments_required:true,expected_version:0});
+ const page=await browser.newPage(),failures=[];page.on('pageerror',e=>failures.push(e.message));
+ let edge;const directory=await mkdtemp(join(tmpdir(),'tapaano-synthetic-webhook-'));
+ try{
+  await page.goto('http://127.0.0.1:4173/auth');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByText('Journal-linked posted invoices',{exact:true}).waitFor();await page.goto('http://127.0.0.1:4173/finance-integrations');
+  await page.getByLabel('Integration entity',{exact:true}).selectOption(entity);await page.getByText('Configure a reviewed connection',{exact:true}).click();
+  const form=page.getByRole('form',{name:'Request integration configuration',exact:true});
+  for(const [label,value] of [['Connection label','Stripe acceptance'],['Provider account reference','acct_synthetic_acceptance'],['Connection configuration evidence','Synthetic Stripe account and clearing control']])await form.getByLabel(label,{exact:true}).fill(value);
+  await form.getByLabel('Processor clearing asset account',{exact:true}).selectOption(clearing);await form.getByRole('button',{name:'Request integration configuration',exact:true}).click();await form.getByRole('status').waitFor();
+  const req=(await clientA.from('finance_requests').select('id').eq('entity_id',entity).eq('kind','INTEGRATION_CONFIG')).data[0].id;
+  const connection=(await rpc(clientReviewer,'decide_finance_action',{p_request_id:req,p_decision:'APPROVE',p_reason:'Verified provider configuration'})).connectionId;
+  const generic=randomUUID();await approve('INTEGRATION_CONFIG',{id:generic,label:'Signed provider export',provider:'GENERIC',provider_account:'synthetic_exports',environment:'TEST',timezone:'America/New_York',clearing_account_id:adapterClearing,enabled:true,expected_version:0});
+  const secret='whsec_synthetic_acceptance_'+randomUUID(),genericSecret='synthetic_export_signing_'+randomUUID();
+  const signing={[connection]:{provider:'STRIPE',account:'acct_synthetic_acceptance',environment:'TEST',secrets:[secret]},[generic]:{provider:'GENERIC',account:'synthetic_exports',environment:'TEST',secrets:[genericSecret]}};
+  const env=join(directory,'function.env');await writeFile(env,'FINANCE_WEBHOOK_SIGNING='+JSON.stringify(signing)+'\n',{mode:0o600});
+  edge=spawn('supabase',['functions','serve','finance-webhook','--env-file',env],{stdio:['ignore','ignore','ignore']});
+  let startupError;edge.on('error',error=>{startupError=error;});
+  const send=async(event,c=connection,s=secret,header='stripe-signature')=>{const body=JSON.stringify(event),timestamp=Math.floor(Date.now()/1000),signature=createHmac('sha256',s).update(timestamp+'.'+body).digest('hex');return fetch(api+'/functions/v1/finance-webhook?connection='+c,{method:'POST',headers:{'Content-Type':'application/json',[header]:`t=${timestamp},v1=${signature}`},body,signal:AbortSignal.timeout(15000)});};
+  const receipt={id:'evt_acceptance_receipt',type:'invoice.paid',livemode:false,data:{object:{id:'in_acceptance',currency:'usd',amount_paid:10000,status:'paid',status_transitions:{paid_at:1767373200}}}};
+  let first;
+  for(let i=0;i<40;i++){if(startupError)throw startupError;try{first=await send(receipt);if(first.status===200)break;}catch{/* Local Edge runtime may still be starting. */}await delay(500);}
+  assert.equal(first?.status,200,'Deployed local Edge handler must accept a correctly signed provider event');
+  assert.equal((await send({...receipt,id:'forged'},connection,'incorrect_synthetic_secret')).status,401);
+  assert.equal((await send({...receipt,id:'other-account',account:'acct_other'})).status,422);
+  assert.equal((await send(receipt)).status,200);assert.equal((await send({...receipt,id:'evt_same_invoice'})).status,200);
+  assert.ok((await clientA.rpc('enqueue_finance_event',{p_connection:connection,p_external_id:'browser-forged',p_operation:'RECEIPT',p_object_id:'forged',p_source:{currency:'USD',date:'2026-01-02',amount:'1.00'},p_body_sha256:'a'.repeat(64)})).error);
+  let report=await rpc(clientA,'get_finance_integration_report',{p_entity:entity,p_as_of:'2026-01-31'});assert.equal(report.totalEvents,1);const event=report.events[0].id;assert.equal(report.events[0].deliveries,2);
+  await page.reload();await page.getByLabel('Integration entity',{exact:true}).selectOption(entity);await page.getByLabel('Clearing balances as of',{exact:true}).fill('2026-01-31');
+  const article=page.getByRole('article').filter({has:page.getByRole('heading',{name:'Stripe acceptance · RECEIPT · RECEIVED',exact:true})});
+  const decisionForm=article.getByRole('form',{name:'Request provider event decision',exact:true});await decisionForm.getByLabel('Matching customer invoice',{exact:true}).selectOption(invoice);await decisionForm.getByLabel('Provider source and mapping evidence',{exact:true}).fill('Verified original invoice and processor receipt');await decisionForm.getByRole('button',{name:'Request provider event decision',exact:true}).click();await decisionForm.getByRole('status').waitFor();
+  const posting=(await clientA.from('finance_requests').select('id').eq('entity_id',entity).eq('kind','INTEGRATION_APPLY')).data[0].id;
+  const decision={p_request_id:posting,p_decision:'APPROVE',p_reason:'Concurrent provider acceptance'};
+  const results=await Promise.all([rpc(clientReviewer,'decide_finance_action',decision),rpc(clientReviewer,'decide_finance_action',decision)]);assert.deepEqual(results[0],results[1]);
+  const payout={id:'evt_acceptance_payout',type:'payout.paid',livemode:false,data:{object:{id:'po_acceptance',currency:'usd',amount:9700,status:'paid',arrival_date:1767571200}}};assert.equal((await send(payout)).status,200);
+  report=await rpc(clientA,'get_finance_integration_report',{p_entity:entity,p_as_of:'2026-01-31'});const payoutId=report.events.find(e=>e.operation==='PAYOUT').id;await approve('INTEGRATION_APPLY',{event_id:payoutId,target_id:register});
+  assert.equal((await rpc(clientA,'get_finance_integration_report',{p_entity:entity,p_as_of:'2026-01-31'})).controls.find(c=>c.connectionId===connection).balance,'3.00');
+  const fees={version:1,id:'evt_acceptance_fees',object_id:'fee_batch_1',type:'journal.posted',account:'synthetic_exports',environment:'TEST',data:{currency:'USD',date:'2026-01-05',lines:[{account_code:'5000',debit:'3.00',credit:'0.00'},{account_code:'1195',debit:'0.00',credit:'3.00'}]}};
+  assert.equal((await send(fees,generic,genericSecret,'x-finance-signature')).status,200);
+  report=await rpc(clientA,'get_finance_integration_report',{p_entity:entity,p_as_of:'2026-01-31'});const feeId=report.events.find(e=>e.operation==='JOURNAL').id;await approve('INTEGRATION_APPLY',{event_id:feeId});
+  assert.equal((await rpc(clientA,'get_finance_integration_report',{p_entity:entity,p_as_of:'2026-01-31'})).controls.find(c=>c.connectionId===connection).balance,'0.00');
+  assert.equal((await send({...receipt,id:'evt_unsupported',type:'payout.failed'})).status,200);
+  report=await rpc(clientA,'get_finance_integration_report',{p_entity:entity,p_as_of:'2026-01-31'});await approve('INTEGRATION_IGNORE',{event_id:report.events.find(e=>e.operation==='UNSUPPORTED').id});
+  for(const eventId of [payoutId,event,feeId])await approve('INTEGRATION_REVERSE',{event_id:eventId,date:'2026-01-06'});
+  assert.equal((await rpc(clientA,'get_finance_integration_report',{p_entity:entity,p_as_of:'2026-01-31'})).controls.find(c=>c.connectionId===connection).balance,'0.00');
+  assert.ok((await clientB.rpc('get_finance_integration_report',{p_entity:entity,p_as_of:'2026-01-31'})).error);
+  await page.reload();await page.getByLabel('Integration entity',{exact:true}).selectOption(entity);await page.getByRole('button',{name:'Export integration evidence page',exact:true}).waitFor();
+  await page.route('**/rest/v1/rpc/get_finance_integration_report',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic integration report outage'})}));await page.getByLabel('Clearing balances as of',{exact:true}).fill('2026-02-01');await page.getByRole('alert').filter({hasText:'Integration report unavailable'}).waitFor();assert.equal(await page.getByRole('button',{name:'Export integration evidence page',exact:true}).count(),0);
+  assert.deepEqual(failures,[]);return {entity,decision,result:results[0]};
+ }finally{await page.close();edge?.kill('SIGTERM');await rm(directory,{recursive:true,force:true});}
+}

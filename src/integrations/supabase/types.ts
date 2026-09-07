@@ -14,6 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
+      finance_connections: { Row: { id: string; org_id: string; entity_id: string; label: string; provider: string; provider_account: string; environment: string; currency: string; timezone: string; clearing_account_id: string; enabled: boolean; version: number; request_id: string }; Insert: never; Update: never; Relationships: [] }
       finance_requests: { Row: { id: string; org_id: string; entity_id: string; kind: string; payload: Json; source_snapshot: Json; reason: string; requested_by: string; requested_at: string; state: string; decided_by: string | null; decided_at: string | null; decision_reason: string | null; result: Json }; Insert: never; Update: never; Relationships: [] }
       finance_approval_policies: { Row: { id: string; org_id: string; entity_id: string; journals_required: boolean; payments_required: boolean; version: number; request_id: string; updated_at: string }; Insert: never; Update: never; Relationships: [] }
       finance_contracts: { Row: { id: string; org_id: string; entity_id: string; customer_id: string; reference: string; currency: string; terms: Json; creation_request: string; created_at: string }; Insert: never; Update: never; Relationships: [] }
@@ -8440,6 +8441,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_finance_integration_report: { Args: { p_entity: string; p_as_of: string; p_cursor?: string; p_limit?: number }; Returns: Json }
       request_finance_action: { Args: { p_entity_id: string; p_kind: string; p_payload: Json; p_reason: string; p_key: string }; Returns: string }
       decide_finance_action: { Args: { p_request_id: string; p_decision: string; p_reason: string }; Returns: Json }
       record_contract_usage: { Args: { p_contract_id: string; p_source: string; p_external_id: string; p_occurred_at: string; p_units: string; p_correction_of?: string | null }; Returns: string }

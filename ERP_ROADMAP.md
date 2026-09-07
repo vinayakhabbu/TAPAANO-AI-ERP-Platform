@@ -215,3 +215,15 @@ and enforceable journal/payment approval policies. See FINANCE_WORKFLOWS.md for 
 implemented accounting policies, source controls and explicit modification limits.
 Provider integration and group/consolidation delivery continue next; managed staging
 and finance/security acceptance are still required for a production release.
+
+## Connected finance increment
+
+PR #31 merged contract billing, usage revenue and finance approvals at
+`23cb835406afe3e8fe405e766b3b748d1b68b911`, with 220 regressions, 15 integration
+scenarios, 76 deterministic migrations, both builds and populated recovery.
+The provider increment implements authenticated webhook ingestion, duplicate
+source controls, independently approved posting, clearing reports and linked
+corrections. Its deployed local Edge, browser and recovery gates run against
+synthetic accounts. See FINANCE_INTEGRATIONS.md. Group consolidation, intercompany
+accounting and the remaining close features continue next; live provider and
+managed-service acceptance remain required.

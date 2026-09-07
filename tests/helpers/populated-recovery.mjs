@@ -21,6 +21,7 @@ async function command(file, args, options = {}) {
 }
 
 const graphChecks = [
+  ["finance_inbox","validate_integration_graph","true"],
   ["finance_contracts","validate_contract_graph","true"],
   ["cash_registers","validate_cash_matches","true"],
   ["invoices","validate_customer_invoice_graph","accounting_status='POSTED'"],
