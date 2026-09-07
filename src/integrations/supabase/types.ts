@@ -14,6 +14,10 @@ export type Database = {
   }
   public: {
     Tables: {
+      cash_registers: { Row: { id: string; org_id: string; entity_id: string; account_id: string; name: string; currency: string; created_by: string; created_at: string }; Insert: never; Update: never; Relationships: [] }
+      cash_statements: { Row: { id: string; org_id: string; register_id: string; reference: string; starts_on: string; ends_on: string; status: string; imported_by: string; created_at: string }; Insert: never; Update: never; Relationships: [] }
+      cash_reviews: { Row: { id: string; org_id: string; statement_id: string; action: string; requested_by: string; requested_at: string; reason: string; snapshot: Json; decision: string | null; decided_by: string | null; decided_at: string | null; decision_reason: string | null }; Insert: never; Update: never; Relationships: [] }
+
       accounting_events: {
         Row: {
           actor_id: string
@@ -8432,6 +8436,14 @@ export type Database = {
       }
     }
     Functions: {
+      create_cash_register: { Args: { p_entity_id: string; p_account_id: string; p_name: string }; Returns: string }
+      import_cash_statement: { Args: { p_register_id: string; p_statement: Json; p_key: string }; Returns: string }
+      get_cash_reconciliation: { Args: { p_statement_id: string }; Returns: Json }
+      match_cash_statement: { Args: { p_statement_id: string; p_bank_lines: string[]; p_book_lines: string[]; p_reason: string; p_revision: string }; Returns: string }
+      remove_cash_match: { Args: { p_match_id: string; p_reason: string }; Returns: undefined }
+      request_cash_review: { Args: { p_statement_id: string; p_action: string; p_reason: string; p_revision: string }; Returns: string }
+      decide_cash_review: { Args: { p_review_id: string; p_decision: string; p_reason: string }; Returns: undefined }
+
       get_recent_posted_journals: { Args: Record<PropertyKey, never>; Returns: Json }
       get_subledger_aging: {
         Args: { p_entity_id: string; p_kind: string; p_as_of: string; p_offset?: number; p_page_size?: number; p_expected_revision?: string }

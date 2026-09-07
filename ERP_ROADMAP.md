@@ -196,3 +196,12 @@ only a sanitized evidence report, never raw database backups.
    the deployment workflow; keep credentials out of source and browser variables.
 4. Rehearse the full migration manifest, reconcile opening and subledger balances,
    and prove restore before considering a production release.
+
+## Bank statement reconciliation increment
+
+The next verified workflow adds bank CSV import, duplicate/control-total checks,
+explicit cash-ledger matching, dated timing items, and independent close/reopen/void
+reviews. It preserves frozen legacy bank history. See [Finance workflows](FINANCE_WORKFLOWS.md)
+for its cutover assumptions, data limits and provider boundaries. Contract billing,
+revenue recognition, general approvals/integrations and consolidation continue in
+the remaining delivery sequence; this increment does not complete that scope.

@@ -1,3 +1,4 @@
+import { CashWorkspace } from "@/components/finance/CashWorkspace";
 import { AlertTriangle, Building2, Landmark } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -11,10 +12,12 @@ const Banking = () => {
   const { data: transactions = [], isLoading: transactionsLoading, isError: transactionsError } = useBankTransactions();
 
   return (
-    <AppLayout title="Banking containment" subtitle="Non-secret read-only preservation metadata">
+    <AppLayout title="Banking" subtitle="Statement import, cash matching and independent reconciliation review">
+      <CashWorkspace />
+      <details className="mt-8"><summary>Preserved legacy metadata</summary>
       <Alert className="border-warning/40 bg-warning/5">
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Reconciliation and bank execution are unavailable</AlertTitle>
+        <AlertTitle>Legacy reconciliation and bank execution are unavailable</AlertTitle>
         <AlertDescription>
           Account and routing identifiers, connection metadata, balances, transaction amounts,
           match results, statement imports, feeds, and positive-pay controls are hidden and immutable.
@@ -84,6 +87,7 @@ const Banking = () => {
           </TableBody>
         </Table>
       </div>
+      </details>
     </AppLayout>
   );
 };

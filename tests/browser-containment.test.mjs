@@ -444,7 +444,7 @@ test("legacy AP/payment tables are read-only and cannot produce accounting assur
   assert.match(types, paymentReplacementContract);
 });
 
-test("banking exposes only tenant-scoped non-secret metadata and no execution path", async () => {
+test("legacy banking metadata remains contained alongside verified cash workflows", async () => {
   const bankTables = [
     "bank_accounts", "bank_transactions", "matching_rules", "bank_statement_imports",
     "positive_pay_checks", "bank_feed_connections", "bank_connections",
@@ -464,7 +464,7 @@ test("banking exposes only tenant-scoped non-secret metadata and no execution pa
   assert.doesNotMatch(hook, /current_balance|account_number|routing_number|\bamount\b|matched_invoice|matched_bill/);
 
   const page = await readFile(path.join(root, "pages/Banking.tsx"), "utf8");
-  assert.match(page, /Reconciliation and bank execution are unavailable/);
+  assert.match(page, /Legacy reconciliation and bank execution are unavailable/);
   assert.match(page, /No credentials, account numbers, routing numbers, or balances are exposed/);
   assert.doesNotMatch(page, /Auto-Match|Import Statement|Positive Pay|Total Cash Balance|Sync Transactions/);
 

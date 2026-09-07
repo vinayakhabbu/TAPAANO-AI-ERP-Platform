@@ -7,6 +7,7 @@ import pg from "pg";
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { loadTypescript } from "../helpers/load-typescript.mjs";
+import { qualifyCashWorkflow } from "./cash-workflow.mjs";
 import { rehearsePopulatedRecovery } from "../helpers/populated-recovery.mjs";
 
 const { JOURNAL_HISTORY_SELECT } = await loadTypescript("../../src/lib/journalQuery.ts");
@@ -39,8 +40,8 @@ test("full migration stack supports authenticated finance reads and the browser"
   let db = new pg.Client({ connectionString: dbUrl });
   await db.connect();
   let browser, server;
-  const ids = Object.fromEntries(["orgA", "orgB", "adminA", "adminB", "usd", "eur", "ar", "revenue", "cash", "ap", "expense", "customer", "vendor"].map((key) => [key, randomUUID()]));
-  const emailA = "integration-a@tapaano.test", emailB = "integration-b@tapaano.test";
+  const ids = Object.fromEntries(["orgA", "orgB", "adminA", "adminB", "reviewer", "usd", "eur", "ar", "revenue", "cash", "ap", "expense", "customer", "vendor"].map((key) => [key, randomUUID()]));
+  const emailA = "integration-a@tapaano.test", emailB = "integration-b@tapaano.test", emailReviewer = "integration-reviewer@tapaano.test";
   const password = "Synthetic-local-test-" + randomUUID();
   try {
     assert.equal((await db.query("SELECT count(*)::int AS count FROM public.organizations")).rows[0].count, 0,
@@ -49,7 +50,7 @@ test("full migration stack supports authenticated finance reads and the browser"
     // Local test bootstrap only: public tenant provisioning is intentionally closed.
     await db.query("SET LOCAL session_replication_role = replica");
     await db.query("INSERT INTO public.organizations(id,name) VALUES($1,'Synthetic A'),($2,'Synthetic B')", [ids.orgA, ids.orgB]);
-    for (const [id, org, email] of [[ids.adminA, ids.orgA, emailA], [ids.adminB, ids.orgB, emailB]]) {
+    for (const [id, org, email] of [[ids.adminA, ids.orgA, emailA], [ids.adminB, ids.orgB, emailB], [ids.reviewer,ids.orgA,emailReviewer]]) {
       await db.query(`INSERT INTO auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,
         raw_app_meta_data,raw_user_meta_data,created_at,updated_at,confirmation_token,recovery_token,email_change_token_new,email_change)
         VALUES('00000000-0000-0000-0000-000000000000',$1,'authenticated','authenticated',$2,
@@ -72,7 +73,8 @@ test("full migration stack supports authenticated finance reads and the browser"
     const options = { auth: { persistSession: false, autoRefreshToken: false } };
     const clientA = createClient(api, status.ANON_KEY, options);
     const clientB = createClient(api, status.ANON_KEY, options);
-    for (const [client, email] of [[clientA, emailA], [clientB, emailB]]) {
+    const clientReviewer = createClient(api,status.ANON_KEY,options);
+    for (const [client, email] of [[clientA, emailA], [clientB, emailB], [clientReviewer,emailReviewer]]) {
       const { error } = await client.auth.signInWithPassword({ email, password });
       assert.equal(error, null, "Local Auth login must succeed: " + (error?.message ?? ""));
     }
@@ -483,6 +485,10 @@ test("full migration stack supports authenticated finance reads and the browser"
       assert.deepEqual(failures,[]);await page.close();
     });
 
+    let cashEvidence;
+    await t.test("bank import, matching and independent reconciliation survive browser retries and tenant API boundaries",async()=>{
+      cashEvidence=await qualifyCashWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password});
+    });
     await t.test("populated backup restores financial evidence, login, isolation and retry behavior after a fresh database reset", async () => {
       await browser?.close(); browser=null;
       server?.kill("SIGTERM"); server=null;
@@ -505,11 +511,12 @@ test("full migration stack supports authenticated finance reads and the browser"
       // The reset disconnects existing database clients. Close the fixture owner
       // first so an expected disconnect cannot hide a recovery-test failure.
       await db.end();db=null;
-      const evidence=await rehearsePopulatedRecovery({status,expectedOrganizations:[ids.orgA,ids.orgB],expectedUsers:[ids.adminA,ids.adminB],verifyApplication:async restoredDb=>{
+      const evidence=await rehearsePopulatedRecovery({status,expectedOrganizations:[ids.orgA,ids.orgB],expectedUsers:[ids.adminA,ids.adminB,ids.reviewer],verifyApplication:async restoredDb=>{
         const restoredA=createClient(api,status.ANON_KEY,options),restoredB=createClient(api,status.ANON_KEY,options);
         for(const [client,email] of [[restoredA,emailA],[restoredB,emailB]]) {
           const result=await client.auth.signInWithPassword({email,password});assert.equal(result.error,null,"Restored identities must support a fresh login");
         }
+        assert.equal((await rpc(restoredA,"get_cash_reconciliation",{p_statement_id:cashEvidence.statement})).revision,cashEvidence.revision,"Approved cash reconciliation must survive restore exactly");
         const after=[];for(const [name,args] of reportRequests) after.push(normalized(await rpc(restoredA,name,args)));
         assert.deepEqual(after,before,"Restored trial balances and historical aging must exactly reconcile");
         assert.equal(await rpc(restoredA,"post_customer_invoice",usdPayload),usdInvoice);
