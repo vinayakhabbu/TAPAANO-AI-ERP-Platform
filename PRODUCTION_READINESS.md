@@ -359,3 +359,16 @@ review accrual completeness and approve opening retained earnings and fiscal dat
 Hard-close permissions and recovery responsibilities need explicit acceptance.
 Synthetic annual scenarios and populated restore exercise code behavior, not these
 customer decisions or managed-service recovery and scale.
+
+## Group accounting acceptance
+
+The group increment implements bilateral intercompany journals and settlements,
+wholly owned consolidation, explicit closing/average/historical quotes, translated
+retained earnings, eliminations and frozen reports. FINANCE_GROUPS.md defines the
+supported policies and source controls. Accept the legal reporting perimeter,
+functional currencies, opening investment/equity, rate sources, rate suitability,
+related-party disclosures and applicable acquisition adjustments before release.
+The synthetic browser/restore scenario includes US and EUR member books, matched
+services, independently reviewed investment elimination and group approval retries.
+It does not establish customer accounting policies, representative throughput,
+native transaction-currency remeasurement or support for noncontrolling interests.

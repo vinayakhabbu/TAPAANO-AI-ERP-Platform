@@ -7,7 +7,7 @@ const names = ["20260825010000_recovery_journal_periods", "20260825020000_recove
   "20260825120000_recovery_supplier_bill_credit", "20260825130000_recovery_supplier_payment", "20260825140000_recovery_customer_receipt_correction",
   "20260825150000_recovery_supplier_payment_correction", "20260825160000_recovery_customer_receipt_replacement", "20260825170000_recovery_supplier_payment_replacement",
   "20260906030000_recovery_deferred_validation_privileges", "20260906040000_recovery_posting_source_modules", "20260906050000_recovery_trial_balance", "20260906060000_finance_account_ledger",
-  "20260906070000_finance_period_controls", "20260906080000_finance_manual_journal", "20260906090000_finance_subledger_aging", "20260907010000_partial_settlements", "20260907020000_cash_reconciliation", "20260907030000_finance_approvals", "20260907040000_contract_billing_revenue", "20260907050000_finance_integrations", "20260907060000_finance_schedules", "20260907070000_finance_fiscal_close"];
+  "20260906070000_finance_period_controls", "20260906080000_finance_manual_journal", "20260906090000_finance_subledger_aging", "20260907010000_partial_settlements", "20260907020000_cash_reconciliation", "20260907030000_finance_approvals", "20260907040000_contract_billing_revenue", "20260907050000_finance_integrations", "20260907060000_finance_schedules", "20260907070000_finance_fiscal_close", "20260907080000_finance_intercompany", "20260907090000_finance_consolidation"];
 const migrations = await Promise.all(names.map(name => readFile(new URL(`../../supabase/migrations/${name}.sql`, import.meta.url), "utf8")));
 export async function financeDatabase() {
   const db = new PGlite(); await db.exec(fixture);
