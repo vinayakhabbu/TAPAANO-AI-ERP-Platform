@@ -214,7 +214,7 @@ test("receivables reads only tenant-scoped journal-linked posted invoices", asyn
   assert.match(hook, /from\("customer_receipt_replacements"\)[\s\S]{0,420}?\.eq\("org_id",\s*orgId\)/);
 
   const page = await readFile(path.join(root, "pages/Receivables.tsx"), "utf8");
-  assert.match(page, /Full receipts recorded/);
+  assert.match(page, /Receipts recorded/);
   assert.match(page, /not bank-reconciled/i);
   assert.match(page, /Receipt correction posted/);
   assert.match(page, /Replacement receipt recorded/);
@@ -401,7 +401,7 @@ test("legacy AP/payment tables are read-only and cannot produce accounting assur
   assert.doesNotMatch(paymentForm, /p_amount:/);
   assert.match(hook, /queryKey:\s*\["posted-supplier-payment-history",\s*user\?\.id,\s*orgId\]/);
   assert.match(hook, /from\("supplier_payments"\)[\s\S]{0,320}?\.eq\("org_id",\s*orgId\)/);
-  assert.match(page, /Full supplier payment recorded/);
+  assert.match(page, /Payments recorded/);
   assert.match(page, /not bank-reconciled/i);
   for (const table of ["supplier_payments", "entity_supplier_payment_controls"]) {
     const contract = new RegExp(`\\n      ${table}: \\{[\\s\\S]*?\\n        Insert: never\\n        Update: never`);

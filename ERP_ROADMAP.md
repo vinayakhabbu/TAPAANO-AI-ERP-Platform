@@ -126,11 +126,47 @@ browser posting-account setup. The report derives balances from immutable dated
 source postings; document headers are not treated as current outstanding balances.
 Manual entries to a control account appear as explicit reconciliation variances.
 
-Partial allocations, customer/vendor credits on account, refunds, collections,
+Customer/vendor credits on account, refunds, collections,
 bank statement import/matching/reconciliation and approval workflows remain open.
 Contract revenue, provider integrations and group consolidation remain subsequent
 milestones; no recurring billing or revenue-recognition schedule is implied by
 this reporting increment.
+
+## Partial settlement implementation increment
+
+The amount-entry RPCs `post_customer_receipt_amount` and
+`post_supplier_payment_amount` allocate a positive two-decimal amount to one
+verified invoice or bill in its functional currency. Multiple immutable receipt
+or payment records may reference the same document. Existing full-settlement RPCs
+retain their original contract and reject documents that already have settlements.
+They do not infer a remaining amount. Existing unique tenant/reference, retry key,
+event and journal identities remain enforced.
+
+A shared private invariant checks cumulative settlements at every accounting date,
+including corrections and replacements. A new allocation cannot over-settle a
+historical day or consume capacity reserved by a later posting. Posting is atomic
+with its balanced journal and serialized against competing settlement and close
+requests. Exact amount strings and normalized numeric hashes keep retries stable.
+
+Use **Record receipt/payment** on an aging row. Its displayed outstanding amount
+is scoped to the selected report date, not a promise of current capacity. After
+an uncertain response, retry the same immutable request. Check source history
+before editing a rejected request. Every receipt/payment has its own history and
+existing correction/replacement controls. The legacy `fullReceiptCount` summary
+field is retained for API compatibility; it counts all original receipt records,
+and the browser labels it **Receipts recorded**.
+
+Each original allocation may be corrected once for its exact amount and replaced
+once for that same amount, subject to available dated capacity. Full document
+credits remain blocked after any receipt/payment record, including corrected
+records. Partial credits, refunds, unapplied cash, multi-document remittances,
+repeat replacement chains and bank execution/reconciliation remain unavailable.
+
+The synthetic 36,500 amount split into 15,000 and 21,500 is an allocation acceptance
+case against an ordinary posted receivable/payable. It does not post or validate
+the annual contract's deferred-revenue accounting. Contract billing and revenue
+recognition remain separate milestones. Existing table-level posting locks are a
+correctness boundary; representative multi-tenant throughput still needs acceptance.
 
 ## Immediate owner and deployment work
 

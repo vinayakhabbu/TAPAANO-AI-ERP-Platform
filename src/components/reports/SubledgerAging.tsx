@@ -1,3 +1,4 @@
+import { SettlementAmountForm } from "@/components/forms/SettlementAmountForm";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -46,11 +47,12 @@ function AgingResult({ scope, generation }: { scope: AgingRequest; generation: n
         {!report.reconciled ? " Review control-account adjustments and opening balances in Financial reports." : " This comparison does not establish bank reconciliation."}
       </AlertDescription></Alert>
       {report.openCount > 50_000 ? <p className="text-sm text-muted-foreground">CSV export supports up to 50,000 open documents. This report exceeds that limit; all documents remain available through the page controls.</p> : null}
-      <Table><TableHeader><TableRow>{["Document / party", "Issued", "Due", "Days past due", "Original", "Settled as of date", "Outstanding"].map(label => <TableHead key={label}>{label}</TableHead>)}</TableRow></TableHeader><TableBody>
-        {report.rows.length === 0 ? <TableRow><TableCell colSpan={7}>No open posted documents as of this date.</TableCell></TableRow> : report.rows.map(row => <TableRow key={row.documentId}>
+      <Table><TableHeader><TableRow>{["Document / party", "Issued", "Due", "Days past due", "Original", "Settled as of date", "Outstanding", "Record settlement"].map(label => <TableHead key={label}>{label}</TableHead>)}</TableRow></TableHeader><TableBody>
+        {report.rows.length === 0 ? <TableRow><TableCell colSpan={8}>No open posted documents as of this date.</TableCell></TableRow> : report.rows.map(row => <TableRow key={row.documentId}>
           <TableCell><span className="font-medium">{row.documentNumber}</span><span className="block text-xs text-muted-foreground">{row.partyName}</span></TableCell>
           <TableCell className="whitespace-nowrap">{row.issueDate}</TableCell><TableCell className="whitespace-nowrap">{row.dueDate}</TableCell><TableCell>{row.daysPastDue}</TableCell>
           {[row.original, row.settled, row.outstanding].map((amount, i) => <TableCell key={i} className="whitespace-nowrap font-mono">{formatSignedAmount(report.currency, amount)}</TableCell>)}
+          <TableCell><SettlementAmountForm kind={scope.kind} documentId={row.documentId} documentNumber={row.documentNumber} issueDate={row.issueDate} currency={report.currency} outstanding={row.outstanding} asOf={report.asOf} /></TableCell>
         </TableRow>)}
       </TableBody></Table>
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">{report.openCount ? `${report.offset + 1}–${report.offset + report.rows.length}` : "0"} of {report.openCount.toLocaleString()}</p><div className="flex gap-2">

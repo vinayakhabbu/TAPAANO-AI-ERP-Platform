@@ -43,12 +43,12 @@ const Payables = () => {
         <AlertTitle>Supplier-bill posting boundary</AlertTitle>
         <AlertDescription>
           Direct, zero-tax bills in the entity&apos;s functional currency can post atomically to
-          a configured expense and AP control account. Full exact supplier credits, manual full
-          supplier payments, one exact supplier-payment correction, and one server-derived
-          replacement after that correction are supported. Payments use cash clearing and are not bank-reconciled.
+          a configured expense and AP control account. Full exact supplier credits and manual full or partial
+          payments are supported. Each payment supports one exact correction and one server-derived replacement.
+          Record partial allocations from aging; the server checks available balances across dated history. Payments use cash clearing and are not bank-reconciled.
           A correction or replacement is not a refund, recall, or bank action.
           Generic repeat replacements remain unavailable. Bank execution, approval,
-          matching, PO/receipt conversion, tax, FX, partial credits or payments, refunds,
+          matching, PO/receipt conversion, tax, FX, partial credits, refunds,
           and automated settlement remain unavailable.
           Legacy rows remain frozen metadata and are not included in verified posted history.
         </AlertDescription>
@@ -70,7 +70,7 @@ const Payables = () => {
         {[
           ["Verified posted bills", summary.postedBillCount],
           ["Full supplier credits", summary.postedCreditCount],
-          ["Manual full payments", summary.postedPaymentCount],
+          ["Payments recorded", summary.postedPaymentCount],
           ["Payment corrections", summary.paymentCorrectionCount],
           ["Replacement payments", summary.paymentReplacementCount],
           ["Legacy bill headers", summary.billHeaderCount],
@@ -107,13 +107,7 @@ const Payables = () => {
                 : postedBillsLoading ? <TableRow><TableCell colSpan={7}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
                 : postedBills.length === 0 ? <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No verified posted supplier bills.</TableCell></TableRow>
                 : postedBills.map((bill) => {
-                  const payment = postedPayments.find((candidate) => candidate.billId === bill.id);
-                  const paymentCorrection = paymentCorrections.find(
-                    (correction) => correction.originalPaymentId === payment?.id,
-                  );
-                  const paymentReplacement = paymentReplacements.find(
-                    (replacement) => replacement.originalCorrectionId === paymentCorrection?.id,
-                  );
+                  const billPayments = postedPayments.filter(candidate => candidate.billId === bill.id);
                   return (
                   <TableRow key={bill.id}>
                     <TableCell className="font-mono">{bill.billNumber}</TableCell>
@@ -125,30 +119,18 @@ const Payables = () => {
                     <TableCell>
                       {postedCredits.find((credit) => credit.originalBillId === bill.id) ? (
                         <Badge variant="secondary">Full supplier credit posted</Badge>
-                      ) : paymentReplacement ? (
-                        <Badge variant="secondary">Replacement supplier payment recorded</Badge>
-                      ) : paymentCorrection ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="secondary">Supplier payment correction posted</Badge>
-                          <SupplierPaymentReplacementForm
-                            correctionId={paymentCorrection.id}
-                            correctionNumber={paymentCorrection.correctionNumber}
-                            correctionDate={paymentCorrection.correctionDate}
-                            currency={paymentCorrection.currency}
-                            amount={paymentCorrection.amount}
-                          />
-                        </div>
-                      ) : payment ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="secondary">Full supplier payment recorded</Badge>
-                          <SupplierPaymentCorrectionForm
-                            paymentId={payment.id}
-                            paymentNumber={payment.paymentNumber}
-                            paymentDate={payment.paymentDate}
-                            currency={payment.currency}
-                            amount={payment.amount}
-                          />
-                        </div>
+                      ) : billPayments.length ? (
+                        <div className="space-y-3">{billPayments.map(payment => {
+                          const correction = paymentCorrections.find(item => item.originalPaymentId === payment.id);
+                          const replacement = paymentReplacements.find(item => item.originalCorrectionId === correction?.id);
+                          return <div key={payment.id} className="space-y-1 rounded border p-2">
+                            <p className="text-sm">{payment.paymentNumber} · {payment.paymentDate} · {payment.currency} {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            {replacement ? <Badge variant="secondary">Replacement supplier payment recorded</Badge> : correction ? <>
+                              <Badge variant="secondary">Supplier payment correction posted</Badge>
+                              <SupplierPaymentReplacementForm correctionId={correction.id} correctionNumber={correction.correctionNumber} correctionDate={correction.correctionDate} currency={correction.currency} amount={correction.amount} />
+                            </> : <SupplierPaymentCorrectionForm paymentId={payment.id} paymentNumber={payment.paymentNumber} paymentDate={payment.paymentDate} currency={payment.currency} amount={payment.amount} />}
+                          </div>;
+                        })}<p className="text-xs text-muted-foreground">Record further allocations from aging. Historical payments do not show the current balance.</p></div>
                       ) : (
                         <div className="flex flex-wrap gap-2">
                           <SupplierPaymentForm billId={bill.id} billNumber={bill.billNumber} billIssueDate={bill.issueDate} currency={bill.currency} total={bill.total} />

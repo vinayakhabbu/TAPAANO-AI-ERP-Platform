@@ -101,7 +101,7 @@ export function ReceiptForm({
           <DialogDescription>
             PostgreSQL derives the exact full invoice amount and posts cash-clearing debit and AR
             credit in one OPEN-period transaction. This is a manual receipt record, not bank-match
-            or reconciliation evidence. Partial, overpayment, refund, tax, and FX handling remain unavailable.
+            or reconciliation evidence. Use aging to record a partial amount. Overpayment, refund, tax, and FX handling remain unavailable.
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postReceipt.mutate(); }}>

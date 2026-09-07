@@ -8791,6 +8791,14 @@ export type Database = {
         }
         Returns: string
       }
+      post_customer_receipt_amount: {
+        Args: { p_invoice_id: string; p_receipt_number: string; p_receipt_date: string; p_currency: string; p_reference: string; p_idempotency_key: string; p_amount: string }
+        Returns: string
+      }
+      post_supplier_payment_amount: {
+        Args: { p_bill_id: string; p_payment_number: string; p_payment_date: string; p_currency: string; p_reference: string; p_idempotency_key: string; p_amount: string }
+        Returns: string
+      }
       post_customer_receipt: {
         Args: {
           p_currency: string

@@ -48,13 +48,12 @@ const Receivables = () => {
         <AlertTitle>Partial accounting workflow</AlertTitle>
         <AlertDescription>
           Only direct, zero-tax invoices in the legal entity&apos;s functional currency are supported.
-          Full exact credit notes, manual full receipts, one exact receipt correction, and one
-          server-derived replacement after that correction are supported for verified invoices.
-          Settlement amounts are derived by PostgreSQL and are not bank-reconciled. A correction
-          or replacement is not a refund or bank action. Generic repeat replacements, partial
-          credits or receipts, overpayments, refunds, collections,
-          tax, FX, quotations, sales-order conversion, shipping, subscriptions, and revenue
-          recognition are unavailable.
+          Full exact credit notes and manual full or partial receipts are supported for verified invoices.
+          Each receipt supports one exact correction and one server-derived replacement.
+          Record partial allocations from aging; the server checks the available balance across dated history.
+          Receipts are not bank-reconciled. Corrections and replacements are accounting entries, not refunds or bank actions.
+          Partial credits, overpayments, refunds, collections, tax, FX, quotations, sales-order conversion,
+          shipping, subscriptions, and revenue recognition remain unavailable.
         </AlertDescription>
       </Alert>
 
@@ -82,7 +81,7 @@ const Receivables = () => {
           <p className="mt-1 text-xs text-muted-foreground">Exact-offset accounting; not a refund</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm text-muted-foreground">Full receipts recorded</p>
+          <p className="text-sm text-muted-foreground">Receipts recorded</p>
           {renderStat(stats.fullReceiptCount)}
           <p className="mt-1 text-xs text-muted-foreground">Manual accounting records; not bank-reconciled</p>
         </div>
@@ -154,13 +153,7 @@ const Receivables = () => {
                   </TableCell>
                 </TableRow>
               ) : invoices.map((invoice) => {
-                const receipt = receipts.find((candidate) => candidate.invoiceId === invoice.id);
-                const receiptCorrection = receiptCorrections.find(
-                  (correction) => correction.originalReceiptId === receipt?.id,
-                );
-                const receiptReplacement = receiptReplacements.find(
-                  (replacement) => replacement.originalCorrectionId === receiptCorrection?.id,
-                );
+                const invoiceReceipts = receipts.filter(candidate => candidate.invoiceId === invoice.id);
                 return (
                 <TableRow key={invoice.id}>
                   <TableCell className="font-mono text-sm">{invoice.invoiceNumber}</TableCell>
@@ -180,30 +173,18 @@ const Receivables = () => {
                       <Badge variant="secondary">
                         Full credit posted
                       </Badge>
-                    ) : receiptReplacement ? (
-                      <Badge variant="secondary">Replacement receipt recorded</Badge>
-                    ) : receiptCorrection ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary">Receipt correction posted</Badge>
-                        <ReceiptReplacementForm
-                          correctionId={receiptCorrection.id}
-                          correctionNumber={receiptCorrection.correctionNumber}
-                          correctionDate={receiptCorrection.correctionDate}
-                          currency={receiptCorrection.currency}
-                          amount={receiptCorrection.amount}
-                        />
-                      </div>
-                    ) : receipt ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary">Full receipt recorded</Badge>
-                        <ReceiptCorrectionForm
-                          receiptId={receipt.id}
-                          receiptNumber={receipt.receiptNumber}
-                          receiptDate={receipt.receiptDate}
-                          currency={receipt.currency}
-                          amount={receipt.amount}
-                        />
-                      </div>
+                    ) : invoiceReceipts.length ? (
+                      <div className="space-y-3">{invoiceReceipts.map(receipt => {
+                        const correction = receiptCorrections.find(item => item.originalReceiptId === receipt.id);
+                        const replacement = receiptReplacements.find(item => item.originalCorrectionId === correction?.id);
+                        return <div key={receipt.id} className="space-y-1 rounded border p-2">
+                          <p className="text-sm">{receipt.receiptNumber} · {receipt.receiptDate} · {receipt.currency} {receipt.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          {replacement ? <Badge variant="secondary">Replacement receipt recorded</Badge> : correction ? <>
+                            <Badge variant="secondary">Receipt correction posted</Badge>
+                            <ReceiptReplacementForm correctionId={correction.id} correctionNumber={correction.correctionNumber} correctionDate={correction.correctionDate} currency={correction.currency} amount={correction.amount} />
+                          </> : <ReceiptCorrectionForm receiptId={receipt.id} receiptNumber={receipt.receiptNumber} receiptDate={receipt.receiptDate} currency={receipt.currency} amount={receipt.amount} />}
+                        </div>;
+                      })}<p className="text-xs text-muted-foreground">Record further allocations from aging. Historical receipts do not show the current balance.</p></div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         <ReceiptForm
