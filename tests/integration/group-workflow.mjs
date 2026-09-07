@@ -40,7 +40,13 @@ export async function qualifyGroupWorkflow({rpc,clientA,clientB,clientReviewer,b
   const domesticResult=await approve('GROUP_CONSOLIDATE',{group_id:domestic,starts_on:'2025-01-01',ends_on:'2025-12-31',rates:[],attestations:{ownership_and_periods_reviewed:true,fx_policy_reviewed:true,eliminations_reviewed:true}});
   for(const [id,income] of [[results[0].consolidationId,'325.00'],[domesticResult.consolidationId,'230.00']]){const saved=await rpc(clientA,'get_approved_consolidation',{p_consolidation:id});assert.equal(saved.report.netIncome,income);assert.equal(saved.sourceChanged,false);assert.equal(saved.comparisonAvailable,true);}
   assert.ok((await clientB.rpc('get_consolidation_report',{p_group:foreign,p_from:'2025-01-01',p_through:'2025-12-31',p_rates:rates})).error);assert.ok((await clientB.rpc('get_intercompany_report',{p_entity:parent,p_as_of:'2025-12-31'})).error);
-  await page.getByRole('button',{name:'Refresh consolidation',exact:true}).click();await page.getByRole('button',{name:'Export consolidation CSV',exact:true}).waitFor();await page.route('**/rest/v1/rpc/get_consolidation_report',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic group report outage'})}));await page.getByRole('button',{name:'Refresh consolidation',exact:true}).click();await page.getByRole('alert').filter({hasText:'Consolidation unavailable.'}).waitFor();assert.equal(await page.getByRole('button',{name:'Export consolidation CSV',exact:true}).count(),0);
+  const responseStatus=status=>response=>response.url().endsWith('/rest/v1/rpc/get_consolidation_report')&&response.request().method()==='POST'&&response.status()===status;
+  await Promise.all([page.waitForResponse(responseStatus(200)),page.getByRole('button',{name:'Refresh consolidation',exact:true}).click()]);
+  await page.getByRole('button',{name:'Export consolidation CSV',exact:true}).waitFor();
+  await page.route('**/rest/v1/rpc/get_consolidation_report',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic group report outage'})}));
+  await Promise.all([page.waitForResponse(responseStatus(503)),page.getByRole('button',{name:'Refresh consolidation',exact:true}).click()]);
+  await page.getByRole('alert').filter({hasText:'Consolidation unavailable.'}).waitFor();assert.equal(await page.getByRole('button',{name:'Export consolidation CSV',exact:true}).count(),0);
+  await page.unroute('**/rest/v1/rpc/get_consolidation_report');await Promise.all([page.waitForResponse(responseStatus(200)),page.getByRole('button',{name:'Retry consolidation',exact:true}).click()]);await page.getByRole('button',{name:'Export consolidation CSV',exact:true}).waitFor();
   assert.deepEqual(failures,[]);return {entities:[parent,sub,eur],groups:[domestic,foreign],transfer,reports:[domesticResult.consolidationId,results[0].consolidationId],decision,result:results[0]};
  }finally{await page.close();}
 }
