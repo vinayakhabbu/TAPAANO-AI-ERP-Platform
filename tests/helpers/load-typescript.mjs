@@ -12,10 +12,11 @@ export async function loadTypescript(path) {
       compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext },
     });
     const ancestry = new Set([...parents, url.href]);
-    const imports = [...outputText.matchAll(/\bfrom\s+["'](\.[^"']+)["']/g)].reverse();
+    const imports = [...outputText.matchAll(/\bfrom\s+["']([^"']+)["']/g)].reverse();
     for (const match of imports) {
-      const dependency = new URL(/\.tsx?$/.test(match[1]) ? match[1] : match[1] + ".ts", url);
-      const target = await compile(dependency, ancestry);
+      const target = match[1].startsWith('.')
+        ? await compile(new URL(/\.tsx?$/.test(match[1]) ? match[1] : match[1] + ".ts", url), ancestry)
+        : import.meta.resolve(match[1]);
       const start = match.index + match[0].indexOf(match[1]);
       outputText = outputText.slice(0, start) + target + outputText.slice(start + match[1].length);
     }

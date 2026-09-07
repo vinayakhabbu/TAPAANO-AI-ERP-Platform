@@ -238,3 +238,15 @@ transitions and fiscal earnings transfers with preserved income reporting.
 FINANCE_CLOSE.md defines those policies. Approved statement mappings, cash-flow
 classification, intercompany accounting and consolidation remain implementation
 work; managed staging and customer finance/security acceptance remain release gates.
+
+## Group accounting increment
+
+PR #33 merged schedules and fiscal close at
+`f9c458f34c82870fb4f076aa98b74a5ff72875e0`, with 233 regressions, 17 integration
+scenarios, 79 deterministic migrations, both builds and 38 restored financial
+source graphs. The group increment implements bilateral intercompany accounting,
+partial settlements, wholly owned reporting groups, explicit FX translation,
+matched-pair and manual eliminations, retained earnings, approved snapshots and
+consolidated cutoff controls. FINANCE_GROUPS.md describes its accepted-policy
+boundaries. Approved statement mappings and cash-flow reports remain next, alongside
+the production acceptance and provider/onboarding requirements already recorded.

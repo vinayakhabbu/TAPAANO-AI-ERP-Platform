@@ -37,6 +37,8 @@ const navigationItems = [
       { icon: BookOpen, label: "Finance Integrations", href: "/finance-integrations" },
       { icon: BookOpen, label: "Finance Schedules", href: "/finance-schedules" },
       { icon: CalendarCheck, label: "Financial Close", href: "/finance-close" },
+  { icon: Building2, label: "Intercompany", href: "/intercompany" },
+  { icon: Building2, label: "Group Consolidation", href: "/consolidation" },
   { icon: PieChart, label: "Controlling", href: "/controlling" },
   { icon: BarChart3, label: "Financial Reports", href: "/reports" },
   { icon: CalendarCheck, label: "Period Close", href: "/close" },

@@ -157,3 +157,11 @@ assets, recurring journals, accrual reversals, source completeness checks and
 retained-earnings closing. See [the close policies and runbook](FINANCE_CLOSE.md)
 for date allocation, corrections, disposal, reviewed period transitions and fiscal
 reopening. These workflows preserve source history and exact dated GL comparisons.
+
+## Intercompany and consolidation
+
+Intercompany Accounting records bilateral service, funding, partial settlement and
+linked corrections. Group Consolidation adds approved membership, explicit FX
+quotes, automatic matched-pair eliminations, reviewed adjustments and immutable
+final reports. See [Group finance policies](FINANCE_GROUPS.md) for supported
+translation, retained earnings, source evidence and reopening controls.

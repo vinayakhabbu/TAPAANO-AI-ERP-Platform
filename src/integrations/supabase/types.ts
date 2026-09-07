@@ -14,6 +14,10 @@ export type Database = {
   }
   public: {
     Tables: {
+      finance_groups: { Row: { id: string; org_id: string; entity_id: string; reference: string; name: string; currency: string; starts_on: string; member_ids: string[]; cta_account_id: string; request_id: string; terms: Json }; Insert: never; Update: never; Relationships: [] }
+      finance_group_adjustments: { Row: { id: string; org_id: string; group_id: string; as_of: string; reference: string; lines: Json; source_journals: string[]; request_id: string; reversal_date: string | null; reversal_request: string | null }; Insert: never; Update: never; Relationships: [] }
+      finance_consolidations: { Row: { id: string; org_id: string; group_id: string; starts_on: string; ends_on: string; rates: Json; report: Json; request_id: string; active: boolean; reopen_request: string | null }; Insert: never; Update: never; Relationships: [] }
+
       finance_schedules: { Row: { id: string; org_id: string; entity_id: string; reference: string; kind: string; currency: string; terms: Json; state: string; creation_request: string }; Insert: never; Update: never; Relationships: [] }
       finance_year_closes: { Row: { id: string; org_id: string; entity_id: string; starts_on: string; ends_on: string; retained_account_id: string; request_id: string; journal_id: string | null; lines: Json; active: boolean; reopen_request: string | null; reversal_journal: string | null }; Insert: never; Update: never; Relationships: [] }
       finance_connections: { Row: { id: string; org_id: string; entity_id: string; label: string; provider: string; provider_account: string; environment: string; currency: string; timezone: string; clearing_account_id: string; enabled: boolean; version: number; request_id: string }; Insert: never; Update: never; Relationships: [] }
@@ -8443,6 +8447,12 @@ export type Database = {
       }
     }
     Functions: {
+      get_group_adjustment_sources: { Args: { p_group: string; p_search?: string }; Returns: Json }
+      get_intercompany_report: { Args: { p_entity: string; p_as_of: string }; Returns: Json }
+      get_consolidation_rate_requirements: { Args: { p_group: string; p_from: string; p_through: string }; Returns: Json }
+      get_consolidation_report: { Args: { p_group: string; p_from: string; p_through: string; p_rates: Json }; Returns: Json }
+      get_approved_consolidation: { Args: { p_consolidation: string }; Returns: Json }
+
       get_finance_schedule: { Args: { p_schedule: string; p_as_of: string }; Returns: Json }
       get_schedule_acquisitions: { Args: { p_entity: string; p_search?: string }; Returns: Json }
       get_finance_close_check: { Args: { p_entity: string; p_from: string; p_through: string }; Returns: Json }

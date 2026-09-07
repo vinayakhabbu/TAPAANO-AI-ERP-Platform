@@ -19,6 +19,8 @@ const ContractFinance = lazy(() => import("./pages/ContractFinance"));
 const FinanceOperations = lazy(() => import("./pages/FinanceOperations"));
 const FinanceIntegrations = lazy(() => import("./pages/FinanceIntegrations"));
 const FinanceSchedules = lazy(() => import("./pages/FinanceSchedules"));
+const IntercompanyFinance = lazy(() => import("./pages/IntercompanyFinance"));
+const FinanceConsolidation = lazy(() => import("./pages/FinanceConsolidation"));
 const FinanceClose = lazy(() => import("./pages/FinanceClose"));
 const Banking = lazy(() => import("./pages/Banking"));
 const PeriodClose = lazy(() => import("./pages/PeriodClose"));
@@ -89,6 +91,8 @@ function AppRoutes() {
           <Route path="/finance-operations" element={<FinanceOperations />} />
           <Route path="/finance-integrations" element={<FinanceIntegrations />} />
           <Route path="/finance-schedules" element={<FinanceSchedules />} />
+          <Route path="/intercompany" element={<IntercompanyFinance />} />
+          <Route path="/consolidation" element={<FinanceConsolidation />} />
           <Route path="/finance-close" element={<FinanceClose />} />
           <Route path="/close" element={<PeriodClose />} />
           <Route path="/production" element={<ContainedModule title="Production" reason="Backflush, goods receipt, WIP, variance, and capacity histories are unverified." />} />
