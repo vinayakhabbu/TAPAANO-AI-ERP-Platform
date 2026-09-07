@@ -141,3 +141,11 @@ cumulative rounding. The 600,000-unit usage case at 0.0025 recognizes 1,500.00 i
 January before its February invoice and clears the unbilled balance on invoicing.
 These dated balances, approval retries, tenant denials and source graphs are
 included in database and authenticated browser/recovery qualification.
+
+## Provider integrations
+
+Finance Integrations stages signed Stripe receipts/payouts and signed usage or
+journal imports for independent approval. It includes immutable mappings, provider
+event/object deduplication, source snapshots, clearing balances, linked reversals,
+cursor history and evidence export. See [the integration contract and runbook](FINANCE_INTEGRATIONS.md)
+for activation, payloads, retry handling, exception review and provider boundaries.

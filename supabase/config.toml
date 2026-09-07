@@ -26,3 +26,7 @@ verify_jwt = true
 
 [functions.invite-member]
 verify_jwt = true
+
+# Provider requests authenticate with a timestamped HMAC over the original body.
+[functions.finance-webhook]
+verify_jwt = false

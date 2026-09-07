@@ -331,3 +331,20 @@ through two administrators, accept the chart/control mappings and opening balanc
 validate contract performance obligations and revenue policies, and configure the
 required tax/provider integrations. Repository tests do not establish these
 customer-specific decisions or replace managed staging and operational acceptance.
+
+## Provider integration acceptance
+
+The provider increment supplies a signed Edge endpoint, server-only ingress,
+reviewed connection configuration, exact receipt/payout/usage/journal ingestion,
+source/object deduplication, independent posting, clearing reports and linked
+reversals. FINANCE_INTEGRATIONS.md defines the supported provider contracts and
+activation procedure. The integration gate starts the actual function in the
+disposable local stack with synthetic signing secrets, then exercises browser
+mapping, concurrent approval, failed signatures, fee controls and recovery.
+
+Before release, validate the provider account and snapshot event schema in test
+mode, rotate and protect signing secrets, accept opening clearing balances, prove
+complete imports against provider exports and bank statements, and monitor failed
+deliveries and unresolved items. Validate customer-specific tax/payroll adapters
+separately. These live-provider and managed-deployment checks are not supplied by
+synthetic CI, and no real provider connection is established by merging this code.
