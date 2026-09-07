@@ -372,3 +372,20 @@ The synthetic browser/restore scenario includes US and EUR member books, matched
 services, independently reviewed investment elimination and group approval retries.
 It does not establish customer accounting policies, representative throughput,
 native transaction-currency remeasurement or support for noncontrolling interests.
+
+## Financial statement acceptance
+
+FINANCE_STATEMENTS.md describes approved native/group presentation, source cash
+allocations, restricted-cash mapping and exact cash/ledger reconciliation. Activate
+statement policies for **every** production entity and reporting group; migration
+compatibility leaves unconfigured legacy close behavior intact. Complete source
+classifications before closing, accept current/noncurrent presentation and the cash
+perimeter, and review financing, tax, interest and noncash disclosure policies.
+
+The synthetic statement scenario exercises browser setup and mixed cash payments,
+independent/concurrent approval, failed-response retries, CSV controls, unavailable
+reports, fiscal closing and a frozen US/EUR consolidated packet. Recovery validates
+statement-policy and cash-classification graphs as well as the preceding source
+families. These gates qualify code behavior. Customer policy notes, representative
+scale, live provider completeness, managed backup/restore, security configuration
+and go-live authorization remain separate release requirements.

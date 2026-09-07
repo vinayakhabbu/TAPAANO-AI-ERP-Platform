@@ -10,6 +10,7 @@ import { loadTypescript } from "../helpers/load-typescript.mjs";
 import { qualifyContractWorkflow } from "./contract-workflow.mjs";
 import { qualifyProviderWorkflow } from "./provider-workflow.mjs";
 import { qualifyCloseWorkflow } from "./close-workflow.mjs";
+import { qualifyStatementWorkflow } from "./statement-workflow.mjs";
 import { qualifyGroupWorkflow } from "./group-workflow.mjs";
 import { qualifyCashWorkflow } from "./cash-workflow.mjs";
 import { rehearsePopulatedRecovery } from "../helpers/populated-recovery.mjs";
@@ -509,6 +510,10 @@ test("full migration stack supports authenticated finance reads and the browser"
     await t.test("browser intercompany and currency consolidation retain independent approvals, elimination evidence and exact retries",async()=>{
       groupEvidence=await qualifyGroupWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password});
     });
+    let statementEvidence;
+    await t.test("browser statement policies and cash allocations preserve mapped group reports through independent review", async()=>{
+      statementEvidence=await qualifyStatementWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password});
+    });
     await t.test("populated backup restores financial evidence, login, isolation and retry behavior after a fresh database reset", async () => {
       await browser?.close(); browser=null;
       server?.kill("SIGTERM"); server=null;
@@ -524,6 +529,8 @@ test("full migration stack supports authenticated finance reads and the browser"
       reportRequests.push(['get_finance_close_check',{p_entity:closeEvidence.entity,p_from:'2025-01-01',p_through:'2025-12-31'}]);
       for(const entity of groupEvidence.entities)reportRequests.push(['get_intercompany_report',{p_entity:entity,p_as_of:'2025-12-31'}]);
       for(const id of groupEvidence.reports)reportRequests.push(['get_approved_consolidation',{p_consolidation:id}]);
+      for(const entity of statementEvidence.entities)reportRequests.push(['get_entity_financial_statements',{p_entity:entity,p_from:'2025-01-01',p_through:'2025-12-31'}]);
+      reportRequests.push(['get_approved_consolidation',{p_consolidation:statementEvidence.report}]);
       const before=[];for(const [name,args] of reportRequests) before.push(normalized(await rpc(clientA,name,args)));
       const retries=[];
       for(const [source,column,number,date,reference] of [
@@ -545,6 +552,7 @@ test("full migration stack supports authenticated finance reads and the browser"
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",contractEvidence.billingDecision),contractEvidence.billingResult,"Approved billing retry must survive recovery without new posting");
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",providerEvidence.decision),providerEvidence.result,"Provider approval retry must survive recovery without duplicate receipt");
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",closeEvidence.decision),closeEvidence.result,"Fiscal close approval must survive recovery without duplicate closing entries");
+        assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",statementEvidence.decision),statementEvidence.result,"Cash classification approval must survive recovery exactly");
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",groupEvidence.decision),groupEvidence.result,"Consolidation approval and retained snapshot must survive recovery exactly");
         assert.equal((await rpc(restoredA,"get_cash_reconciliation",{p_statement_id:cashEvidence.statement})).revision,cashEvidence.revision,"Approved cash reconciliation must survive restore exactly");
         const after=[];for(const [name,args] of reportRequests) after.push(normalized(await rpc(restoredA,name,args)));
@@ -560,7 +568,7 @@ test("full migration stack supports authenticated finance reads and the browser"
         assert.ok((await restoredA.rpc("post_manual_journal",{p_entity_id:ids.usd,p_entry_number:"RECOVERY-CLOSED",p_entry_date:"2026-11-05",p_memo:"Synthetic closed-period rejection",p_lines:[{account_id:ids.cash,debit:"1.00",credit:"0.00"},{account_id:ids.revenue,debit:"0.00",credit:"1.00"}],p_idempotency_key:"recovery-closed"})).error);
         const health=(await restoredDb.query("SELECT count(*)::int AS count FROM public.journal_entries WHERE entry_number='RECOVERY-CLOSED'")).rows[0];assert.equal(health.count,0);
       }});
-      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,47);assert.ok(evidence.rows>1000);
+      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,60);assert.ok(evidence.rows>1000);
     });
 
   } finally {

@@ -71,6 +71,7 @@ const navCategories = [
       { icon: CalendarCheck, label: "Financial Close", href: "/finance-close" },
       { icon: Building2, label: "Intercompany", href: "/intercompany" },
       { icon: Building2, label: "Group Consolidation", href: "/consolidation" },
+      { icon: Building2, label: "Financial Statements", href: "/financial-statements" },
       { icon: Coins, label: "Multi-Currency", href: "/currency" },
       { icon: Calculator, label: "Tax Management", href: "/tax" },
       { icon: PieChart, label: "Controlling", href: "/controlling" },

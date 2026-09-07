@@ -165,3 +165,11 @@ linked corrections. Group Consolidation adds approved membership, explicit FX
 quotes, automatic matched-pair eliminations, reviewed adjustments and immutable
 final reports. See [Group finance policies](FINANCE_GROUPS.md) for supported
 translation, retained earnings, source evidence and reopening controls.
+
+## Approved financial presentation
+
+Financial Statements supplies approved account mappings, exact source cash
+allocations, mixed-payment splits and native/group cash flow. It integrates with
+fiscal and consolidated close controls and retained approval snapshots. See
+[Financial statement policies](FINANCE_STATEMENTS.md) for source graphs, restricted
+cash, transfer/FX rules, migration compatibility and production activation.
