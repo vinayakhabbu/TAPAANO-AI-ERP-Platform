@@ -28,7 +28,7 @@ function StatementWorkspace({entity,group,from,through}:{entity:string;group:str
  if(context.isError)return <div><p role="alert">Statement policy unavailable.</p><Button onClick={()=>void context.refetch()}>Retry statement policy</Button></div>;if(!context.data)return <p>Loading approved statement policy…</p>;
  const ctx=context.data;
  return <div className="space-y-5">{profile?.role==='admin'?<PolicyEditor key={ctx.policy?.id??'new'} context={ctx}/>:null}{!ctx.policy?<p role="alert">An approved statement policy is required for this reporting scope.</p>:group?<p>Group policy version {ctx.policy.version} is approved. Prepare the report and exchange rates in <a className="underline" href="/consolidation">Group Consolidation</a>.</p>:report.isError?<div><p role="alert">Financial statements unavailable. Previously loaded figures and exports are hidden.</p><Button onClick={()=>void report.refetch()}>Retry financial statements</Button></div>:report.data?<>
-  <FinancialStatementView {...report.data} label={report.data.entityName}/><Button variant="outline" onClick={()=>void report.refetch()}>Refresh financial statements</Button>
+  <FinancialStatementView statements={report.data.statements} cashFlow={report.data.cashFlow} currency={report.data.currency} from={report.data.from} through={report.data.through} revision={report.data.revision} complete={report.data.complete} label={report.data.entityName}/><Button variant="outline" onClick={()=>void report.refetch()}>Refresh financial statements</Button>
   {profile?.role==='admin'||profile?.role==='moderator'?<CashEditor key={report.data.cashFlow.revision} cash={report.data.cashFlow} categories={ctx.categories}/>:null}
  </>:<p>Reconciling statement and cash sources…</p>}</div>;
 }
