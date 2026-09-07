@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+
+export async function qualifyContractWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email,password,emailReviewer}) {
+ const entity=await rpc(clientA,'create_tenant_entity',{p_name:'Contract acceptance entity',p_currency:'USD',p_reason:'Synthetic contract acceptance',p_idempotency_key:'contract-test-entity'});
+ const account=async(code,name,type)=>rpc(clientA,'create_tenant_account',{p_code:code,p_name:name,p_account_type:type,p_parent_id:null,p_reason:'Synthetic contract control',p_idempotency_key:'contract-account-'+code});
+ const deferred=await account('2310','Contract deferred revenue','liability'),unbilled=await account('1160','Contract unbilled receivables','asset');
+ await rpc(clientA,'configure_entity_invoice_accounts',{p_entity_id:entity,p_ar_account_id:ids.ar,p_revenue_account_id:ids.revenue,p_idempotency_key:'contract-ar'});
+ await rpc(clientA,'configure_entity_customer_receipt_accounts',{p_entity_id:entity,p_cash_account_id:ids.cash,p_idempotency_key:'contract-cash'});
+ await rpc(clientA,'create_accounting_period',{p_entity_id:entity,p_period_start:'2026-01-01',p_period_end:'2026-12-31',p_idempotency_key:'contract-year'});
+ let sequence=0;
+ const request=(kind,payload)=>rpc(clientA,'request_finance_action',{p_entity_id:entity,p_kind:kind,p_payload:payload,p_reason:'Synthetic source evidence',p_key:'contract-integration-'+(++sequence)});
+ const approve=async(kind,payload)=>{const id=await request(kind,payload);return rpc(clientReviewer,'decide_finance_action',{p_request_id:id,p_decision:'APPROVE',p_reason:'Independent finance acceptance'});};
+ await approve('APPROVAL_POLICY',{journals_required:true,payments_required:true,expected_version:0});
+ const page=await browser.newPage(),reviewPage=await browser.newPage();const failures=[];for(const p of [page,reviewPage])p.on('pageerror',e=>failures.push(e.message));
+ async function login(p,who){await p.goto('http://127.0.0.1:4173/auth');await p.getByLabel('Email',{exact:true}).fill(who);await p.getByLabel('Password',{exact:true}).fill(password);await p.getByRole('button',{name:'Sign In',exact:true}).click();await p.getByText('Journal-linked posted invoices',{exact:true}).waitFor();await p.goto('http://127.0.0.1:4173/contracts');}
+ await login(page,email);await page.getByText('Create a contract',{exact:true}).click();const form=page.getByRole('form',{name:'Request contract approval',exact:true});
+ for(const [label,value] of [['Legal entity',entity],['Customer',ids.customer],['Billing frequency','12'],['Deferred revenue liability',deferred],['Unbilled receivable asset',unbilled]])await form.getByLabel(label,{exact:true}).selectOption(value);
+ for(const [label,value] of [['Contract reference','ANNUAL-BROWSER'],['Service starts','2026-01-01'],['Service ends','2026-12-31'],['Fixed price per billing cycle','36500.00'],['Contract and accounting policy evidence','Synthetic daily stand-ready service contract'],['Obligation 1 reference','annual-access'],['Obligation 1 description','Stand-ready annual access'],['Obligation 1 standalone price','36500.00']])await form.getByLabel(label,{exact:true}).fill(value);
+ await form.getByRole('button',{name:'Request contract approval',exact:true}).click();await form.getByRole('status').waitFor();
+ const req=(await clientA.from('finance_requests').select('id').eq('entity_id',entity).eq('kind','CONTRACT_CREATE')).data[0].id;
+ assert.ok((await clientA.rpc('decide_finance_action',{p_request_id:req,p_decision:'APPROVE',p_reason:'Self approval'})).error);
+ assert.ok((await clientB.rpc('decide_finance_action',{p_request_id:req,p_decision:'APPROVE',p_reason:'Cross tenant'})).error);
+ await login(reviewPage,emailReviewer);const article=reviewPage.getByRole('article').filter({hasText:'ANNUAL-BROWSER'});const reviewForm=article.getByRole('form',{name:'Decide finance request',exact:true});
+ await reviewForm.getByLabel('Decision',{exact:true}).selectOption('APPROVE');await reviewForm.getByLabel('Decision evidence',{exact:true}).fill('Verified contract and allocation policy');
+ const attempts=[];await reviewPage.route('**/rest/v1/rpc/decide_finance_action',async route=>{attempts.push(route.request().postDataJSON());if(attempts.length===1){const response=await route.fetch();assert.equal(response.ok(),true);await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic lost approval response'})});}else await route.continue();});
+ await reviewForm.getByRole('button',{name:'Decide finance request',exact:true}).click();await reviewForm.getByRole('alert').waitFor();await reviewForm.getByRole('button',{name:'Retry same request',exact:true}).click();await article.waitFor({state:'hidden'});assert.equal(attempts.length,2);assert.deepEqual(attempts[0],attempts[1]);await reviewPage.unroute('**/rest/v1/rpc/decide_finance_action');
+ const contractRows=(await clientA.from('finance_contracts').select('id').eq('entity_id',entity)).data;assert.equal(contractRows.length,1);const contract=contractRows[0].id;
+ let report=await rpc(clientA,'get_contract_finance',{p_contract_id:contract,p_as_of:'2026-02-28'});const cycle=report.cycles[0].id;assert.equal(report.cycles.length,1);
+ await page.reload();await page.getByLabel('Contract',{exact:true}).selectOption(contract);await page.getByLabel('Contract report as of',{exact:true}).fill('2026-02-28');await page.getByText('Revenue control accounts reconcile to the ledger.',{exact:true}).waitFor();
+ await page.locator('summary').filter({hasText:'Cycle 1 ·'}).click();const billing=page.getByRole('form',{name:'Request billing',exact:true});
+ for(const [label,value] of [['Invoice number','CONTRACT-ANNUAL-INVOICE'],['Invoice date','2026-01-01'],['Invoice due date','2026-01-31'],['Billing evidence','Annual service billed in advance']])await billing.getByLabel(label,{exact:true}).fill(value);
+ await billing.getByRole('button',{name:'Request billing',exact:true}).click();await billing.getByRole('status').waitFor();
+ const billingRequest=(await clientA.from('finance_requests').select('id').eq('entity_id',entity).eq('kind','CONTRACT_BILL')).data[0].id;
+ const decision={p_request_id:billingRequest,p_decision:'APPROVE',p_reason:'Concurrent retry acceptance'};
+ const results=await Promise.all([rpc(clientReviewer,'decide_finance_action',decision),rpc(clientReviewer,'decide_finance_action',decision)]);assert.deepEqual(results[0],results[1]);assert.ok(results[0].invoiceId);
+ await page.reload();await page.getByLabel('Contract',{exact:true}).selectOption(contract);await page.getByLabel('Contract report as of',{exact:true}).fill('2026-02-28');await page.getByText('Revenue control accounts reconcile to the ledger.',{exact:true}).waitFor();await page.locator('summary').filter({hasText:'Cycle 1 ·'}).click();
+ const recognition=page.getByRole('form',{name:'Request revenue recognition',exact:true});await recognition.getByLabel('Recognize service through',{exact:true}).fill('2026-01-31');await recognition.getByLabel('Revenue recognition evidence',{exact:true}).fill('January service delivered');await recognition.getByRole('button',{name:'Request revenue recognition',exact:true}).click();await recognition.getByRole('status').waitFor();
+ const recognitionRequest=(await clientA.from('finance_requests').select('id').eq('entity_id',entity).eq('kind','CONTRACT_RECOGNIZE')).data[0].id;await rpc(clientReviewer,'decide_finance_action',{p_request_id:recognitionRequest,p_decision:'APPROVE',p_reason:'Verified January service'});
+ report=await rpc(clientA,'get_contract_finance',{p_contract_id:contract,p_as_of:'2026-01-31'});assert.equal(report.recognized,'3100.00');assert.equal(report.deferred,'33400.00');assert.ok(report.controls.every(c=>c.variance==='0.00'));
+ await rpc(clientA,'post_customer_receipt_amount',{p_invoice_id:results[0].invoiceId,p_receipt_number:'CONTRACT-PARTIAL-RECEIPT',p_receipt_date:'2026-01-05',p_currency:'USD',p_reference:'Synthetic bank receipt',p_idempotency_key:'contract-partial',p_amount:'15000.00'});
+ assert.equal((await rpc(clientA,'get_subledger_aging',{p_entity_id:entity,p_kind:'ar',p_as_of:'2026-01-31'})).outstanding,'21500.00');
+ const usageTerms={customer_id:ids.customer,reference:'USAGE-INTEGRATION',kind:'USAGE',starts_on:'2026-01-01',ends_on:'2026-01-31',cycle_months:0,price:'0.00',unit_price:'0.0025',timezone:'America/New_York',deferred_account_id:deferred,unbilled_account_id:unbilled,obligations:[{key:'requests',description:'Metered API requests',standalone_price:'1.00',method:'USAGE'}]};
+ const usage=(await approve('CONTRACT_CREATE',usageTerms)).contractId;
+ const event={p_contract_id:usage,p_source:'synthetic-meter',p_external_id:'event-1',p_occurred_at:'2026-01-10T15:00:00Z',p_units:'600000',p_correction_of:null};
+ const deliveries=await Promise.all([rpc(clientA,'record_contract_usage',event),rpc(clientA,'record_contract_usage',event)]);assert.equal(deliveries[0],deliveries[1]);
+ const usageCycle=(await rpc(clientA,'get_contract_finance',{p_contract_id:usage,p_as_of:'2026-01-31'})).cycles[0];
+ await approve('CONTRACT_USAGE_CLOSE',{cycle_id:usageCycle.id,revision:usageCycle.usage.revision,expected_units:'600000'});
+ await approve('CONTRACT_RECOGNIZE',{cycle_id:usageCycle.id,as_of:'2026-01-31',evidence:[]});
+ assert.equal((await rpc(clientA,'get_contract_finance',{p_contract_id:usage,p_as_of:'2026-01-31'})).unbilled,'1500.00');
+ await approve('CONTRACT_BILL',{cycle_id:usageCycle.id,number:'USAGE-INTEGRATION-INVOICE',issue_date:'2026-02-01',due_date:'2026-03-03'});
+ report=await rpc(clientA,'get_contract_finance',{p_contract_id:usage,p_as_of:'2026-02-01'});assert.equal(report.recognized,'1500.00');assert.equal(report.unbilled,'0.00');assert.ok(report.controls.every(c=>c.variance==='0.00'));
+ assert.ok((await clientB.rpc('get_contract_finance',{p_contract_id:contract,p_as_of:'2026-01-31'})).error);assert.deepEqual((await clientB.from('finance_contracts').select('id').eq('id',contract)).data,[]);
+ assert.ok((await clientA.from('finance_requests').update({state:'APPROVED'}).eq('id',req)).error);
+ await page.reload();await page.getByLabel('Contract',{exact:true}).selectOption(usage);await page.getByLabel('Contract report as of',{exact:true}).fill('2026-02-01');await page.getByText('Revenue control accounts reconcile to the ledger.',{exact:true}).waitFor();
+ await page.route('**/rest/v1/rpc/get_contract_finance',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic report outage'})}));await page.getByLabel('Contract report as of',{exact:true}).fill('2026-02-02');await page.getByRole('alert').filter({hasText:'Contract report unavailable'}).waitFor();assert.equal(await page.getByRole('button',{name:'Export contract and revenue evidence',exact:true}).count(),0);
+ assert.deepEqual(failures,[]);await page.close();await reviewPage.close();return {entity,contracts:[contract,usage],billingDecision:decision,billingResult:results[0]};
+}

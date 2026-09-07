@@ -317,3 +317,17 @@ the objects themselves; object recovery needs its own evidence
 
 No remote migration, function deployment, frontend deployment, or production
 data operation is authorized by this document.
+
+## Banking, contract billing and approval acceptance
+
+PR #30 supplies verified statement import and independent cash reconciliation.
+The following contract increment supplies recurring fixed/usage billing, deferred
+and unbilled revenue, independently approved postings, contract source graph checks,
+and restored approval/report evidence. FINANCE_WORKFLOWS.md describes each supported
+policy and the explicit modification, refund, provider and scale boundaries.
+
+Before onboarding, activate journal and payment approval policies for each entity
+through two administrators, accept the chart/control mappings and opening balances,
+validate contract performance obligations and revenue policies, and configure the
+required tax/provider integrations. Repository tests do not establish these
+customer-specific decisions or replace managed staging and operational acceptance.

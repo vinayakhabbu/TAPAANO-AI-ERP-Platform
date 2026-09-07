@@ -14,6 +14,10 @@ export type Database = {
   }
   public: {
     Tables: {
+      finance_requests: { Row: { id: string; org_id: string; entity_id: string; kind: string; payload: Json; reason: string; requested_by: string; requested_at: string; state: string; decided_by: string | null; decided_at: string | null; decision_reason: string | null; result: Json }; Insert: never; Update: never; Relationships: [] }
+      finance_approval_policies: { Row: { id: string; org_id: string; entity_id: string; journals_required: boolean; payments_required: boolean; version: number; request_id: string; updated_at: string }; Insert: never; Update: never; Relationships: [] }
+      finance_contracts: { Row: { id: string; org_id: string; entity_id: string; customer_id: string; reference: string; currency: string; terms: Json; creation_request: string; created_at: string }; Insert: never; Update: never; Relationships: [] }
+
       cash_registers: { Row: { id: string; org_id: string; entity_id: string; account_id: string; name: string; currency: string; created_by: string; created_at: string }; Insert: never; Update: never; Relationships: [] }
       cash_statements: { Row: { id: string; org_id: string; register_id: string; reference: string; starts_on: string; ends_on: string; status: string; imported_by: string; created_at: string }; Insert: never; Update: never; Relationships: [] }
       cash_reviews: { Row: { id: string; org_id: string; statement_id: string; action: string; requested_by: string; requested_at: string; reason: string; snapshot: Json; decision: string | null; decided_by: string | null; decided_at: string | null; decision_reason: string | null }; Insert: never; Update: never; Relationships: [] }
@@ -8436,6 +8440,11 @@ export type Database = {
       }
     }
     Functions: {
+      request_finance_action: { Args: { p_entity_id: string; p_kind: string; p_payload: Json; p_reason: string; p_key: string }; Returns: string }
+      decide_finance_action: { Args: { p_request_id: string; p_decision: string; p_reason: string }; Returns: Json }
+      record_contract_usage: { Args: { p_contract_id: string; p_source: string; p_external_id: string; p_occurred_at: string; p_units: string; p_correction_of?: string | null }; Returns: string }
+      get_contract_finance: { Args: { p_contract_id: string; p_as_of: string }; Returns: Json }
+
       create_cash_register: { Args: { p_entity_id: string; p_account_id: string; p_name: string }; Returns: string }
       import_cash_statement: { Args: { p_register_id: string; p_statement: Json; p_key: string }; Returns: string }
       get_cash_reconciliation: { Args: { p_statement_id: string }; Returns: Json }

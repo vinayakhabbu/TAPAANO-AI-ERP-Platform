@@ -15,6 +15,8 @@ const Receivables = lazy(() => import("./pages/Receivables"));
 const Payables = lazy(() => import("./pages/Payables"));
 const GeneralLedger = lazy(() => import("./pages/GeneralLedger"));
 const TrialBalance = lazy(() => import("./pages/TrialBalance"));
+const ContractFinance = lazy(() => import("./pages/ContractFinance"));
+const FinanceOperations = lazy(() => import("./pages/FinanceOperations"));
 const Banking = lazy(() => import("./pages/Banking"));
 const PeriodClose = lazy(() => import("./pages/PeriodClose"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -80,6 +82,8 @@ function AppRoutes() {
           <Route path="/gl" element={<GeneralLedger />} />
           <Route path="/reports" element={<TrialBalance />} />
           <Route path="/banking" element={<Banking />} />
+          <Route path="/contracts" element={<ContractFinance />} />
+          <Route path="/finance-operations" element={<FinanceOperations />} />
           <Route path="/close" element={<PeriodClose />} />
           <Route path="/production" element={<ContainedModule title="Production" reason="Backflush, goods receipt, WIP, variance, and capacity histories are unverified." />} />
           <Route path="/controlling" element={<ContainedModule title="Controlling" reason="Allocations, prepaid schedules, budgets, projects, and asset outputs are unverified." />} />

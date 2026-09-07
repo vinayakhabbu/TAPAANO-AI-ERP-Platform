@@ -45,7 +45,7 @@ const Payables = () => {
           Direct, zero-tax bills in the entity&apos;s functional currency can post atomically to
           a configured expense and AP control account. Full exact supplier credits and manual full or partial
           payments are supported. Each payment supports one exact correction and one server-derived replacement.
-          Record partial allocations from aging; the server checks available balances across dated history. Payments use cash clearing and are not bank-reconciled.
+          Record partial allocations from aging; the server checks available balances across dated history. Payments use cash clearing and are not bank-reconciled by posting; review Banking for reconciliation. Required payment approvals are handled in Finance Approvals.
           A correction or replacement is not a refund, recall, or bank action.
           Generic repeat replacements remain unavailable. Bank execution, approval,
           matching, PO/receipt conversion, tax, FX, partial credits, refunds,

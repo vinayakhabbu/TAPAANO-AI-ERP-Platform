@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 
 export type FinanceField = { name: string; label: string; type?: 'text' | 'date' | 'textarea'; value?: string; optional?: boolean; options?: { value: string; label: string }[] };
 /** Freeze the full request on submission so a lost response can be retried safely. */
-export function FinanceActionForm({ title, fields, submit, onSuccess }: {
-  title: string; fields: FinanceField[]; submit: (values: Record<string, string>, key: string) => Promise<unknown>; onSuccess?: () => void;
+export function FinanceActionForm({ title, fields, submit, onSuccess, children }: {
+  title: string; fields: FinanceField[]; submit: (values: Record<string, string>, key: string) => Promise<unknown>; onSuccess?: () => void; children?: ReactNode;
 }) {
   const id=useId(), cache=useQueryClient();
   const [request,setRequest]=useState<{values:Record<string,string>;key:string}|null>(null);
@@ -29,6 +29,7 @@ export function FinanceActionForm({ title, fields, submit, onSuccess }: {
           :f.type==='textarea'?<textarea id={id+f.name} name={f.name} required={!f.optional} defaultValue={f.value} rows={4} maxLength={2000000} className="w-full rounded border bg-background p-2"/>
           :<Input id={id+f.name} name={f.name} type={f.type??'text'} required={!f.optional} defaultValue={f.value} maxLength={2000}/>}
       </div>)}
+      {children?<div className="sm:col-span-2">{children}</div>:null}
     </fieldset>
     {done?<p role="status">Saved. Refresh the history to review the result.</p>:<Button disabled={pending} type="submit">{pending?'Saving…':request?'Retry same request':title}</Button>}
     {error?<div role="alert" className="space-y-2 text-sm text-destructive"><p>{error}</p><p>Check history before editing a request whose outcome is uncertain.</p><Button type="button" variant="outline" disabled={pending} onClick={()=>{setRequest(null);setError('');}}>Edit after checking history</Button></div>:null}

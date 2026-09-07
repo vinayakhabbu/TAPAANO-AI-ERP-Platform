@@ -7,6 +7,7 @@ import pg from "pg";
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { loadTypescript } from "../helpers/load-typescript.mjs";
+import { qualifyContractWorkflow } from "./contract-workflow.mjs";
 import { qualifyCashWorkflow } from "./cash-workflow.mjs";
 import { rehearsePopulatedRecovery } from "../helpers/populated-recovery.mjs";
 
@@ -32,7 +33,7 @@ async function rpc(client, name, args) {
 // Never accepts remote URLs or credentials from environment variables. Bootstrap
 // creates synthetic identities only in the CLI's disposable local database.
 // Normal application calls below run with actual authenticated JWTs and guards.
-test("full migration stack supports authenticated finance reads and the browser", { timeout: 360000 }, async (t) => {
+test("full migration stack supports authenticated finance reads and the browser", { timeout: 480000 }, async (t) => {
   const status = JSON.parse(execFileSync("supabase", ["status", "--output", "json"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }));
   const api = requireLoopback(status.API_URL);
   const dbUrl = requireLoopback(status.DB_URL);
@@ -489,6 +490,10 @@ test("full migration stack supports authenticated finance reads and the browser"
     await t.test("bank import, matching and independent reconciliation survive browser retries and tenant API boundaries",async()=>{
       cashEvidence=await qualifyCashWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password});
     });
+    let contractEvidence;
+    await t.test("approved browser contracts, subscription billing, usage and revenue reconcile through independent API sessions",async()=>{
+      contractEvidence=await qualifyContractWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password,emailReviewer});
+    });
     await t.test("populated backup restores financial evidence, login, isolation and retry behavior after a fresh database reset", async () => {
       await browser?.close(); browser=null;
       server?.kill("SIGTERM"); server=null;
@@ -498,6 +503,7 @@ test("full migration stack supports authenticated finance reads and the browser"
         ["get_entity_trial_balance",{p_entity_id:ids.eur,p_from_date:"2026-01-01",p_to_date:"2026-12-31"}],
         ...["ar","ap"].flatMap(kind => ["2026-09-08","2026-12-07","2026-12-20"].map(day => ["get_subledger_aging",{p_entity_id:ids.usd,p_kind:kind,p_as_of:day,p_offset:0,p_page_size:100}])),
       ];
+      for(const contract of contractEvidence.contracts) reportRequests.push(["get_contract_finance",{p_contract_id:contract,p_as_of:"2026-02-01"}]);
       const before=[];for(const [name,args] of reportRequests) before.push(normalized(await rpc(clientA,name,args)));
       const retries=[];
       for(const [source,column,number,date,reference] of [
@@ -512,10 +518,11 @@ test("full migration stack supports authenticated finance reads and the browser"
       // first so an expected disconnect cannot hide a recovery-test failure.
       await db.end();db=null;
       const evidence=await rehearsePopulatedRecovery({status,expectedOrganizations:[ids.orgA,ids.orgB],expectedUsers:[ids.adminA,ids.adminB,ids.reviewer],verifyApplication:async restoredDb=>{
-        const restoredA=createClient(api,status.ANON_KEY,options),restoredB=createClient(api,status.ANON_KEY,options);
-        for(const [client,email] of [[restoredA,emailA],[restoredB,emailB]]) {
+        const restoredA=createClient(api,status.ANON_KEY,options),restoredB=createClient(api,status.ANON_KEY,options),restoredReviewer=createClient(api,status.ANON_KEY,options);
+        for(const [client,email] of [[restoredA,emailA],[restoredB,emailB],[restoredReviewer,emailReviewer]]) {
           const result=await client.auth.signInWithPassword({email,password});assert.equal(result.error,null,"Restored identities must support a fresh login");
         }
+        assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",contractEvidence.billingDecision),contractEvidence.billingResult,"Approved billing retry must survive recovery without new posting");
         assert.equal((await rpc(restoredA,"get_cash_reconciliation",{p_statement_id:cashEvidence.statement})).revision,cashEvidence.revision,"Approved cash reconciliation must survive restore exactly");
         const after=[];for(const [name,args] of reportRequests) after.push(normalized(await rpc(restoredA,name,args)));
         assert.deepEqual(after,before,"Restored trial balances and historical aging must exactly reconcile");
@@ -530,7 +537,7 @@ test("full migration stack supports authenticated finance reads and the browser"
         assert.ok((await restoredA.rpc("post_manual_journal",{p_entity_id:ids.usd,p_entry_number:"RECOVERY-CLOSED",p_entry_date:"2026-11-05",p_memo:"Synthetic closed-period rejection",p_lines:[{account_id:ids.cash,debit:"1.00",credit:"0.00"},{account_id:ids.revenue,debit:"0.00",credit:"1.00"}],p_idempotency_key:"recovery-closed"})).error);
         const health=(await restoredDb.query("SELECT count(*)::int AS count FROM public.journal_entries WHERE entry_number='RECOVERY-CLOSED'")).rows[0];assert.equal(health.count,0);
       }});
-      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,18);assert.ok(evidence.rows>1000);
+      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,24);assert.ok(evidence.rows>1000);
     });
 
   } finally {

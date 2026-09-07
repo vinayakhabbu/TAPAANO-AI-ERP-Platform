@@ -64,6 +64,8 @@ const navCategories = [
     items: [
       { icon: BookOpen, label: "General Ledger", href: "/gl" },
       { icon: Building2, label: "Banking", href: "/banking" },
+      { icon: Receipt, label: "Contracts and Revenue", href: "/contracts" },
+      { icon: BookOpen, label: "Finance Approvals", href: "/finance-operations" },
       { icon: Coins, label: "Multi-Currency", href: "/currency" },
       { icon: Calculator, label: "Tax Management", href: "/tax" },
       { icon: PieChart, label: "Controlling", href: "/controlling" },
