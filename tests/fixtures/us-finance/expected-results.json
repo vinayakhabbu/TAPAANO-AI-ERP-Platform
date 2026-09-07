@@ -1,0 +1,311 @@
+{
+  "synthetic": true,
+  "openingAR": "300.00",
+  "januaryContractRevenue": "11506.67",
+  "januaryClosingBilledAR": "12000.00",
+  "januaryClosingUnbilledReceivable": "1500.00",
+  "januaryClosingDeferredRevenue": "39693.33",
+  "processorClearingAfterPayout": "0.00",
+  "bankReconciliation": {
+    "adjustedStatementBalance": "85500.00",
+    "bookCashAfterApprovedFeeAndInterest": "84750.00",
+    "unresolvedDifference": "750.00",
+    "unresolvedSourceIds": [
+      "BANK-005"
+    ],
+    "mayAutoComplete": false,
+    "conditionalBookCashAfterApprovedSuspense": "85500.00",
+    "ownershipResolvedBySuspense": false
+  },
+  "journalExamples": [
+    {
+      "id": "annual-invoice",
+      "date": "2027-01-01",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "ar",
+          "debit": "36500.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "deferred_revenue",
+          "debit": "0.00",
+          "credit": "36500.00"
+        }
+      ]
+    },
+    {
+      "id": "monthly-invoice",
+      "date": "2027-01-01",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "ar",
+          "debit": "1200.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "deferred_revenue",
+          "debit": "0.00",
+          "credit": "1200.00"
+        }
+      ]
+    },
+    {
+      "id": "bundle-invoice",
+      "date": "2027-01-01",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "ar",
+          "debit": "12000.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "deferred_revenue",
+          "debit": "0.00",
+          "credit": "12000.00"
+        }
+      ]
+    },
+    {
+      "id": "annual-first-receipt",
+      "date": "2027-01-05",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "bank_cash",
+          "debit": "15000.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "ar",
+          "debit": "0.00",
+          "credit": "15000.00"
+        }
+      ]
+    },
+    {
+      "id": "annual-final-receipt",
+      "date": "2027-01-20",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "bank_cash",
+          "debit": "21500.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "ar",
+          "debit": "0.00",
+          "credit": "21500.00"
+        }
+      ]
+    },
+    {
+      "id": "processor-gross-collections",
+      "date": "2027-01-10",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "processor_clearing",
+          "debit": "1500.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "ar",
+          "debit": "0.00",
+          "credit": "1500.00"
+        }
+      ]
+    },
+    {
+      "id": "processor-fees",
+      "date": "2027-01-10",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "processing_expense",
+          "debit": "30.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "processor_clearing",
+          "debit": "0.00",
+          "credit": "30.00"
+        }
+      ]
+    },
+    {
+      "id": "processor-bank-transfer",
+      "date": "2027-01-11",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "bank_cash",
+          "debit": "1470.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "processor_clearing",
+          "debit": "0.00",
+          "credit": "1470.00"
+        }
+      ]
+    },
+    {
+      "id": "annual-january-recognition",
+      "date": "2027-01-31",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "deferred_revenue",
+          "debit": "3100.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "revenue",
+          "debit": "0.00",
+          "credit": "3100.00"
+        }
+      ]
+    },
+    {
+      "id": "monthly-january-recognition",
+      "date": "2027-01-31",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "deferred_revenue",
+          "debit": "1200.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "revenue",
+          "debit": "0.00",
+          "credit": "1200.00"
+        }
+      ]
+    },
+    {
+      "id": "bundle-january-access",
+      "date": "2027-01-31",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "deferred_revenue",
+          "debit": "3306.67",
+          "credit": "0.00"
+        },
+        {
+          "account": "revenue",
+          "debit": "0.00",
+          "credit": "3306.67"
+        }
+      ]
+    },
+    {
+      "id": "training-acceptance",
+      "date": "2027-01-20",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "deferred_revenue",
+          "debit": "2400.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "revenue",
+          "debit": "0.00",
+          "credit": "2400.00"
+        }
+      ]
+    },
+    {
+      "id": "usage-january-earned",
+      "date": "2027-01-31",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "unbilled_receivable",
+          "debit": "1500.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "revenue",
+          "debit": "0.00",
+          "credit": "1500.00"
+        }
+      ]
+    },
+    {
+      "id": "usage-february-billed",
+      "date": "2027-02-01",
+      "status": "expected_future_posting",
+      "lines": [
+        {
+          "account": "ar",
+          "debit": "1500.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "unbilled_receivable",
+          "debit": "0.00",
+          "credit": "1500.00"
+        }
+      ]
+    },
+    {
+      "id": "bank-fee",
+      "date": "2027-01-31",
+      "status": "requires_approval",
+      "lines": [
+        {
+          "account": "bank_fee_expense",
+          "debit": "25.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "bank_cash",
+          "debit": "0.00",
+          "credit": "25.00"
+        }
+      ]
+    },
+    {
+      "id": "bank-interest",
+      "date": "2027-01-31",
+      "status": "requires_approval",
+      "lines": [
+        {
+          "account": "bank_cash",
+          "debit": "5.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "interest_income",
+          "debit": "0.00",
+          "credit": "5.00"
+        }
+      ]
+    },
+    {
+      "id": "unidentified-receipt-proposal",
+      "date": "2027-01-25",
+      "status": "requires_separate_approval_ownership_unresolved",
+      "lines": [
+        {
+          "account": "bank_cash",
+          "debit": "750.00",
+          "credit": "0.00"
+        },
+        {
+          "account": "unidentified_receipts_liability",
+          "debit": "0.00",
+          "credit": "750.00"
+        }
+      ]
+    }
+  ]
+}
