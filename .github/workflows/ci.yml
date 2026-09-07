@@ -94,8 +94,16 @@ jobs:
       - name: Lint rehearsed database
         run: supabase db lint --local --level error
 
-      - name: Verify authenticated API, browser, and concurrent posting
+      - name: Verify authenticated API, browser, concurrency and populated recovery
         run: npm run test:integration
+
+      - name: Retain sanitized recovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-recovery-evidence
+          path: test-results/recovery.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Destroy disposable Supabase stack
         if: always()

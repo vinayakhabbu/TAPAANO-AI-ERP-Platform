@@ -7,6 +7,7 @@ import pg from "pg";
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { loadTypescript } from "../helpers/load-typescript.mjs";
+import { rehearsePopulatedRecovery } from "../helpers/populated-recovery.mjs";
 
 const { JOURNAL_HISTORY_SELECT } = await loadTypescript("../../src/lib/journalQuery.ts");
 const { POSTED_INVOICE_SELECT, POSTED_BILL_SELECT, LEGACY_BILL_SELECT } = await loadTypescript("../../src/lib/documentQueries.ts");
@@ -30,12 +31,12 @@ async function rpc(client, name, args) {
 // Never accepts remote URLs or credentials from environment variables. Bootstrap
 // creates synthetic identities only in the CLI's disposable local database.
 // Normal application calls below run with actual authenticated JWTs and guards.
-test("full migration stack supports authenticated finance reads and the browser", { timeout: 180000 }, async (t) => {
+test("full migration stack supports authenticated finance reads and the browser", { timeout: 360000 }, async (t) => {
   const status = JSON.parse(execFileSync("supabase", ["status", "--output", "json"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }));
   const api = requireLoopback(status.API_URL);
   const dbUrl = requireLoopback(status.DB_URL);
   assert.ok(status.ANON_KEY, "Local anon key is required");
-  const db = new pg.Client({ connectionString: dbUrl });
+  let db = new pg.Client({ connectionString: dbUrl });
   await db.connect();
   let browser, server;
   const ids = Object.fromEntries(["orgA", "orgB", "adminA", "adminB", "usd", "eur", "ar", "revenue", "cash", "ap", "expense", "customer", "vendor"].map((key) => [key, randomUUID()]));
@@ -482,9 +483,52 @@ test("full migration stack supports authenticated finance reads and the browser"
       assert.deepEqual(failures,[]);await page.close();
     });
 
+    await t.test("populated backup restores financial evidence, login, isolation and retry behavior after a fresh database reset", async () => {
+      await browser?.close(); browser=null;
+      server?.kill("SIGTERM"); server=null;
+      const normalized = value => JSON.parse(JSON.stringify(value, (key,item) => key === "generatedAt" ? undefined : item));
+      const reportRequests = [
+        ["get_entity_trial_balance",{p_entity_id:ids.usd,p_from_date:"2026-01-01",p_to_date:"2026-12-31"}],
+        ["get_entity_trial_balance",{p_entity_id:ids.eur,p_from_date:"2026-01-01",p_to_date:"2026-12-31"}],
+        ...["ar","ap"].flatMap(kind => ["2026-09-08","2026-12-07","2026-12-20"].map(day => ["get_subledger_aging",{p_entity_id:ids.usd,p_kind:kind,p_as_of:day,p_offset:0,p_page_size:100}])),
+      ];
+      const before=[];for(const [name,args] of reportRequests) before.push(normalized(await rpc(clientA,name,args)));
+      const retries=[];
+      for(const [source,column,number,date,reference] of [
+        ["customer_receipt","invoice_id","receipt_number","receipt_date","receipt_reference"],
+        ["supplier_payment","bill_id","payment_number","payment_date","payment_reference"],
+      ]) {
+        const {rows:[row]}=await db.query(`SELECT id,${column} AS document,${number} AS number,${date}::text AS date,${reference} AS reference,currency,amount::text,idempotency_key FROM public.${source}s WHERE ${number} LIKE 'PARTIAL-%-FIRST'`);
+        assert.ok(row,"Recovery fixture must include an amount-entry settlement");
+        retries.push(["post_"+source+"_amount",{["p_"+column]:row.document,["p_"+number]:row.number,["p_"+date]:row.date,p_currency:row.currency,p_reference:row.reference,p_amount:row.amount,p_idempotency_key:row.idempotency_key},row.id]);
+      }
+      // The reset disconnects existing database clients. Close the fixture owner
+      // first so an expected disconnect cannot hide a recovery-test failure.
+      await db.end();db=null;
+      const evidence=await rehearsePopulatedRecovery({status,expectedOrganizations:[ids.orgA,ids.orgB],expectedUsers:[ids.adminA,ids.adminB],verifyApplication:async restoredDb=>{
+        const restoredA=createClient(api,status.ANON_KEY,options),restoredB=createClient(api,status.ANON_KEY,options);
+        for(const [client,email] of [[restoredA,emailA],[restoredB,emailB]]) {
+          const result=await client.auth.signInWithPassword({email,password});assert.equal(result.error,null,"Restored identities must support a fresh login");
+        }
+        const after=[];for(const [name,args] of reportRequests) after.push(normalized(await rpc(restoredA,name,args)));
+        assert.deepEqual(after,before,"Restored trial balances and historical aging must exactly reconcile");
+        assert.equal(await rpc(restoredA,"post_customer_invoice",usdPayload),usdInvoice);
+        for(const [name,args,id] of retries) assert.equal(await rpc(restoredA,name,args),id,"Restored idempotency evidence must prevent duplicate settlement");
+        assert.deepEqual(await rpc(restoredB,"get_recent_posted_journals"),[]);
+        assert.ok((await restoredB.rpc("get_entity_trial_balance",reportRequests[0][1])).error);
+        assert.ok((await restoredB.rpc("post_customer_invoice",usdPayload)).error);
+        const anonymous=createClient(api,status.ANON_KEY,options);
+        assert.ok((await anonymous.rpc("get_entity_trial_balance",reportRequests[0][1])).error);
+        assert.ok((await restoredA.from("journal_entries").update({memo:"Forbidden after restore"}).eq("org_id",ids.orgA)).error);
+        assert.ok((await restoredA.rpc("post_manual_journal",{p_entity_id:ids.usd,p_entry_number:"RECOVERY-CLOSED",p_entry_date:"2026-11-05",p_memo:"Synthetic closed-period rejection",p_lines:[{account_id:ids.cash,debit:"1.00",credit:"0.00"},{account_id:ids.revenue,debit:"0.00",credit:"1.00"}],p_idempotency_key:"recovery-closed"})).error);
+        const health=(await restoredDb.query("SELECT count(*)::int AS count FROM public.journal_entries WHERE entry_number='RECOVERY-CLOSED'")).rows[0];assert.equal(health.count,0);
+      }});
+      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,18);assert.ok(evidence.rows>1000);
+    });
+
   } finally {
     await browser?.close();
     server?.kill("SIGTERM");
-    await db.end();
+    await db?.end();
   }
 });
