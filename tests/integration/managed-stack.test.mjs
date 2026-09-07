@@ -417,6 +417,71 @@ test("full migration stack supports authenticated finance reads and the browser"
       assert.equal(await page.getByRole("button", { name: "Save posting accounts", exact: true }).count(), 0);
       assert.deepEqual(failures, []);
     });
+    await t.test("partial AR/AP browser retries and concurrent final allocations preserve balances and every settlement action", async () => {
+      await rpc(clientA,"create_accounting_period",{p_entity_id:ids.usd,p_period_start:"2026-12-01",p_period_end:"2026-12-31",p_idempotency_key:"partial-december"});
+      const secondSession=createClient(api,status.ANON_KEY,options);
+      assert.equal((await secondSession.auth.signInWithPassword({email:emailA,password})).error,null);
+      const page=await browser.newPage();const failures=[];page.on("pageerror",error=>failures.push(error.message));
+      await page.goto("http://127.0.0.1:4173/auth");
+      await page.getByLabel("Email",{exact:true}).fill(emailA);await page.getByLabel("Password",{exact:true}).fill(password);
+      await page.getByRole("button",{name:"Sign In",exact:true}).click();
+      await page.getByText("Journal-linked posted invoices",{exact:true}).waitFor();
+      for(const kind of ["ar","ap"]) {
+        const number="PARTIAL-"+kind.toUpperCase(),source=kind==="ar"?"customer_receipt":"supplier_payment";
+        const docArgs=kind==="ar"?{p_customer_id:ids.customer,p_invoice_number:number}:{p_vendor_id:ids.vendor,p_bill_number:number};
+        const doc=await rpc(clientA,kind==="ar"?"post_customer_invoice":"post_supplier_bill",{...docArgs,p_entity_id:ids.usd,p_issue_date:"2026-12-06",p_due_date:"2026-12-20",p_currency:"USD",p_tax:0,p_notes:null,p_lines:[{description:"Synthetic posted receivable/payable; not deferred revenue",quantity:"1",unit_price:"36500.00"}],p_idempotency_key:number});
+        await page.goto("http://127.0.0.1:4173/"+kind);
+        const region=page.getByRole("region",{name:kind==="ar"?"Receivables aging":"Payables aging",exact:true});
+        await region.getByLabel("Aging entity",{exact:true}).selectOption(ids.usd);
+        await region.getByLabel("Aging as of",{exact:true}).fill("2026-12-07");
+        await region.getByRole("button",{name:"Generate aging",exact:true}).click();
+        const row=region.getByRole("row").filter({hasText:number});
+        await row.getByRole("button",{name:kind==="ar"?"Record receipt":"Record payment",exact:true}).click();
+        const dialog=page.getByRole("dialog");
+        await dialog.getByLabel("Settlement number",{exact:true}).fill(number+"-FIRST");
+        await dialog.getByLabel("Settlement date",{exact:true}).fill("2026-12-07");
+        await dialog.getByLabel("Settlement amount (USD)",{exact:true}).fill("15000.00");
+        await dialog.getByLabel("Settlement reference",{exact:true}).fill("Synthetic partial settlement");
+        const attempts=[];const endpoint="**/rest/v1/rpc/post_"+source+"_amount";
+        await page.route(endpoint,async route=>{
+          attempts.push(route.request().postDataJSON());
+          if(attempts.length===1){const committed=await route.fetch();assert.equal(committed.ok(),true);await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({message:"Synthetic lost settlement confirmation"})});}
+          else await route.continue();
+        });
+        await dialog.getByRole("button",{name:kind==="ar"?"Post receipt and journal":"Post payment and journal",exact:true}).click();
+        await dialog.getByText("Settlement posting not confirmed",{exact:true}).waitFor();
+        assert.equal(await dialog.getByLabel("Settlement amount (USD)",{exact:true}).isDisabled(),true);
+        await dialog.getByRole("button",{name:"Retry same settlement",exact:true}).click();
+        await dialog.waitFor({state:"hidden"});
+        assert.equal(attempts.length,2);assert.deepEqual(attempts[0],attempts[1]);assert.equal(attempts[0].p_amount,"15000.00");
+        await page.unroute(endpoint);
+        await row.getByRole("cell",{name:"USD 21,500.00",exact:true}).waitFor();
+        const final={...attempts[0],p_amount:"21500.00",p_idempotency_key:number+"-FINAL"};
+        final[kind==="ar"?"p_receipt_number":"p_payment_number"]=number+"-FINAL";
+        final[kind==="ar"?"p_receipt_date":"p_payment_date"]="2026-12-20";
+        const competing={...final,p_idempotency_key:number+"-COMPETING"};competing[kind==="ar"?"p_receipt_number":"p_payment_number"]=number+"-COMPETING";
+        const result=await Promise.all([clientA.rpc("post_"+source+"_amount",final),secondSession.rpc("post_"+source+"_amount",competing)]);
+        assert.equal(result.filter(item=>!item.error).length,1);assert.match(result.find(item=>item.error).error.message,/settlements exceed/);
+        const winner=result[0].error?competing:final;
+        assert.equal(await rpc(clientA,"post_"+source+"_amount",winner),result.find(item=>!item.error).data);
+        assert.ok((await clientB.rpc("post_"+source+"_amount",winner)).error);
+        const table=kind==="ar"?"customer_receipts":"supplier_payments",column=kind==="ar"?"invoice_id":"bill_id";
+        const {rows:[totals]}=await db.query(`SELECT count(*)::int AS count,sum(amount)::text AS total FROM public.${table} WHERE ${column}=$1`,[doc]);
+        assert.deepEqual(totals,{count:2,total:"36500.00"});
+        const loser=result[0].error?final:competing;
+        assert.equal((await db.query("SELECT count(*)::int AS count FROM public.accounting_events WHERE org_id=$1 AND idempotency_key=$2",[ids.orgA,loser.p_idempotency_key])).rows[0].count,0);
+        for(const [day,expected] of [["2026-12-07","21500.00"],["2026-12-20","0.00"]]) {
+          const aging=await rpc(clientA,"get_subledger_aging",{p_entity_id:ids.usd,p_kind:kind,p_as_of:day,p_offset:0,p_page_size:100});
+          assert.equal(aging.outstanding,expected);assert.equal(aging.reconciled,true);
+        }
+        await page.reload();
+        const history=page.getByRole("row").filter({has:page.getByRole("cell",{name:number,exact:true})});
+        await history.getByText(new RegExp(number+"-FIRST")).waitFor();
+        assert.equal(await history.getByRole("button",{name:kind==="ar"?"Correct receipt":"Correct payment",exact:true}).count(),2);
+      }
+      assert.deepEqual(failures,[]);await page.close();
+    });
+
   } finally {
     await browser?.close();
     server?.kill("SIGTERM");

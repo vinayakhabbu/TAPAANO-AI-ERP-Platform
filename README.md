@@ -56,10 +56,10 @@ requirements; this target does not change the implementation status below.
   idempotent manual posting; exact-offset reversal; OPEN/SOFT_CLOSED/
   HARD_CLOSED period enforcement; and zero-tax, same-functional-currency
   customer invoice posting, exact full credit notes, and server-derived manual
-  full receipts with one exact-offset receipt correction and one derived
+  full or entered-amount partial receipts with one exact-offset correction per receipt and one derived
   replacement after that correction, plus zero-tax
   functional-currency supplier-bill posting, exact full supplier credits, and
-  server-derived manual full supplier payments with one exact-offset payment
+  manual full or entered-amount partial supplier payments with one exact-offset payment
   correction and one derived post-correction replacement through atomic
   database RPCs. Corrections and replacements are accounting records, not
   evidence of a bank refund or action. Existing non-admin tenant members can
@@ -86,9 +86,9 @@ requirements; this target does not change the implementation status below.
   self-role, tenant moves, removal, and open self-service registration remain
   immutable or unavailable.
 - **Unavailable or unverified:** generic repeat or partial replacement receipts,
-  partial receipts or receipt corrections, overpayments, refunds,
+  partial correction of an individual receipt, overpayments, refunds,
   customer collections, tax and FX invoice posting, partial supplier
-  credits/payments, generic repeat or partial replacement payments, partial
+  credits, generic repeat or partial replacement payments, partial
   payment corrections, refunds,
   approval, matching, bank execution/reconciliation,
   tax and FX posting,

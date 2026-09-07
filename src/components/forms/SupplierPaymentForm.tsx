@@ -92,9 +92,10 @@ export function SupplierPaymentForm({
             <ShieldCheck className="h-5 w-5" /> Full payment for {billNumber}
           </DialogTitle>
           <DialogDescription>
+            Use aging to record partial payments.
             PostgreSQL derives the exact bill total and posts AP debit and cash-clearing credit
             in one OPEN-period transaction. This is a manual accounting record, not bank-match
-            or reconciliation evidence. Partial and overpayments remain unavailable.
+            or reconciliation evidence. Overpayments remain unavailable.
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postPayment.mutate(); }}>
