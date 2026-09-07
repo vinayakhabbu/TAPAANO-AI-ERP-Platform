@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import { loadTypescript } from "../helpers/load-typescript.mjs";
 import { qualifyContractWorkflow } from "./contract-workflow.mjs";
 import { qualifyProviderWorkflow } from "./provider-workflow.mjs";
+import { qualifyCloseWorkflow } from "./close-workflow.mjs";
 import { qualifyCashWorkflow } from "./cash-workflow.mjs";
 import { rehearsePopulatedRecovery } from "../helpers/populated-recovery.mjs";
 
@@ -499,6 +500,10 @@ test("full migration stack supports authenticated finance reads and the browser"
     await t.test("signed Edge provider events require independent browser mapping and preserve replay and correction history",async()=>{
       providerEvidence=await qualifyProviderWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password,api});
     });
+    let closeEvidence;
+    await t.test("browser schedules and independently approved fiscal close preserve income and reviewed posting cutoffs",async()=>{
+      closeEvidence=await qualifyCloseWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password});
+    });
     await t.test("populated backup restores financial evidence, login, isolation and retry behavior after a fresh database reset", async () => {
       await browser?.close(); browser=null;
       server?.kill("SIGTERM"); server=null;
@@ -510,6 +515,8 @@ test("full migration stack supports authenticated finance reads and the browser"
       ];
       for(const contract of contractEvidence.contracts) reportRequests.push(["get_contract_finance",{p_contract_id:contract,p_as_of:"2026-02-01"}]);
       reportRequests.push(["get_finance_integration_report",{p_entity:providerEvidence.entity,p_as_of:"2026-01-31"}]);
+      for(const schedule of closeEvidence.schedules)for(const date of ['2025-12-31','2026-01-01'])reportRequests.push(['get_finance_schedule',{p_schedule:schedule,p_as_of:date}]);
+      reportRequests.push(['get_finance_close_check',{p_entity:closeEvidence.entity,p_from:'2025-01-01',p_through:'2025-12-31'}]);
       const before=[];for(const [name,args] of reportRequests) before.push(normalized(await rpc(clientA,name,args)));
       const retries=[];
       for(const [source,column,number,date,reference] of [
@@ -530,6 +537,7 @@ test("full migration stack supports authenticated finance reads and the browser"
         }
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",contractEvidence.billingDecision),contractEvidence.billingResult,"Approved billing retry must survive recovery without new posting");
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",providerEvidence.decision),providerEvidence.result,"Provider approval retry must survive recovery without duplicate receipt");
+        assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",closeEvidence.decision),closeEvidence.result,"Fiscal close approval must survive recovery without duplicate closing entries");
         assert.equal((await rpc(restoredA,"get_cash_reconciliation",{p_statement_id:cashEvidence.statement})).revision,cashEvidence.revision,"Approved cash reconciliation must survive restore exactly");
         const after=[];for(const [name,args] of reportRequests) after.push(normalized(await rpc(restoredA,name,args)));
         assert.deepEqual(after,before,"Restored trial balances and historical aging must exactly reconcile");
@@ -544,7 +552,7 @@ test("full migration stack supports authenticated finance reads and the browser"
         assert.ok((await restoredA.rpc("post_manual_journal",{p_entity_id:ids.usd,p_entry_number:"RECOVERY-CLOSED",p_entry_date:"2026-11-05",p_memo:"Synthetic closed-period rejection",p_lines:[{account_id:ids.cash,debit:"1.00",credit:"0.00"},{account_id:ids.revenue,debit:"0.00",credit:"1.00"}],p_idempotency_key:"recovery-closed"})).error);
         const health=(await restoredDb.query("SELECT count(*)::int AS count FROM public.journal_entries WHERE entry_number='RECOVERY-CLOSED'")).rows[0];assert.equal(health.count,0);
       }});
-      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,32);assert.ok(evidence.rows>1000);
+      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,38);assert.ok(evidence.rows>1000);
     });
 
   } finally {

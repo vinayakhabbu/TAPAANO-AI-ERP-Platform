@@ -6,6 +6,7 @@ export type TrialBalance = TrialBalanceRequest & {
   entityName: string; currency: string; generatedAt: string; revision: string;
   journalCount: number; periodJournalCount: number; draftJournalCount: number;
   rows: TrialBalanceRow[]; totals: BalanceAmounts;
+  fiscalClosingActivity?: { accountId: string; debit: string; credit: string }[];
 };
 
 export function isReportDate(value: string): boolean {
@@ -55,6 +56,15 @@ export function parseTrialBalance(value: unknown, request: TrialBalanceRequest):
       || (cents(row.closingDebit) > 0n && cents(row.closingCredit) > 0n)) throw new Error("Trial balance does not reconcile.");
   }
   for (const key of balanceKeys) if (sums[key] !== cents(totals[key])) throw new Error("Trial balance totals are incomplete.");
+  if(report.fiscalClosingActivity!==undefined){
+    if(!Array.isArray(report.fiscalClosingActivity))throw new Error("Fiscal closing presentation is unavailable.");
+    let debit=0n,credit=0n;const closingIds=new Set<string>();
+    for(const raw of report.fiscalClosingActivity){const row=reportObject(raw);if(typeof row.accountId!=="string"||!ids.has(row.accountId)||closingIds.has(row.accountId))throw new Error("Invalid fiscal closing account.");closingIds.add(row.accountId);
+      const d=cents(row.debit),c=cents(row.credit),balance=report.rows.find(item=>reportObject(item).accountId===row.accountId) as TrialBalanceRow;
+      if(d>cents(balance.periodDebit)||c>cents(balance.periodCredit))throw new Error("Fiscal closing exceeds recorded activity.");debit+=d;credit+=c;
+    }
+    if(debit!==credit)throw new Error("Fiscal closing transfers do not balance.");
+  }
   for (const [debit, credit] of [["openingDebit", "openingCredit"], ["periodDebit", "periodCredit"], ["closingDebit", "closingCredit"]] as const) {
     if (sums[debit] !== sums[credit]) throw new Error("Trial balance does not balance.");
   }

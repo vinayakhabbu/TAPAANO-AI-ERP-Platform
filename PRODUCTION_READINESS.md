@@ -348,3 +348,14 @@ complete imports against provider exports and bank statements, and monitor faile
 deliveries and unresolved items. Validate customer-specific tax/payroll adapters
 separately. These live-provider and managed-deployment checks are not supplied by
 synthetic CI, and no real provider connection is established by merging this code.
+
+## Schedule and fiscal close acceptance
+
+The close increment supplies approved prepaids, fixed assets, recurring journals,
+accruals, source checks, reviewed periods and retained-earnings closing. See
+FINANCE_CLOSE.md for policy limits and correction behavior. Before onboarding,
+finance must reconcile acquisition sources, accept useful lives and residuals,
+review accrual completeness and approve opening retained earnings and fiscal dates.
+Hard-close permissions and recovery responsibilities need explicit acceptance.
+Synthetic annual scenarios and populated restore exercise code behavior, not these
+customer decisions or managed-service recovery and scale.

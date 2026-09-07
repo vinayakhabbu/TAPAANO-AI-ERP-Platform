@@ -227,3 +227,14 @@ corrections. Its deployed local Edge, browser and recovery gates run against
 synthetic accounts. See FINANCE_INTEGRATIONS.md. Group consolidation, intercompany
 accounting and the remaining close features continue next; live provider and
 managed-service acceptance remain required.
+
+## Schedule and fiscal close increment
+
+PR #32 merged provider integration at `d8838d83c376cf6654d84e76cc0ba7aa8e238cdb`
+with 227 regressions, 16 integration scenarios, 77 deterministic migrations and
+restored evidence for 32 financial source graphs. The next close increment adds
+prepaids, fixed assets, recurring journals, accrual reversals, reviewed period
+transitions and fiscal earnings transfers with preserved income reporting.
+FINANCE_CLOSE.md defines those policies. Approved statement mappings, cash-flow
+classification, intercompany accounting and consolidation remain implementation
+work; managed staging and customer finance/security acceptance remain release gates.

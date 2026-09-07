@@ -25,8 +25,9 @@ export function deriveLedgerStatements(report: TrialBalance): LedgerStatements {
   parseTrialBalance(report, report);
   const group = (type: string, label: string, period: boolean, creditNormal: boolean): StatementGroup => {
     const rows = report.rows.filter(row => row.accountType === type).map(row => {
-      const debit = cents(row[period ? "periodDebit" : "closingDebit"]);
-      const credit = cents(row[period ? "periodCredit" : "closingCredit"]);
+      const closing=period?report.fiscalClosingActivity?.find(item=>item.accountId===row.accountId):undefined;
+      const debit = cents(row[period ? "periodDebit" : "closingDebit"])-cents(closing?.debit??"0.00");
+      const credit = cents(row[period ? "periodCredit" : "closingCredit"])-cents(closing?.credit??"0.00");
       return { accountId: row.accountId, code: row.code, name: row.name, amount: decimal(creditNormal ? credit - debit : debit - credit) };
     });
     return { label, rows, total: decimal(rows.reduce((sum, row) => sum + signedCents(row.amount), 0n)) };
@@ -50,7 +51,7 @@ export function statementsCsv(report: TrialBalance, kind: "income" | "balance"):
     ...groups.flatMap(group => [...group.rows.map(row => [group.label, row.code, row.name, row.amount]), [group.label, "", "TOTAL", group.total]]),
     ...(kind === "income" ? [["Net income / loss", "", "", statements.netIncome]] : [
       ["Unclosed earnings through end date", "", "", statements.unclosedEarnings], ["Total equity including unclosed earnings", "", "", statements.totalEquity], ["Liabilities and equity", "", "", statements.liabilitiesAndEquity]]),
-    ["Basis", "Recorded account classifications. Opening balances, adjusting/closing entries and presentation require finance review."]];
+    ["Basis", "Recorded account classifications. Identified fiscal transfers are excluded from income; balance-sheet balances include them. Opening balances and presentation require finance review."]];
   return rows.map((row, index) => row.map((cell, column) => index >= 4 && column === 3 ? csvAmount(cell) : csvCell(cell)).join(",")).join("\r\n") + "\r\n";
 }
 

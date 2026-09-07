@@ -1,0 +1,6 @@
+import {useState} from 'react';
+import {Button} from '@/components/ui/button';
+export function FinanceJournalLines({accounts}:{accounts:{id:string;code:string;name:string}[]}){
+ const [lines,setLines]=useState([0,1]);
+ return <div className="space-y-2">{lines.map(n=><div key={n} className="grid gap-2 rounded border p-3 sm:grid-cols-4"><label>Account<select aria-label={`Journal line ${n+1} account`} required name={'account-'+n} className="block w-full rounded border bg-background p-2"><option value="">Choose…</option>{accounts.map(a=><option key={a.id} value={a.id}>{a.code} {a.name}</option>)}</select></label><label>Debit<input aria-label={`Journal line ${n+1} debit`} required name={'debit-'+n} defaultValue="0.00" className="block w-full rounded border bg-background p-2"/></label><label>Credit<input aria-label={`Journal line ${n+1} credit`} required name={'credit-'+n} defaultValue="0.00" className="block w-full rounded border bg-background p-2"/></label>{lines.length>2?<Button type="button" variant="outline" onClick={()=>setLines(lines.filter(x=>x!==n))}>Remove line</Button>:null}</div>)}<Button type="button" variant="outline" disabled={lines.length>=500} onClick={()=>setLines([...lines,Math.max(...lines)+1])}>Add journal line</Button></div>;
+}

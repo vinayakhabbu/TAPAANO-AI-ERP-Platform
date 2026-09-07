@@ -6,7 +6,7 @@ export function LedgerStatements({ report, kind, onAccount }: { report: TrialBal
   const statements = deriveLedgerStatements(report);
   const groups = kind === "income" ? [statements.revenue, statements.expenses] : [statements.assets, statements.liabilities, statements.equity];
   return <section className="space-y-4" aria-label={kind === "income" ? "Income statement" : "Balance sheet"}>
-    <p className="text-sm text-muted-foreground">{kind === "income" ? "Revenue and expense activity within the selected dates. All recorded adjustments and closing entries in that range are included." : "Account balances through the end date. Unclosed earnings include all revenue and expense balances still recorded outside equity."}</p>
+    <p className="text-sm text-muted-foreground">{kind === "income" ? "Revenue and expense activity within the selected dates. Identified fiscal closing transfers are excluded; other recorded adjustments are included." : "Account balances through the end date. Unclosed earnings include all revenue and expense balances still recorded outside equity."}</p>
     {groups.map(group => <div key={group.label} className="rounded-xl border bg-card"><h3 className="px-4 pt-4 font-semibold">{group.label}</h3><Table>
       <TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Account</TableHead><TableHead className="text-right">{report.currency}</TableHead></TableRow></TableHeader>
       <TableBody>{group.rows.length === 0 ? <TableRow><TableCell colSpan={3}>No recorded accounts in this section.</TableCell></TableRow> : group.rows.map(row => <TableRow key={row.accountId}>

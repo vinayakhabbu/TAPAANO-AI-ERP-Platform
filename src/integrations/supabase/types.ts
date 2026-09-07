@@ -14,6 +14,8 @@ export type Database = {
   }
   public: {
     Tables: {
+      finance_schedules: { Row: { id: string; org_id: string; entity_id: string; reference: string; kind: string; currency: string; terms: Json; state: string; creation_request: string }; Insert: never; Update: never; Relationships: [] }
+      finance_year_closes: { Row: { id: string; org_id: string; entity_id: string; starts_on: string; ends_on: string; retained_account_id: string; request_id: string; journal_id: string | null; lines: Json; active: boolean; reopen_request: string | null; reversal_journal: string | null }; Insert: never; Update: never; Relationships: [] }
       finance_connections: { Row: { id: string; org_id: string; entity_id: string; label: string; provider: string; provider_account: string; environment: string; currency: string; timezone: string; clearing_account_id: string; enabled: boolean; version: number; request_id: string }; Insert: never; Update: never; Relationships: [] }
       finance_requests: { Row: { id: string; org_id: string; entity_id: string; kind: string; payload: Json; source_snapshot: Json; reason: string; requested_by: string; requested_at: string; state: string; decided_by: string | null; decided_at: string | null; decision_reason: string | null; result: Json }; Insert: never; Update: never; Relationships: [] }
       finance_approval_policies: { Row: { id: string; org_id: string; entity_id: string; journals_required: boolean; payments_required: boolean; version: number; request_id: string; updated_at: string }; Insert: never; Update: never; Relationships: [] }
@@ -8441,6 +8443,9 @@ export type Database = {
       }
     }
     Functions: {
+      get_finance_schedule: { Args: { p_schedule: string; p_as_of: string }; Returns: Json }
+      get_schedule_acquisitions: { Args: { p_entity: string; p_search?: string }; Returns: Json }
+      get_finance_close_check: { Args: { p_entity: string; p_from: string; p_through: string }; Returns: Json }
       get_finance_integration_report: { Args: { p_entity: string; p_as_of: string; p_cursor?: string; p_limit?: number }; Returns: Json }
       request_finance_action: { Args: { p_entity_id: string; p_kind: string; p_payload: Json; p_reason: string; p_key: string }; Returns: string }
       decide_finance_action: { Args: { p_request_id: string; p_decision: string; p_reason: string }; Returns: Json }

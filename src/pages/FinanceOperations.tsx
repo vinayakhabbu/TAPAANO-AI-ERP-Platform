@@ -16,11 +16,12 @@ function Operations(){
  const {user,profile}=useAuth(),entities=useReportEntities(),accounts=useAccounts();const [lines,setLines]=useState([0,1]);
  const canWrite=profile?.role==='admin'||profile?.role==='moderator';
  const sources=useQuery({queryKey:['approval-sources',user?.id,profile?.org_id],enabled:Boolean(user&&profile?.org_id),queryFn:async()=>{
-  const org=profile!.org_id!;const [bills,payments,corrections]=await Promise.all([
+  const org=profile!.org_id!;const [bills,payments,corrections,journals]=await Promise.all([
    readAllRows((from,to)=>supabase.from('bills').select('id,entity_id,bill_number,currency',{count:'exact'}).eq('org_id',org).eq('accounting_status','POSTED').order('id').range(from,to)),
    readAllRows((from,to)=>supabase.from('supplier_payments').select('id,entity_id,payment_number',{count:'exact'}).eq('org_id',org).order('id').range(from,to)),
    readAllRows((from,to)=>supabase.from('supplier_payment_corrections').select('id,entity_id,correction_number',{count:'exact'}).eq('org_id',org).order('id').range(from,to)),
-  ]);return {bills,payments,corrections};
+   readAllRows((from,to)=>supabase.from('journal_entries').select('id,entity_id,entry_number,entry_date',{count:'exact'}).eq('org_id',org).eq('status','posted').eq('source_module','gl').is('reversed_by_id',null).is('reversal_of_id',null).order('entry_date',{ascending:false}).order('id').range(from,to)),
+  ]);return {bills,payments,corrections,journals};
  }});
  return <div className="space-y-6"><FinancePolicyForm/>
   {entities.isError||accounts.isError||sources.isError?<p role="alert" className="text-destructive">Finance setup or source history unavailable.</p>:canWrite?<div className="space-y-4">
@@ -29,6 +30,9 @@ function Operations(){
    ]} submit={(v,key)=>requestFinance(v.entity,'MANUAL_JOURNAL',{number:v.number,date:v.date,memo:v.memo,lines:Object.keys(v).filter(k=>k.startsWith('account-')).map(k=>{const n=k.slice(8);return {account_id:v[k],debit:v['debit-'+n],credit:v['credit-'+n]};})},v.reason,key)}>
     <div className="space-y-2">{lines.map(n=><div key={n} className="grid gap-2 rounded border p-3 sm:grid-cols-4"><label>Account<select aria-label={`Journal line ${n+1} account`} required name={'account-'+n} className="block w-full rounded border bg-background p-2"><option value="">Choose…</option>{accounts.data?.map(a=><option key={a.id} value={a.id}>{a.code} {a.name}</option>)}</select></label><label>Debit<input aria-label={`Journal line ${n+1} debit`} required name={'debit-'+n} defaultValue="0.00" className="block w-full rounded border bg-background p-2"/></label><label>Credit<input aria-label={`Journal line ${n+1} credit`} required name={'credit-'+n} defaultValue="0.00" className="block w-full rounded border bg-background p-2"/></label>{lines.length>2?<Button type="button" variant="outline" onClick={()=>setLines(lines.filter(x=>x!==n))}>Remove line</Button>:null}</div>)}<Button type="button" variant="outline" disabled={lines.length>=500} onClick={()=>setLines([...lines,Math.max(...lines)+1])}>Add journal line</Button></div>
    </FinanceActionForm></details>
+   <details><summary className="font-semibold">Reverse a manual journal</summary><FinanceActionForm title="Request journal reversal" fields={[
+    {name:'source',label:'Original posted journal',options:sources.data?.journals.map(j=>({value:j.id,label:`${j.entry_number} · ${j.entry_date}`}))??[]},{name:'date',label:'Reversal date',type:'date'},{name:'reference',label:'Reversal reference'},{name:'reason',label:'Reversal evidence'},
+   ]} submit={(v,key)=>{const source=sources.data?.journals.find(j=>j.id===v.source);if(!source)throw new Error('Journal unavailable.');return requestFinance(source.entity_id,'JOURNAL_REVERSAL',{source_id:source.id,date:v.date,reference:v.reference},v.reason,key);}}/><p className="text-sm">Contract, integration, schedule and fiscal journals require their source workflow's correction action.</p></details>
    <details><summary className="font-semibold">Prepare a supplier payment</summary><FinanceActionForm title="Request supplier payment" fields={[
     {name:'bill',label:'Supplier bill',options:sources.data?.bills.map(b=>({value:b.id,label:`${b.bill_number} (${b.currency})`}))??[]},{name:'number',label:'Payment number'},{name:'date',label:'Payment date',type:'date'},{name:'amount',label:'Payment amount'},{name:'reference',label:'Settlement reference'},{name:'reason',label:'Payment evidence'},
    ]} submit={(v,key)=>{const bill=sources.data?.bills.find(b=>b.id===v.bill);if(!bill)throw new Error('Bill unavailable.');return requestFinance(bill.entity_id,'SUPPLIER_PAYMENT',{bill_id:bill.id,number:v.number,date:v.date,amount:v.amount,reference:v.reference},v.reason,key);}}/>
