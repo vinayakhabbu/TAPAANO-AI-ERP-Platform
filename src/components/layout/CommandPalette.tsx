@@ -35,6 +35,8 @@ const navigationItems = [
       { icon: Receipt, label: "Contracts and Revenue", href: "/contracts" },
       { icon: BookOpen, label: "Finance Approvals", href: "/finance-operations" },
       { icon: BookOpen, label: "Finance Integrations", href: "/finance-integrations" },
+      { icon: BookOpen, label: "Finance Schedules", href: "/finance-schedules" },
+      { icon: CalendarCheck, label: "Financial Close", href: "/finance-close" },
   { icon: PieChart, label: "Controlling", href: "/controlling" },
   { icon: BarChart3, label: "Financial Reports", href: "/reports" },
   { icon: CalendarCheck, label: "Period Close", href: "/close" },

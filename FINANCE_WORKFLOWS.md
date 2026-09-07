@@ -149,3 +149,11 @@ journal imports for independent approval. It includes immutable mappings, provid
 event/object deduplication, source snapshots, clearing balances, linked reversals,
 cursor history and evidence export. See [the integration contract and runbook](FINANCE_INTEGRATIONS.md)
 for activation, payloads, retry handling, exception review and provider boundaries.
+
+## Schedules and fiscal closing
+
+Finance Schedules and Financial Close add independently approved prepaids, fixed
+assets, recurring journals, accrual reversals, source completeness checks and
+retained-earnings closing. See [the close policies and runbook](FINANCE_CLOSE.md)
+for date allocation, corrections, disposal, reviewed period transitions and fiscal
+reopening. These workflows preserve source history and exact dated GL comparisons.

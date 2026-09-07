@@ -67,6 +67,8 @@ const navCategories = [
       { icon: Receipt, label: "Contracts and Revenue", href: "/contracts" },
       { icon: BookOpen, label: "Finance Approvals", href: "/finance-operations" },
       { icon: BookOpen, label: "Finance Integrations", href: "/finance-integrations" },
+      { icon: BookOpen, label: "Finance Schedules", href: "/finance-schedules" },
+      { icon: CalendarCheck, label: "Financial Close", href: "/finance-close" },
       { icon: Coins, label: "Multi-Currency", href: "/currency" },
       { icon: Calculator, label: "Tax Management", href: "/tax" },
       { icon: PieChart, label: "Controlling", href: "/controlling" },

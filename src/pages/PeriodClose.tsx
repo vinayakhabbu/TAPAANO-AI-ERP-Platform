@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { Calendar, ShieldCheck } from "lucide-react";
 import { useState } from "react";
+import {Link} from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,7 @@ const PeriodClose = () => {
   return (
     <AppLayout title="Accounting Periods" subtitle="Authoritative posting-window status">
       <div className="space-y-6">
+        <p><Link className="underline" to="/finance-close">Open Financial Close</Link> for reconciliation checks, independent period reviews and fiscal-year closing. Entities with required journal approvals use that review workflow for period changes.</p>
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
