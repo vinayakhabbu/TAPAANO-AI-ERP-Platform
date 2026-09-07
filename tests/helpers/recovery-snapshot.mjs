@@ -62,8 +62,8 @@ export async function captureRecoverySnapshot(db) {
 export async function verifyRecoveryForeignKeys(db) {
   const { rows: keys } = await db.query(`SELECT k.conname AS name,k.confmatchtype AS match_type,
     nc.nspname AS child_schema,c.relname AS child_table,np.nspname AS parent_schema,p.relname AS parent_table,
-    ARRAY(SELECT a.attname FROM unnest(k.conkey) WITH ORDINALITY x(num,pos) JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=x.num ORDER BY x.pos) AS child_columns,
-    ARRAY(SELECT a.attname FROM unnest(k.confkey) WITH ORDINALITY x(num,pos) JOIN pg_attribute a ON a.attrelid=p.oid AND a.attnum=x.num ORDER BY x.pos) AS parent_columns
+    ARRAY(SELECT a.attname::text FROM unnest(k.conkey) WITH ORDINALITY x(num,pos) JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=x.num ORDER BY x.pos) AS child_columns,
+    ARRAY(SELECT a.attname::text FROM unnest(k.confkey) WITH ORDINALITY x(num,pos) JOIN pg_attribute a ON a.attrelid=p.oid AND a.attnum=x.num ORDER BY x.pos) AS parent_columns
     FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace nc ON nc.oid=c.relnamespace
     JOIN pg_class p ON p.oid=k.confrelid JOIN pg_namespace np ON np.oid=p.relnamespace
     WHERE k.contype='f' AND nc.nspname IN ('public','auth') ORDER BY nc.nspname,c.relname,k.conname`);
