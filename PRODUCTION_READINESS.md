@@ -266,7 +266,10 @@ After browser activity stops, the gate fingerprints every row in application and
 Auth tables, captures policies, grants, constraints, application triggers, functions
 and sequence state, and verifies financial source graphs and foreign keys. It uses
 the checked database container's matching `pg_dump` to capture public/Auth data,
-rebuilds the local database through all migrations, and restores the rows in one
+rebuilds the local database through all migrations, verifies that regenerated Auth
+migration versions match the source, and restores application/Auth rows into empty
+tables without truncation or new grants. Auth migration metadata is retained from
+the rebuild and included in the equality checks. Data restoration runs in one
 transaction with `psql` error-stop enabled. It then compares the complete baseline,
 checks every foreign-key relationship and financial graph, and tests fresh login,
 tenant isolation, unchanged trial balance/aging, durable posting retries, forbidden

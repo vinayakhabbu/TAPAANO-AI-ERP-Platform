@@ -7,15 +7,16 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { createHash, randomUUID } from "node:crypto";
 import pg from "pg";
-import { captureRecoverySnapshot, verifyRecoveryForeignKeys, requireLocalRecovery, qualify } from "./recovery-snapshot.mjs";
+import { captureRecoverySnapshot, verifyRecoveryForeignKeys, requireLocalRecovery } from "./recovery-snapshot.mjs";
 
 const execute = promisify(execFile);
 async function command(file, args, options = {}) {
   try { return await execute(file, args, { timeout: 120000, maxBuffer: 8 * 1024 * 1024, ...options }); }
   catch (error) {
     const state=typeof error.stderr === "string" ? error.stderr.match(/ERROR:\s+([0-9A-Z]{5})\b/)?.[1] : null;
+    const sqlLine=typeof error.stderr === "string" ? error.stderr.match(/psql:[^\n]*?:(\d+):\s+ERROR:/)?.[1] : null;
     const action=file === "docker" && args[0] === "exec" ? args[2] : args[0];
-    throw new Error(`Synthetic recovery command failed: ${file} ${action}${state ? " (SQLSTATE " + state + ")" : ""}. Captured output is withheld because it may contain backup data.`);
+    throw new Error(`Synthetic recovery command failed: ${file} ${action}${state ? " (SQLSTATE " + state + ")" : ""}${sqlLine ? " at SQL line " + sqlLine : ""}. Captured output is withheld because it may contain backup data.`);
   }
 }
 
@@ -68,8 +69,9 @@ export async function rehearsePopulatedRecovery({ status, expectedOrganizations,
     const containerDump = "/tmp/tapaano-synthetic-backup-" + randomUUID() + ".sql";
     try {
       // Use the database container's matching pg_dump version and include all
-      // Auth data explicitly, including managed migration metadata and sequences.
-      await command("docker", ["exec", container, "pg_dump", "--username", "postgres", "--dbname", "postgres", "--data-only", "--quote-all-identifiers", "--schema", "public", "--schema", "auth", "--file", containerDump]);
+      // Auth data explicitly. Auth migration versions are rebuilt and compared,
+      // not copied over provider-managed metadata.
+      await command("docker", ["exec", container, "pg_dump", "--username", "postgres", "--dbname", "postgres", "--data-only", "--quote-all-identifiers", "--schema", "public", "--schema", "auth", "--exclude-table-data=auth.schema_migrations", "--file", containerDump]);
       await command("docker", ["cp", container + ":" + containerDump, dump]);
     } finally { await command("docker", ["exec", container, "rm", "-f", containerDump]); }
     await chmod(dump, 0o600);
@@ -86,14 +88,18 @@ export async function rehearsePopulatedRecovery({ status, expectedOrganizations,
     requireLocalRecovery(status, projectId, freshInspection);
     db = new pg.Client({ connectionString: status.DB_URL }); await db.connect();
     assert.equal((await db.query("SELECT count(*)::int AS count FROM public.organizations")).rows[0].count, 0, "Restore target must have no tenant rows");
-    // Reset creates managed Auth metadata. Replace rows transactionally, using
-    // the Supabase documented restore mode, then explicitly verify all FKs and
-    // financial graphs that do not fire during COPY in replica mode.
+    // A fresh reset supplies Auth migration metadata. Verify that it exactly
+    // matches the source and keep it; every table receiving COPY must be empty.
+    // No TRUNCATE or new grants are needed for this restore.
     const empty = await captureRecoverySnapshot(db);
     assert.deepEqual(empty.tables.map(({count,fingerprint,...table}) => table), baseline.tables.map(({count,fingerprint,...table}) => table), "Rebuilt table protections must match the source");
-    const tables = empty.tables.map(table => qualify(table.schema,table.name)).join(",");
+    for(const table of empty.tables) {
+      if(table.schema === "auth" && table.name === "schema_migrations") {
+        assert.deepEqual(table,baseline.tables.find(item=>item.schema===table.schema && item.name===table.name),"Auth migration versions must match the source");
+      } else assert.equal(table.count,"0",`Restore COPY target must be empty: ${table.schema}.${table.name}`);
+    }
     const restore = join(directory,"restore.sql");
-    await writeFile(restore, `SET LOCAL session_replication_role=replica;\nTRUNCATE ${tables} CASCADE;\n` + backup.toString("utf8") + "\nSET LOCAL session_replication_role=origin;\n", { mode: 0o600 });
+    await writeFile(restore, "SET LOCAL session_replication_role=replica;\n" + backup.toString("utf8") + "\nSET LOCAL session_replication_role=origin;\n", { mode: 0o600 });
     const containerPath = "/tmp/tapaano-synthetic-recovery-" + snapshotHash + ".sql";
     await command("docker", ["cp", restore, container + ":" + containerPath]);
     try { await command("docker", ["exec", container, "psql", "--username", "postgres", "--dbname", "postgres", "--single-transaction", "--set", "ON_ERROR_STOP=1", "--set", "VERBOSITY=sqlstate", "--file", containerPath]); }
