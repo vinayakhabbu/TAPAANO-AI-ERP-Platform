@@ -168,6 +168,23 @@ the annual contract's deferred-revenue accounting. Contract billing and revenue
 recognition remain separate milestones. Existing table-level posting locks are a
 correctness boundary; representative multi-tenant throughput still needs acceptance.
 
+## Production acceptance is the delivery target
+
+The owner reaffirmed production grade as the goal on 2026-09-07. Completion means
+the agreed US finance workflows are usable together and every applicable release
+gate has evidence. Feature PRs, synthetic fixtures and passing CI are intermediate
+results. Bank reconciliation, contract billing/revenue, the required integrations,
+permissions/approvals, and customer-specific accounting acceptance remain on the
+completion plan alongside operational readiness.
+
+The next operations increment adds populated backup/restore qualification to CI:
+rebuild the database, restore synthetic financial and Auth data, compare row and
+security metadata fingerprints, verify foreign keys/source graphs and exercise
+login, isolation, posting retries and financial reports after recovery. See
+[Production readiness](./PRODUCTION_READINESS.md#populated-recovery-qualification)
+for the tested boundary and the managed-service evidence still required. CI retains
+only a sanitized evidence report, never raw database backups.
+
 ## Immediate owner and deployment work
 
 1. Enable Dependency graph in repository security analysis settings and re-run

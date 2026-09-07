@@ -3,13 +3,22 @@
 ## Current verdict
 
 **Not approved for production or financial reliance.** The repository-level
-quality gate is healthy, but the data-bearing managed-service, operational, and
+code checks pass, but repository security settings and the data-bearing managed-service, operational, and
 organizational evidence below has not been completed. A green build is necessary
 but is not a release approval.
 
 Verified review baseline: PR #22, commit `8b908d7`, merged to `main` at
 `bcc0658` on 2026-09-06. New phases require checks on their own exact commits
 before they become release evidence. Verification uses supported Node 22.
+
+Current functional baseline: PR #28, merged at
+`91ff65254e487165071ef8e68ccc79a8a6da8415`. Its exact checks passed 202
+regressions, 12 authenticated integration scenarios, both builds, two deterministic
+replays of all 73 migrations, CodeQL and the production dependency audit.
+Dependency review still fails because Dependency graph is disabled; the supplied
+branch ruleset still requires owner activation. Partial AR/AP allocations are now
+supported with dated capacity controls and stable retries. This supersedes the
+older full-settlement-only scope described in historical increments below.
 
 ## Evidence already present
 
@@ -243,6 +252,48 @@ and control-account variances. Hosted integration covers JWT aging, browser CSV
 and read failures, all four setup flows, and a lost-response retry after commit.
 Use exact-commit CI results for hosted validation. Production accounting,
 deployment, load, restore and repository-settings gates remain outstanding.
+
+## Populated recovery qualification
+
+The integration gate now includes a populated logical backup/restore rehearsal.
+It runs only after the test process has created its synthetic fixture in an empty
+local Supabase stack. The helper checks loopback endpoints, the running CLI
+container and its database port, and the exact expected tenant and identity IDs.
+It accepts no remote target, external backup, linked-project operation or production
+credential. This is a development qualification, not a production backup command.
+
+After browser activity stops, the gate fingerprints every row in application and
+Auth tables, captures policies, grants, constraints, application triggers, functions
+and sequence state, and verifies financial source graphs and foreign keys. It uses
+the checked database container's matching `pg_dump` to capture public/Auth data,
+rebuilds the local database through all migrations, and restores the rows in one
+transaction with `psql` error-stop enabled. It then compares the complete baseline,
+checks every foreign-key relationship and financial graph, and tests fresh login,
+tenant isolation, unchanged trial balance/aging, durable posting retries, forbidden
+direct writes and closed-period rejection through real authenticated APIs.
+
+The restore uses the trigger mode described in
+[Supabase's restore guide](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore).
+Because that mode suppresses trigger checks during COPY, post-restore relationship
+and accounting validation is mandatory. The native dump follows
+[PostgreSQL's pg_dump contract](https://www.postgresql.org/docs/current/app-pgdump.html).
+All source data here is created by the same test process; arbitrary SQL backups
+are never accepted by this helper.
+
+On success, CI retains only `synthetic-recovery-evidence`: a JSON report containing
+the tested commit, hashes, object/row counts, completed checks and measured times.
+Raw SQL dumps, passwords, session tokens, names and financial rows are never
+uploaded. Temporary dump files are removed; the stack is destroyed by the existing
+always-run cleanup step. A missing report or failed restore fails the gate.
+
+Measured fixture timings are not a production RPO/RTO or throughput promise.
+Acceptance still needs an isolated managed staging project, representative volumes,
+provider backups/PITR, encrypted offsite retention, independent access to recovery
+credentials, and an operator-led outage rehearsal. Host configuration, custom role
+passwords, Edge secrets, third-party integrations and Storage objects are outside
+this database-data test. Supabase database backups contain Storage metadata, not
+the objects themselves; object recovery needs its own evidence
+([Supabase backup scope](https://supabase.com/docs/guides/platform/backups)).
 
 ## Deployment order
 
