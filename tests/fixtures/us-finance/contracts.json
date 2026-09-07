@@ -1,0 +1,145 @@
+{
+  "synthetic": true,
+  "currency": "USD",
+  "entity": "SYNTH-US-ENTITY",
+  "accountingTimezone": "America/New_York",
+  "contracts": [
+    {
+      "id": "ANNUAL-01",
+      "customer": "SYNTH Atlas Analytics",
+      "start": "2027-01-01",
+      "end": "2027-12-31",
+      "invoiceDate": "2027-01-01",
+      "dueDate": "2027-01-31",
+      "consideration": "36500.00",
+      "obligations": [
+        {
+          "id": "annual-access",
+          "allocation": "36500.00",
+          "basis": "daily_even_service",
+          "monthlyRevenue": [
+            "3100.00",
+            "2800.00",
+            "3100.00",
+            "3000.00",
+            "3100.00",
+            "3000.00",
+            "3100.00",
+            "3100.00",
+            "3000.00",
+            "3100.00",
+            "3000.00",
+            "3100.00"
+          ]
+        }
+      ],
+      "receipts": [
+        {
+          "id": "RECEIPT-001",
+          "date": "2027-01-05",
+          "amount": "15000.00",
+          "remainingAR": "21500.00"
+        },
+        {
+          "id": "RECEIPT-002",
+          "date": "2027-01-20",
+          "amount": "21500.00",
+          "remainingAR": "0.00"
+        }
+      ]
+    },
+    {
+      "id": "MONTHLY-01",
+      "customer": "SYNTH Beacon AI",
+      "start": "2027-01-01",
+      "end": "2027-01-31",
+      "invoiceDate": "2027-01-01",
+      "dueDate": "2027-01-31",
+      "consideration": "1200.00",
+      "obligations": [
+        {
+          "id": "monthly-access",
+          "allocation": "1200.00",
+          "basis": "daily_even_service",
+          "monthlyRevenue": [
+            "1200.00"
+          ]
+        }
+      ],
+      "processorCollection": "CHARGE-001"
+    },
+    {
+      "id": "USAGE-01",
+      "customer": "SYNTH Cedar Data",
+      "start": "2027-01-01",
+      "end": "2027-01-31",
+      "invoiceDate": "2027-02-01",
+      "dueDate": "2027-03-03",
+      "consideration": "1500.00",
+      "ratePerRequest": "0.0025",
+      "acceptedUnits": "600000",
+      "obligations": [
+        {
+          "id": "usage-service",
+          "allocation": "1500.00",
+          "basis": "as_consumed",
+          "monthlyRevenue": [
+            "1500.00"
+          ]
+        }
+      ],
+      "usageEvents": [
+        {
+          "id": "USAGE-EVENT-001",
+          "occurredAt": "2027-01-10T15:00:00Z",
+          "units": "250000"
+        },
+        {
+          "id": "USAGE-EVENT-002",
+          "occurredAt": "2027-01-31T23:00:00Z",
+          "units": "350000"
+        }
+      ],
+      "duplicateDelivery": {
+        "id": "USAGE-EVENT-001",
+        "occurredAt": "2027-01-10T15:00:00Z",
+        "units": "250000"
+      }
+    },
+    {
+      "id": "BUNDLE-01",
+      "customer": "SYNTH Delta Services",
+      "start": "2027-01-01",
+      "end": "2027-03-31",
+      "invoiceDate": "2027-01-01",
+      "dueDate": "2027-01-31",
+      "consideration": "12000.00",
+      "obligations": [
+        {
+          "id": "bundle-access",
+          "standalonePrice": "12000.00",
+          "allocation": "9600.00",
+          "basis": "daily_even_service_cumulative_rounding",
+          "monthlyRevenue": [
+            "3306.67",
+            "2986.66",
+            "3306.67"
+          ]
+        },
+        {
+          "id": "distinct-training",
+          "standalonePrice": "3000.00",
+          "allocation": "2400.00",
+          "basis": "point_in_time_on_transfer",
+          "acceptedAt": "2027-01-20",
+          "acceptanceEvidence": "SYNTH-ACCEPTANCE-001",
+          "monthlyRevenue": [
+            "2400.00",
+            "0.00",
+            "0.00"
+          ]
+        }
+      ]
+    }
+  ]
+}

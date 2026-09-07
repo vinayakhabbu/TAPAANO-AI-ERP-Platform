@@ -1,0 +1,103 @@
+{
+  "synthetic": true,
+  "format": "tapaano-normalized-statement-fixture-v1",
+  "statementId": "SYNTH-STMT-2027-01",
+  "entity": "SYNTH-US-ENTITY",
+  "accountAlias": "SYNTH-OPERATING-USD",
+  "currency": "USD",
+  "start": "2027-01-01",
+  "end": "2027-01-31",
+  "openingBalance": "50000.00",
+  "closingBalance": "84700.00",
+  "transactions": [
+    {
+      "sourceId": "BANK-001",
+      "postedDate": "2027-01-05",
+      "amount": "15000.00",
+      "runningBalance": "65000.00",
+      "reference": "RECEIPT-001"
+    },
+    {
+      "sourceId": "BANK-002",
+      "postedDate": "2027-01-11",
+      "amount": "1470.00",
+      "runningBalance": "66470.00",
+      "reference": "PROCESSOR-001"
+    },
+    {
+      "sourceId": "BANK-003",
+      "postedDate": "2027-01-15",
+      "amount": "-4000.00",
+      "runningBalance": "62470.00",
+      "reference": "OPENING-AP-PAYMENT"
+    },
+    {
+      "sourceId": "BANK-004",
+      "postedDate": "2027-01-20",
+      "amount": "21500.00",
+      "runningBalance": "83970.00",
+      "reference": "RECEIPT-002"
+    },
+    {
+      "sourceId": "BANK-005",
+      "postedDate": "2027-01-25",
+      "amount": "750.00",
+      "runningBalance": "84720.00",
+      "reference": null
+    },
+    {
+      "sourceId": "BANK-006",
+      "postedDate": "2027-01-31",
+      "amount": "-25.00",
+      "runningBalance": "84695.00",
+      "reference": "BANK-FEE"
+    },
+    {
+      "sourceId": "BANK-007",
+      "postedDate": "2027-01-31",
+      "amount": "5.00",
+      "runningBalance": "84700.00",
+      "reference": "BANK-INTEREST"
+    }
+  ],
+  "processorPayout": {
+    "id": "PROCESSOR-001",
+    "bankTransaction": "BANK-002",
+    "gross": "1500.00",
+    "fees": "30.00",
+    "net": "1470.00",
+    "collections": [
+      {
+        "id": "CHARGE-001",
+        "invoice": "MONTHLY-01",
+        "gross": "1200.00",
+        "fee": "24.00",
+        "net": "1176.00"
+      },
+      {
+        "id": "CHARGE-002",
+        "invoice": "OPENING-AR-300",
+        "gross": "300.00",
+        "fee": "6.00",
+        "net": "294.00"
+      }
+    ]
+  },
+  "bookCashBeforeBankAdjustments": "84770.00",
+  "timingItems": [
+    {
+      "id": "CHECK-001",
+      "bookDate": "2027-01-30",
+      "clearedDate": "2027-02-02",
+      "bookAmount": "-1200.00",
+      "type": "outstanding_payment"
+    },
+    {
+      "id": "DEPOSIT-001",
+      "bookDate": "2027-01-31",
+      "clearedDate": "2027-02-01",
+      "bookAmount": "2000.00",
+      "type": "deposit_in_transit"
+    }
+  ]
+}

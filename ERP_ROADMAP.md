@@ -26,6 +26,16 @@ eight real Auth/API/browser integration scenarios, deterministic replay of all
 68 migrations, typecheck, lint, both builds, CodeQL and dependency audit. This
 completes the first reporting code boundary, not the production release.
 
+## Synthetic development baseline
+
+The owner authorized industry-informed synthetic contracts and statements on
+2026-09-07. Use [the US finance reference pack](./tests/fixtures/us-finance/README.md)
+for subscription, usage, bundle allocation, partial receipt and bank reconciliation
+implementation. Its machine-readable scenarios include exact expected schedules,
+entries and exception balances. Real documents are no longer a prerequisite to
+continue development. These fixtures do not implement the remaining workflows or
+replace customer-specific accounting and production acceptance.
+
 ## Remaining implementation and onboarding inputs
 
 Country and target customer are now confirmed. The following customer-specific
