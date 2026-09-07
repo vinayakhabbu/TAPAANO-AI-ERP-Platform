@@ -1,0 +1,8 @@
+external_id,booked_on,description,reference,amount
+synthetic-bank-001,2027-01-05,Annual customer first payment,SAAS-ANNUAL-36500,15000.00
+synthetic-bank-002,2027-01-08,Processor payout after fee,PROCESSOR-BATCH-001,1470.00
+synthetic-bank-003,2027-01-10,Supplier settlement,AP-4000,-4000.00
+synthetic-bank-004,2027-01-20,Annual customer final payment,SAAS-ANNUAL-36500,21500.00
+synthetic-bank-005,2027-01-24,Unidentified incoming payment,UNIDENTIFIED-750,750.00
+synthetic-bank-006,2027-01-31,Bank service charge,BANK-FEE-25,-25.00
+synthetic-bank-007,2027-01-31,Interest earned,BANK-INTEREST-5,5.00
