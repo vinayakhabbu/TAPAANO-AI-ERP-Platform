@@ -141,3 +141,29 @@ test('contract control variances are explicit and contract source journals rejec
   assert.equal((await get(db,c)).controls.find(x=>x.accountId===deferred).variance,'1.00');
  }finally{await db.close();}
 });
+
+test('approval snapshots freeze prices and recognition evidence and reject a changed financial source',async()=>{
+ const db=await database();try{
+  const year=new Date().getUTCFullYear()+1;
+  const c=(await approve(db,'CONTRACT_CREATE',terms('SNAPSHOT-PRICE',{starts_on:`${year}-01-01`,ends_on:`${year}-12-31`,cycle_months:1,price:'1200.00'}))).contractId;
+  const cycle=(await get(db,c)).cycles[0].id;
+  const request=await call(db,'request_finance_action',ids.entityA,'CONTRACT_BILL',{cycle_id:cycle,number:'SNAPSHOT-INVOICE',issue_date:`${year}-01-01`,due_date:`${year}-01-31`},'Original price review','snapshot-price');
+  const original=(await db.query('SELECT source_snapshot FROM public.finance_requests WHERE id=$1',[request])).rows[0].source_snapshot;
+  assert.equal(original.billing_cycles[0].cycle_price,'1200.00');
+  await approve(db,'CONTRACT_AMEND',{contract_id:c,effective_cycle:1,action:'REPRICE',new_price:'1500.00'});
+  await actor(db,reviewer);await assert.rejects(call(db,'decide_finance_action',request,'APPROVE','Original reviewed amount'),/approval source changed/);
+  const pending=(await db.query('SELECT state,source_snapshot FROM public.finance_requests WHERE id=$1',[request])).rows[0];
+  assert.equal(pending.state,'PENDING');assert.deepEqual(pending.source_snapshot,original);
+  assert.equal((await get(db,c)).cycles[0].invoiceId,null);
+  await actor(db,ids.adminA);
+  const recognized=(await approve(db,'CONTRACT_CREATE',terms('SNAPSHOT-RECOGNITION',{ends_on:'2026-01-31',price:'1200.00'}))).contractId;
+  const rc=(await get(db,recognized)).cycles[0].id;
+  const payload={cycle_id:rc,as_of:'2026-01-31',evidence:[]};
+  const competing=await call(db,'request_finance_action',ids.entityA,'CONTRACT_RECOGNIZE',payload,'Review all January revenue','snapshot-recognition');
+  const evidence=(await db.query('SELECT source_snapshot FROM public.finance_requests WHERE id=$1',[competing])).rows[0].source_snapshot;
+  assert.equal(evidence.billing_cycles[0].earned_at_proposed_date[0].amount,'1200.00');
+  await recognize(db,rc,'2026-01-15');
+  await actor(db,reviewer);await assert.rejects(call(db,'decide_finance_action',competing,'APPROVE','Approve stale increment'),/approval source changed/);
+  assert.equal((await get(db,recognized,'2026-01-31')).recognized,'580.65');
+ }finally{await db.close();}
+});

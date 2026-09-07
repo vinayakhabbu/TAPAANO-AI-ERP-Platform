@@ -56,11 +56,12 @@ required; the common posting lock is a deliberate correctness boundary.
 ## Finance approvals
 
 Finance Approvals contains manual journals, partial supplier payments, their exact
-corrections/replacements, and policy requests. A proposal has an immutable payload,
+corrections/replacements, and policy requests. A proposal has an immutable payload, financial source snapshot,
 requester, reason and retry key. A different accounting operator approves or rejects
 it; only the requester can withdraw. Approval and every resulting record/journal
 commit together. A failed execution leaves the proposal pending for investigation
-or retry. Concurrent retries return the same recorded result. Policy changes
+or retry. Concurrent retries return the same recorded result. Contract-cycle changes after
+submission invalidate the approval snapshot and require a fresh proposal. Policy changes
 require two administrators and an explicit current policy version.
 
 Enable both journal and payment approval requirements for each production entity.

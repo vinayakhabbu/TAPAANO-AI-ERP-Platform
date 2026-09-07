@@ -25,6 +25,7 @@ export function FinanceApprovals({entityId}:{entityId?:string}){
   {history.isError?<p role="alert" className="text-destructive">Approval history unavailable. Do not infer an empty queue.</p>:history.isFetching?<p>Loading approval history…</p>:requests.length===0?<p>No requests in this view.</p>:requests.map(r=><article key={r.id} className="space-y-3 rounded-lg border p-4">
    <h3 className="font-semibold">{labels[r.kind]??r.kind} · {names.get(r.entity_id)??r.entity_id} · {r.state}</h3><p>{r.reason}</p><p className="text-xs">Requested {r.requested_at} by {r.requested_by}</p>
    <Evidence value={r.payload} names={names}/>
+   {r.source_snapshot&&JSON.stringify(r.source_snapshot)!=='{}'?<div><h4 className="font-semibold">Financial figures submitted for approval</h4><Evidence value={r.source_snapshot} names={names}/></div>:null}
    {r.state==='PENDING'&&canWrite?<FinanceActionForm title={r.requested_by===user?.id?'Withdraw request':'Decide finance request'} fields={[
     {name:'decision',label:'Decision',options:r.requested_by===user?.id?[{value:'WITHDRAW',label:'Withdraw'}]:[{value:'APPROVE',label:'Approve and execute'},{value:'REJECT',label:'Reject'}]},
     {name:'reason',label:'Decision evidence'},

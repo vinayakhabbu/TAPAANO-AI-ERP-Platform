@@ -202,6 +202,23 @@ BEGIN
   'contract:'||p_request||':'||p_suffix);
 END; $$;
 
+CREATE OR REPLACE FUNCTION public.finance_source_snapshot(p_entity uuid,p_kind text,p_payload jsonb)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
+DECLARE v_result jsonb;
+BEGIN
+ IF p_kind NOT IN ('CONTRACT_AMEND','CONTRACT_USAGE_CLOSE','CONTRACT_BILL','CONTRACT_RECOGNIZE','CONTRACT_CREDIT') THEN RETURN '{}'::jsonb; END IF;
+ SELECT jsonb_agg(jsonb_build_object('contract',c.reference,'cycle',s.cycle_number,'service_starts',s.starts_on,'service_ends',s.ends_on,'cycle_price',s.price::text,'allocations',s.allocations,
+  'invoice',s.invoice_id,'invoice_date',s.invoice_date,'billing_request',s.billing_request,'credit',s.credit_id,'cancelled',s.cancel_request IS NOT NULL,
+  'usage',public.contract_usage_snapshot(s.id),'usage_finalized',s.usage_finalized,
+  'recognized',coalesce((SELECT jsonb_agg(jsonb_build_object('date',as_of,'amount',amount::text,'allocations',allocations,'evidence',evidence) ORDER BY as_of,id) FROM public.finance_revenue_entries WHERE cycle_id=s.id),'[]'::jsonb),
+  'earned_at_proposed_date',CASE WHEN p_kind='CONTRACT_RECOGNIZE' THEN public.contract_earned(s.id,(p_payload->>'as_of')::date,p_payload->'evidence') END) ORDER BY s.cycle_number)
+  INTO v_result FROM public.finance_contract_cycles s JOIN public.finance_contracts c ON c.id=s.contract_id
+  WHERE c.entity_id=p_entity AND c.org_id=public.get_user_org_id() AND
+   CASE WHEN p_kind='CONTRACT_AMEND' THEN c.id=(p_payload->>'contract_id')::uuid AND s.cycle_number>=(p_payload->>'effective_cycle')::int ELSE s.id=(p_payload->>'cycle_id')::uuid END;
+ IF v_result IS NULL THEN RAISE EXCEPTION 'approval source unavailable'; END IF;
+ RETURN jsonb_build_object('billing_cycles',v_result);
+END; $$;
+
 CREATE OR REPLACE FUNCTION public.execute_finance_extension(p_request public.finance_requests)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_p jsonb:=p_request.payload;v_c public.finance_contracts%ROWTYPE;v_cycle public.finance_contract_cycles%ROWTYPE;
@@ -478,7 +495,7 @@ BEGIN
   END IF;
  END LOOP;
  FOR f IN SELECT oid::regprocedure AS signature,proname FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname IN
-  ('allocate_contract_price','record_contract_usage','contract_usage_snapshot','contract_earned','validate_finance_extension','execute_finance_extension','post_contract_transfer','guard_contract_invoice_credit','get_contract_finance','get_contract_control_balances','assert_contract_journal','validate_contract_graph','guard_contract_journal_reversal','check_contract_graph_trigger') LOOP
+  ('allocate_contract_price','record_contract_usage','contract_usage_snapshot','contract_earned','validate_finance_extension','execute_finance_extension','finance_source_snapshot','post_contract_transfer','guard_contract_invoice_credit','get_contract_finance','get_contract_control_balances','assert_contract_journal','validate_contract_graph','guard_contract_journal_reversal','check_contract_graph_trigger') LOOP
   EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated,service_role',f.signature);
   IF f.proname IN ('record_contract_usage','get_contract_finance','get_contract_control_balances') THEN EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated',f.signature); END IF;
  END LOOP;

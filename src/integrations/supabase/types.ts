@@ -14,7 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      finance_requests: { Row: { id: string; org_id: string; entity_id: string; kind: string; payload: Json; reason: string; requested_by: string; requested_at: string; state: string; decided_by: string | null; decided_at: string | null; decision_reason: string | null; result: Json }; Insert: never; Update: never; Relationships: [] }
+      finance_requests: { Row: { id: string; org_id: string; entity_id: string; kind: string; payload: Json; source_snapshot: Json; reason: string; requested_by: string; requested_at: string; state: string; decided_by: string | null; decided_at: string | null; decision_reason: string | null; result: Json }; Insert: never; Update: never; Relationships: [] }
       finance_approval_policies: { Row: { id: string; org_id: string; entity_id: string; journals_required: boolean; payments_required: boolean; version: number; request_id: string; updated_at: string }; Insert: never; Update: never; Relationships: [] }
       finance_contracts: { Row: { id: string; org_id: string; entity_id: string; customer_id: string; reference: string; currency: string; terms: Json; creation_request: string; created_at: string }; Insert: never; Update: never; Relationships: [] }
 

@@ -1,7 +1,7 @@
 BEGIN;
 CREATE TABLE IF NOT EXISTS public.finance_requests (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid NOT NULL,entity_id uuid NOT NULL,
- kind text NOT NULL,payload jsonb NOT NULL,reason text NOT NULL,request_key text NOT NULL,
+ kind text NOT NULL,payload jsonb NOT NULL,source_snapshot jsonb NOT NULL DEFAULT '{}',reason text NOT NULL,request_key text NOT NULL,
  requested_by uuid NOT NULL REFERENCES auth.users(id),requested_at timestamptz NOT NULL DEFAULT now(),
  state text NOT NULL DEFAULT 'PENDING' CHECK(state IN ('PENDING','EXECUTING','APPROVED','REJECTED','WITHDRAWN')),
  decided_by uuid REFERENCES auth.users(id),decided_at timestamptz,decision_reason text,result jsonb,
@@ -24,6 +24,9 @@ BEGIN RAISE EXCEPTION 'finance workflow is unavailable: %',p_kind; END; $$;
 CREATE OR REPLACE FUNCTION public.execute_finance_extension(p_request public.finance_requests)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN RAISE EXCEPTION 'finance workflow is unavailable: %',p_request.kind; END; $$;
+
+CREATE OR REPLACE FUNCTION public.finance_source_snapshot(p_entity uuid,p_kind text,p_payload jsonb)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$ SELECT '{}'::jsonb $$;
 
 CREATE OR REPLACE FUNCTION public.validate_finance_request(p_entity uuid,p_kind text,p_payload jsonb)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
@@ -75,8 +78,8 @@ BEGIN
  END IF;
  v_payload:=public.validate_finance_request(p_entity_id,p_kind,p_payload);
  PERFORM set_config('tapaano.accounting_write','trusted',true);
- INSERT INTO public.finance_requests(org_id,entity_id,kind,payload,reason,request_key,requested_by)
-  VALUES(v_org,p_entity_id,p_kind,v_payload,p_reason,p_key,v_actor) RETURNING id INTO v_id;
+ INSERT INTO public.finance_requests(org_id,entity_id,kind,payload,source_snapshot,reason,request_key,requested_by)
+  VALUES(v_org,p_entity_id,p_kind,v_payload,public.finance_source_snapshot(p_entity_id,p_kind,v_payload),p_reason,p_key,v_actor) RETURNING id INTO v_id;
  RETURN v_id;
 END; $$;
 
@@ -96,6 +99,7 @@ BEGIN
  END IF;
  PERFORM set_config('tapaano.accounting_write','trusted',true);
  IF p_decision='APPROVE' THEN
+  IF v_r.source_snapshot IS DISTINCT FROM public.finance_source_snapshot(v_r.entity_id,v_r.kind,v_r.payload) THEN RAISE EXCEPTION 'approval source changed; reject or withdraw and submit a fresh proposal'; END IF;
   PERFORM public.validate_finance_request(v_r.entity_id,v_r.kind,v_r.payload);
   UPDATE public.finance_requests SET state='EXECUTING',decided_by=v_actor WHERE id=v_r.id;
   PERFORM set_config('tapaano.finance_request',v_r.id::text,true);
@@ -161,7 +165,7 @@ BEGIN
   EXECUTE format('CREATE TRIGGER accounting_truncate BEFORE TRUNCATE ON public.%I FOR EACH STATEMENT EXECUTE FUNCTION public.guard_accounting_truncate()',t);
  END LOOP;
  FOR f IN SELECT oid::regprocedure AS signature,proname FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname IN
-  ('validate_finance_extension','execute_finance_extension','validate_finance_request','request_finance_action','decide_finance_action','guard_finance_approval_posting') LOOP
+  ('validate_finance_extension','execute_finance_extension','finance_source_snapshot','validate_finance_request','request_finance_action','decide_finance_action','guard_finance_approval_posting') LOOP
   EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated,service_role',f.signature);
   IF f.proname IN ('request_finance_action','decide_finance_action') THEN EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated',f.signature); END IF;
  END LOOP;

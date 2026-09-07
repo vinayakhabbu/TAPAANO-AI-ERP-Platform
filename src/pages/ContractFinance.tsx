@@ -50,7 +50,7 @@ function ContractEditor(){
    </div>)}<Button type="button" variant="outline" disabled={obligations.length>=20} onClick={()=>setObligations([...obligations,Math.max(...obligations)+1])}>Add obligation</Button></div>
   </FinanceActionForm></details>:null}
   <div className="grid gap-3 sm:grid-cols-2"><label>Contract<select aria-label="Contract" className="block w-full rounded border bg-background p-2" value={selected} onChange={e=>setSelected(e.target.value)}><option value="">Choose…</option>{history.data?.contracts.map(c=><option key={c.id} value={c.id}>{c.reference} ({c.currency})</option>)}</select></label><label>Report as of<input aria-label="Contract report as of" type="date" className="block w-full rounded border bg-background p-2" value={asOf} onChange={e=>setAsOf(e.target.value)}/></label></div>
-  {report.isError?<p role="alert" className="text-destructive">Contract report unavailable. Do not use previously loaded balances.</p>:report.isFetching?<p>Reconciling contract records…</p>:report.data?<ContractDetail report={report.data} canWrite={canWrite}/>:null}
+  {report.isError?<p role="alert" className="text-destructive">Contract report unavailable. Do not use previously loaded balances.</p>:report.data?<ContractDetail report={report.data} canWrite={canWrite}/>:report.isFetching?<p>Reconciling contract records…</p>:null}
   <FinanceApprovals entityId={report.data?.entityId}/>
  </div>;
 }
