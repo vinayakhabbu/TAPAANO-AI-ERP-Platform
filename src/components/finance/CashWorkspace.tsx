@@ -18,7 +18,7 @@ export function CashWorkspace() {
 }
 function CashEditor() {
   const {user,profile}=useAuth(),entities=useReportEntities(),accounts=useAccounts();
-  const [statement,setStatement]=useState(''),[csv,setCsv]=useState(''),[fileError,setFileError]=useState('');
+  const [statement,setStatement]=useState(()=>new URLSearchParams(window.location.search).get('statement')??''),[csv,setCsv]=useState(''),[fileError,setFileError]=useState('');
   const canWrite=profile?.role==='admin'||profile?.role==='moderator';
   const history=useQuery({queryKey:['cash-history',user?.id,profile?.org_id],enabled:Boolean(user&&profile?.org_id),queryFn:async()=>{
     const org=profile!.org_id!;
@@ -72,6 +72,8 @@ function CashDetail({report:r,canWrite}:{report:CashReport;canWrite:boolean}) {
   const toggle=(id:string,values:string[],set:(v:string[])=>void)=>set(values.includes(id)?values.filter(x=>x!==id):[...values,id]);
   return <div className="space-y-4">
     <h2 className="text-lg font-semibold">{r.reference} · {r.currency} · {r.status}</h2>
+    {r.bankFeed?.changed?<p role="alert" className="text-destructive">The bank provider changed this statement's sources. Preserve the original evidence, then obtain reopening and void approval before rebuilding from the corrected feed.</p>:r.bankFeed?<p>Statement source agrees with the synchronized bank feed.</p>:null}
+    {r.bankFeed&&!r.bankFeed.ready?<p role="alert">Complete a successful bank synchronization before submitting or approving reconciliation close.</p>:null}
     <dl className="grid gap-3 sm:grid-cols-3">{[['Bank closing',r.closing],['Cash GL closing',r.bookClosing],['Outstanding book items',r.outstanding],['Adjusted bank balance',r.adjustedBank],['Reconciliation variance',r.variance],['Opening variance',r.openingVariance]].map(([label,value])=><div key={label} className="rounded border p-3"><dt className="text-sm">{label}</dt><dd className="font-mono">{value}</dd></div>)}</dl>
     <p>Unmatched bank transactions: {r.unmatchedCount}</p>
     <div className="grid gap-4 lg:grid-cols-2"><div><h3 className="font-semibold">Bank transactions</h3><Table><TableHeader><TableRow><TableHead>Select</TableHead><TableHead>Date / description</TableHead><TableHead>Amount</TableHead></TableRow></TableHeader><TableBody>{r.lines.map(l=><TableRow key={l.id}>
@@ -82,7 +84,7 @@ function CashDetail({report:r,canWrite}:{report:CashReport;canWrite:boolean}) {
     {canWrite&&r.status==='OPEN'&&bank.length&&book.length?<FinanceActionForm key={bank.join()+book.join()} title="Match selected transactions" fields={[{name:'reason',label:'Matching evidence'}]} submit={v=>checked(supabase.rpc('match_cash_statement',{p_statement_id:r.id,p_bank_lines:bank,p_book_lines:book,p_reason:v.reason,p_revision:r.revision}))}/>:null}
     <details><summary>Matching audit history ({r.matches.length})</summary><div className="space-y-3">{r.matches.map(m=><div key={m.id} className="rounded border p-3"><p>{m.reason} · {m.removed_at?`Removed: ${m.removal_reason}`:'Active'}</p><p className="text-sm">Prepared by {m.created_by}</p>{canWrite&&r.status==='OPEN'&&!m.removed_at?<FinanceActionForm title="Remove match" fields={[{name:'reason',label:'Removal reason'}]} submit={v=>checked(supabase.rpc('remove_cash_match',{p_match_id:m.id,p_reason:v.reason}))}/>:null}</div>)}</div></details>
     {canWrite&&['OPEN','APPROVED'].includes(r.status)?<FinanceActionForm title="Submit reconciliation review" fields={[
-      {name:'action',label:'Requested action',options:r.status==='APPROVED'?[{value:'REOPEN',label:'Reopen approved reconciliation'}]:[{value:'CLOSE',label:'Close reconciliation'},{value:'VOID',label:'Void incorrect statement'}]},
+      {name:'action',label:'Requested action',options:r.status==='APPROVED'?[{value:'REOPEN',label:'Reopen approved reconciliation'}]:[...(!r.bankFeed||!r.bankFeed.changed&&r.bankFeed.ready?[{value:'CLOSE',label:'Close reconciliation'}]:[]),{value:'VOID',label:'Void incorrect statement'}]},
       {name:'reason',label:'Reconciliation evidence and reason'},
     ]} submit={v=>checked(supabase.rpc('request_cash_review',{p_statement_id:r.id,p_action:v.action,p_reason:v.reason,p_revision:r.revision}))}/>:null}
     <Button variant="outline" onClick={()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(r,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=`reconciliation-${r.id}.json`;a.click();URL.revokeObjectURL(url);}}>Export reconciliation evidence</Button>

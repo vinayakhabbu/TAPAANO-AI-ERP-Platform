@@ -275,3 +275,9 @@ are implemented with net contract concessions. See FINANCE_CUSTOMER_ADJUSTMENTS.
 Subscription lifecycle increment: approved mid-cycle service/seat changes, exact
 discounts and proration, cancellations, finite renewals and linked corrections are
 implemented. See FINANCE_SUBSCRIPTIONS.md for the supported accounting contract.
+
+Bank-feed increment: reviewed Plaid mappings, durable cursor/page synchronization,
+scheduled polling, retained corrections and complete posted-window statement imports
+are implemented. Real provider activation and acceptance remain release work;
+see FINANCE_BANK_FEEDS.md. External payment/refund dispatch and tax integration
+remain separate build work.

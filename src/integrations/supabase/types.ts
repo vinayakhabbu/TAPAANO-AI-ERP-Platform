@@ -14,6 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
+      finance_bank_feeds: { Row: { id: string; org_id: string; entity_id: string; register_id: string; label: string; provider: string; environment: string; item_id: string; account_id: string; coverage_start: string; enabled: boolean; version: number; request_id: string }; Insert: never; Update: never; Relationships: [] }
       finance_statement_policies: { Row: { id: string; org_id: string; entity_id: string; group_id: string | null; version: number; mappings: Json; cash_accounts: string[]; request_id: string }; Insert: never; Update: never; Relationships: [] }
       finance_cash_classifications: { Row: { id: string; org_id: string; entity_id: string; line_id: string; version: number; policy_id: string; allocations: Json; request_id: string }; Insert: never; Update: never; Relationships: [] }
       finance_groups: { Row: { id: string; org_id: string; entity_id: string; reference: string; name: string; currency: string; starts_on: string; member_ids: string[]; cta_account_id: string; request_id: string; terms: Json }; Insert: never; Update: never; Relationships: [] }
@@ -8449,6 +8450,9 @@ export type Database = {
       }
     }
     Functions: {
+      get_bank_feed_report: { Args: { p_feed: string; p_from: string; p_through: string; p_cursor?: string | null; p_limit?: number }; Returns: Json }
+      request_bank_feed_sync: { Args: { p_feed: string }; Returns: undefined }
+      import_bank_feed_statement: { Args: { p_feed: string; p_statement: Json; p_revision: string; p_evidence: string; p_key: string }; Returns: string }
       get_subscription_history: { Args: { p_contract: string }; Returns: Json }
       preview_subscription_action: { Args: { p_entity: string; p_kind: string; p_payload: Json }; Returns: Json }
       get_customer_adjustments: { Args: { p_entity: string; p_as_of: string }; Returns: Json }

@@ -1,0 +1,25 @@
+name: Bank feed synchronization
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bank-feed-synchronization
+  cancel-in-progress: false
+jobs:
+  synchronize:
+    if: vars.BANK_FEED_WORKER_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Synchronize approved bank connections
+        env:
+          BANK_FEED_WORKER_URL: ${{ vars.BANK_FEED_WORKER_URL }}
+          BANK_FEED_WORKER_TOKEN: ${{ secrets.BANK_FEED_WORKER_TOKEN }}
+        run: node scripts/run-bank-feed-worker.mjs

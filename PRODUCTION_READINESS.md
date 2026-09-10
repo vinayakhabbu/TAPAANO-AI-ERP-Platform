@@ -413,3 +413,15 @@ unused-service credits and anchored replacement terms atomically. Finite renewal
 and corrections retain parent/child source lineage. See FINANCE_SUBSCRIPTIONS.md
 and the increment PR for exact validation evidence. Automatic external billing,
 indefinite renewals, tax integration and production acceptance remain separate work.
+
+## Bank-feed automation increment
+
+Reviewed Plaid depository-account connections now support durable synchronization,
+exact provider amounts, pending/posted/removal history, a scheduled worker, and
+statement imports with retained source windows. Provider changes block affected
+reconciliation close; incomplete or unhealthy enabled feeds block finance close.
+FINANCE_BANK_FEEDS.md defines credentials, consent/coverage handoff, scheduler
+activation, monitoring and real Sandbox/managed-production acceptance. CI substitutes
+only the provider HTTP transport while exercising real local Auth, PostgREST,
+browser workflows and populated recovery. No bank connection or deployment was
+activated as part of this code increment.
