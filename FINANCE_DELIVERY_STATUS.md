@@ -8,6 +8,7 @@ acceptance.
 | Requested area | Implemented workflows | Evidence and operating contract |
 | --- | --- | --- |
 | Bank statement import and reconciliation | CSV import, duplicate/control checks, cash matching, timing items, independent close/reopen/void, partial AR/AP settlements and corrections | PR #30; FINANCE_WORKFLOWS.md |
+| Bank feed automation | Reviewed Plaid account mappings, leased paginated synchronization, exact source revisions, scheduler, posted-window imports and correction-aware reconciliation | Bank-feed increment; FINANCE_BANK_FEEDS.md |
 | Subscription/usage billing and revenue recognition | Approved contracts and performance obligations, recurring fixed/usage cycles, invoicing, deferred/unbilled revenue, recognition, prospective amendments and supported credits | PR #31; FINANCE_WORKFLOWS.md |
 | Integrations and approval workflows | Signed Stripe and generic financial events, usage ingestion, source deduplication, reviewed mappings/postings, processor clearing, linked reversals and two-person finance policies | PR #31–32; FINANCE_INTEGRATIONS.md |
 | Consolidation and agreed finance features | Prepaids/assets, recurring journals/accruals, fiscal close, intercompany transactions/settlements, wholly owned groups, FX translation, eliminations and retained approved reports | PR #33–34; FINANCE_CLOSE.md and FINANCE_GROUPS.md |

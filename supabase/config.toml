@@ -30,3 +30,7 @@ verify_jwt = true
 # Provider requests authenticate with a timestamped HMAC over the original body.
 [functions.finance-webhook]
 verify_jwt = false
+
+# Scheduled workers authenticate with a separate, server-only bearer secret.
+[functions.bank-feed-worker]
+verify_jwt = false

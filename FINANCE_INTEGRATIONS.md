@@ -1,5 +1,9 @@
 # Finance integration contract and operations
 
+Automated bank-feed connections and their separate worker/scheduler are described
+in FINANCE_BANK_FEEDS.md. They retain provider transaction revisions and feed the
+existing cash reconciliation workflow; they do not execute bank payments.
+
 The Finance Integrations screen configures a connection, lists verified events,
 shows complete-ledger clearing balances and submits mappings for independent
 approval. It supports USD accounting for the first US release. Enable the entity's

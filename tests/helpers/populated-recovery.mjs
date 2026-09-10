@@ -21,6 +21,10 @@ async function command(file, args, options = {}) {
 }
 
 const graphChecks = [
+  ["finance_bank_feeds","validate_bank_feed_graph","true"],
+  ["finance_bank_sync_runs","validate_bank_sync_run_graph","true"],
+  ["finance_bank_transactions","validate_bank_transaction_graph","true"],
+  ["finance_bank_feed_statements","validate_bank_feed_statement_graph","true"],
   ["finance_subscription_changes","validate_subscription_change_graph","true"],
   ["finance_subscription_actions","validate_subscription_action_graph","true"],
   ["finance_customer_credit_controls","validate_customer_credit_control_graph","true"],

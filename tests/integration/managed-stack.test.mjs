@@ -8,6 +8,7 @@ import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { loadTypescript } from "../helpers/load-typescript.mjs";
 import { qualifySubscriptionLifecycle } from "./subscription-lifecycle-workflow.mjs";
+import { qualifyBankFeedWorkflow } from "./bank-feed-workflow.mjs";
 import { qualifyCustomerAdjustments } from "./customer-adjustment-workflow.mjs";
 import { qualifyContractWorkflow } from "./contract-workflow.mjs";
 import { qualifyProviderWorkflow } from "./provider-workflow.mjs";
@@ -524,6 +525,10 @@ test("full migration stack supports authenticated finance reads and the browser"
     await t.test("subscription changes and finite renewals preserve earned service, exact proration and atomic child approvals",async()=>{
       subscriptionEvidence=await qualifySubscriptionLifecycle({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password});
     });
+    let bankFeedEvidence;
+    await t.test("bank feeds resume durable provider pages, preserve corrected statements and qualify the browser through real Auth and API sessions",async()=>{
+      bankFeedEvidence=await qualifyBankFeedWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password,api,serviceKey:status.SERVICE_ROLE_KEY,db});
+    });
     await t.test("populated backup restores financial evidence, login, isolation and retry behavior after a fresh database reset", async () => {
       await browser?.close(); browser=null;
       server?.kill("SIGTERM"); server=null;
@@ -545,6 +550,8 @@ test("full migration stack supports authenticated finance reads and the browser"
       reportRequests.push(['get_subledger_aging',{p_entity_id:customerAdjustmentEvidence.entity,p_kind:'ar',p_as_of:'2026-01-31'}]);
       for(const contract of subscriptionEvidence.contracts){reportRequests.push(['get_subscription_history',{p_contract:contract}]);reportRequests.push(['get_contract_finance',{p_contract_id:contract,p_as_of:'2026-01-31'}]);}
       reportRequests.push(['get_customer_adjustments',{p_entity:subscriptionEvidence.entity,p_as_of:'2026-01-31'}]);
+      reportRequests.push(['get_bank_feed_report',{p_feed:bankFeedEvidence.feed,p_from:'2026-01-01',p_through:'2026-01-31'}]);
+      for(const statement of bankFeedEvidence.statements)reportRequests.push(['get_cash_reconciliation',{p_statement_id:statement}]);
       const before=[];for(const [name,args] of reportRequests) before.push(normalized(await rpc(clientA,name,args)));
       const retries=[];
       for(const [source,column,number,date,reference] of [
@@ -564,6 +571,10 @@ test("full migration stack supports authenticated finance reads and the browser"
           const result=await client.auth.signInWithPassword({email,password});assert.equal(result.error,null,"Restored identities must support a fresh login");
         }
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",subscriptionEvidence.decision),subscriptionEvidence.result,"Subscription parent retry must retain the same children after restore");
+        assert.deepEqual(await rpc(restoredReviewer,'decide_finance_action',bankFeedEvidence.decision),bankFeedEvidence.result,'Bank mapping approval must survive restoration');
+        assert.equal(await rpc(restoredA,'import_bank_feed_statement',bankFeedEvidence.importPayload),bankFeedEvidence.original,'An uncertain original bank import retains its original evidence after correction and restore');
+        const restoredWorker=createClient(api,status.SERVICE_ROLE_KEY,options);
+        assert.deepEqual(await rpc(restoredWorker,'append_bank_feed_page',bankFeedEvidence.finalPage.args),bankFeedEvidence.finalPage.result,'Worker persistence retry must not advance a restored cursor twice');
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",customerAdjustmentEvidence.decision),customerAdjustmentEvidence.result,"Customer credit approval must survive recovery without duplicate balances");
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",contractEvidence.billingDecision),contractEvidence.billingResult,"Approved billing retry must survive recovery without new posting");
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",providerEvidence.decision),providerEvidence.result,"Provider approval retry must survive recovery without duplicate receipt");
@@ -584,7 +595,7 @@ test("full migration stack supports authenticated finance reads and the browser"
         assert.ok((await restoredA.rpc("post_manual_journal",{p_entity_id:ids.usd,p_entry_number:"RECOVERY-CLOSED",p_entry_date:"2026-11-05",p_memo:"Synthetic closed-period rejection",p_lines:[{account_id:ids.cash,debit:"1.00",credit:"0.00"},{account_id:ids.revenue,debit:"0.00",credit:"1.00"}],p_idempotency_key:"recovery-closed"})).error);
         const health=(await restoredDb.query("SELECT count(*)::int AS count FROM public.journal_entries WHERE entry_number='RECOVERY-CLOSED'")).rows[0];assert.equal(health.count,0);
       }});
-      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,89);assert.ok(evidence.rows>1000);
+      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,99);assert.ok(evidence.rows>1000);
     });
 
   } finally {
