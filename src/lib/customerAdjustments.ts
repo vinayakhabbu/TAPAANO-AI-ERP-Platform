@@ -6,9 +6,9 @@ const schema=z.object({entityId:id,asOf:date,currency:z.string().regex(/^[A-Z]{3
  invoices:z.array(z.object({id,number:z.string(),customerId:id,customerName:z.string(),date,original:amount,remaining:amount,legacyCredited:z.boolean(),contractId:id.nullable(),
   lines:z.array(z.object({id,description:z.string(),original:amount,available:amount})),
   receipts:z.array(z.object({id,kind:z.enum(['RECEIPT','REPLACEMENT']),date,amount,available:amount}))})),
- credits:z.array(z.object({subscriptionChangeId:id.nullable().default(null),subscriptionContractId:id.nullable().default(null),id,invoiceId:id,customerId:id,reference:z.string(),date,amount,arAmount:amount,balanceAmount:amount,remaining:amount,reversedOn:date.nullable(),journalId:id,
+ credits:z.array(z.object({subscriptionChangeId:id.nullable().default(null),subscriptionContractId:id.nullable().default(null),id,invoiceId:id,customerId:id,reference:z.string(),date,amount,arAmount:amount,balanceAmount:amount,remaining:amount,providerReserved:amount.default('0.00'),availableToUse:amount.optional(),reversedOn:date.nullable(),journalId:id,
   lines:z.array(z.object({lineId:id,description:z.string(),amount,revenueAccountId:id})),obligations:z.array(z.object({key:z.string(),amount,recognized:amount})),
-  uses:z.array(z.object({id,kind:z.enum(['REFUND','APPLY']),date,amount,reference:z.string(),invoiceId:id.nullable(),cashAccountId:id.nullable(),settlementId:id.nullable(),settlementKind:z.enum(['RECEIPT','REPLACEMENT']).nullable(),journalId:id,reversedOn:date.nullable()}))}))});
+  uses:z.array(z.object({id,providerRefundId:id.nullable().default(null),kind:z.enum(['REFUND','APPLY']),date,amount,reference:z.string(),invoiceId:id.nullable(),cashAccountId:id.nullable(),settlementId:id.nullable(),settlementKind:z.enum(['RECEIPT','REPLACEMENT']).nullable(),journalId:id,reversedOn:date.nullable()}))}))});
 export type CustomerAdjustments=z.infer<typeof schema>;
 export function parseCustomerAdjustments(value:unknown){
  const r=schema.parse(value),invoices=new Map(r.invoices.map(i=>[i.id,i])),seen=new Set<string>();let balance=0n;
@@ -24,7 +24,8 @@ export function parseCustomerAdjustments(value:unknown){
    else check(Boolean(u.cashAccountId&&u.settlementId&&u.settlementKind)&&!u.invoiceId);
    if(!u.reversedOn)remaining-=signedCents(u.amount);
   }
-  check(remaining>=0n&&remaining===signedCents(c.remaining));balance+=remaining;
+  check(remaining>=0n&&remaining===signedCents(c.remaining));
+  const available=remaining-signedCents(c.providerReserved);if(c.availableToUse===undefined)c.availableToUse=decimal(available>0n?available:0n);check(signedCents(c.availableToUse)===(available>0n?available:0n));balance+=remaining;
  }
  check(balance===signedCents(r.control.expected));check(signedCents(r.control.ledger)-balance===signedCents(r.control.variance));check(r.control.reconciled===(r.control.variance==='0.00'));return r;
 }

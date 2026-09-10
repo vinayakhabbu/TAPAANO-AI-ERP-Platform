@@ -1,3 +1,4 @@
+import {ProviderRefundWorkspace} from '@/components/finance/ProviderRefundWorkspace';
 import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {AppLayout} from '@/components/layout/AppLayout';
@@ -57,6 +58,7 @@ function IntegrationWorkspace(){
     </article>)}
    </section>:report.isFetching?<p>Validating integration sources…</p>:null}
   </>}
+  {entity?<ProviderRefundWorkspace key={entity} entity={entity}/>:null}
   <FinanceApprovals entityId={entity||undefined}/>
  </div>;
 }

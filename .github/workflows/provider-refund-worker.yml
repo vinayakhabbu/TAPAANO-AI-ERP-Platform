@@ -1,0 +1,25 @@
+name: Provider refund processing
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: provider-refund-processing
+  cancel-in-progress: false
+jobs:
+  process:
+    if: vars.PROVIDER_REFUND_WORKER_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Process approved provider refunds
+        env:
+          PROVIDER_REFUND_WORKER_URL: ${{ vars.PROVIDER_REFUND_WORKER_URL }}
+          PROVIDER_REFUND_WORKER_TOKEN: ${{ secrets.PROVIDER_REFUND_WORKER_TOKEN }}
+        run: node scripts/run-provider-refund-worker.mjs
