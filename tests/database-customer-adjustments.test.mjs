@@ -75,7 +75,7 @@ test('same-day credit dependencies reverse in order and the client rejects incon
   await assert.rejects(approve(db,'CUSTOMER_CREDIT_REVERSE',{credit_id:a.creditId,date:'2026-01-04'}),/latest/);
   await approve(db,'CUSTOMER_CREDIT_REVERSE',{credit_id:b.creditId,date:'2026-01-04'});await approve(db,'CUSTOMER_CREDIT_REVERSE',{credit_id:a.creditId,date:'2026-01-04'});
   const r=await get(db);assert.equal(r.control.expected,'0.00');const before=await get(db,'2026-01-03');assert.equal(before.control.expected,'0.03');
-  const corrupt=structuredClone(before);corrupt.credits[0].remaining='0.02';assert.throws(()=>parseCustomerAdjustments(corrupt),/reconcile/);
+  const corrupt=structuredClone(before);corrupt.credits.find(c=>c.id===a.creditId).remaining='0.02';assert.throws(()=>parseCustomerAdjustments(corrupt),/reconcile/);
   const exportable=structuredClone(before);exportable.credits[0].reference='=SUM(A1:A2)';assert.match(customerAdjustmentCsv(exportable),/"'=SUM\(A1:A2\)"/);
  }finally{await db.close();}
 });
