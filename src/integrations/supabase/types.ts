@@ -8449,6 +8449,8 @@ export type Database = {
       }
     }
     Functions: {
+      get_customer_adjustments: { Args: { p_entity: string; p_as_of: string }; Returns: Json }
+      get_customer_credit_balances: { Args: { p_entity: string; p_as_of: string }; Returns: Json }
       get_statement_policy_context: { Args: { p_entity: string; p_group?: string | null }; Returns: Json }
       get_entity_cash_flow: { Args: { p_entity: string; p_from: string; p_through: string }; Returns: Json }
       get_entity_financial_statements: { Args: { p_entity: string; p_from: string; p_through: string }; Returns: Json }

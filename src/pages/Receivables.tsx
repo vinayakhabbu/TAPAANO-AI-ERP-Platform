@@ -48,7 +48,7 @@ const Receivables = () => {
         <AlertTitle>Partial accounting workflow</AlertTitle>
         <AlertDescription>
           Only direct, zero-tax invoices in the legal entity&apos;s functional currency are supported.
-          Full exact credit notes and manual full or partial receipts are supported for verified invoices.
+          Full or partial receipts are supported for verified invoices. Review partial invoice credits, paid-invoice refunds and customer balances in Customer Credits and Refunds.
           Each receipt supports one exact correction and one server-derived replacement.
           Record partial allocations from aging; the server checks the available balance across dated history.
           Receipts are not bank-reconciled by posting; review their cash entries in Banking. Corrections and replacements are accounting entries, not refunds or bank actions.

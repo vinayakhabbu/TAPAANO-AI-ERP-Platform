@@ -267,3 +267,7 @@ previously identified statement-mapping and cash-classification implementation g
 The four finance priorities now have concrete workflows and acceptance scenarios;
 production release still requires the owner settings, managed staging, representative
 opening balances, provider activation and finance/security sign-off listed above.
+
+Customer adjustment increment: independently approved partial credits, paid-invoice
+customer balances, confirmed refunds, credit applications and dated corrections
+are implemented with net contract concessions. See FINANCE_CUSTOMER_ADJUSTMENTS.md.

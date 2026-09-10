@@ -173,3 +173,11 @@ allocations, mixed-payment splits and native/group cash flow. It integrates with
 fiscal and consolidated close controls and retained approval snapshots. See
 [Financial statement policies](FINANCE_STATEMENTS.md) for source graphs, restricted
 cash, transfer/FX rules, migration compatibility and production activation.
+
+## Customer adjustment extension
+
+See [FINANCE_CUSTOMER_ADJUSTMENTS.md](FINANCE_CUSTOMER_ADJUSTMENTS.md) for partial
+and paid-invoice credits, confirmed refunds, customer balance applications and
+contract concessions. This supersedes the original unpaid/full-credit boundary
+for the explicit new approved workflow; the legacy full-credit RPC retains its
+original narrower contract.

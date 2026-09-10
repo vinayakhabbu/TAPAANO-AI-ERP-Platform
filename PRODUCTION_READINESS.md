@@ -397,3 +397,11 @@ statement-policy and cash-classification graphs as well as the preceding source
 families. These gates qualify code behavior. Customer policy notes, representative
 scale, live provider completeness, managed backup/restore, security configuration
 and go-live authorization remain separate release requirements.
+
+## Customer adjustment increment
+
+The customer-credit extension adds policy, credit and use source graphs, exact AR
+capacity, liability reconciliation and browser/recovery qualification. See
+FINANCE_CUSTOMER_ADJUSTMENTS.md and the increment PR checks for the qualified
+commit. It records confirmed refunds; external payment automation and real-provider
+acceptance remain release work. No managed environment has been deployed here.
