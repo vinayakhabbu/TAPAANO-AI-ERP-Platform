@@ -7,6 +7,7 @@ import pg from "pg";
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { loadTypescript } from "../helpers/load-typescript.mjs";
+import { qualifyCustomerAdjustments } from "./customer-adjustment-workflow.mjs";
 import { qualifyContractWorkflow } from "./contract-workflow.mjs";
 import { qualifyProviderWorkflow } from "./provider-workflow.mjs";
 import { qualifyCloseWorkflow } from "./close-workflow.mjs";
@@ -514,6 +515,10 @@ test("full migration stack supports authenticated finance reads and the browser"
     await t.test("browser statement policies and cash allocations preserve mapped group reports through independent review", async()=>{
       statementEvidence=await qualifyStatementWorkflow({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password});
     });
+    let customerAdjustmentEvidence;
+    await t.test("customer credits, confirmed refunds and applications reconcile through browser approvals and corrections",async()=>{
+      customerAdjustmentEvidence=await qualifyCustomerAdjustments({rpc,clientA,clientB,clientReviewer,browser,ids,email:emailA,password});
+    });
     await t.test("populated backup restores financial evidence, login, isolation and retry behavior after a fresh database reset", async () => {
       await browser?.close(); browser=null;
       server?.kill("SIGTERM"); server=null;
@@ -531,6 +536,8 @@ test("full migration stack supports authenticated finance reads and the browser"
       for(const id of groupEvidence.reports)reportRequests.push(['get_approved_consolidation',{p_consolidation:id}]);
       for(const entity of statementEvidence.entities)reportRequests.push(['get_entity_financial_statements',{p_entity:entity,p_from:'2025-01-01',p_through:'2025-12-31'}]);
       reportRequests.push(['get_approved_consolidation',{p_consolidation:statementEvidence.report}]);
+      reportRequests.push(['get_customer_adjustments',{p_entity:customerAdjustmentEvidence.entity,p_as_of:'2026-01-31'}]);
+      reportRequests.push(['get_subledger_aging',{p_entity_id:customerAdjustmentEvidence.entity,p_kind:'ar',p_as_of:'2026-01-31'}]);
       const before=[];for(const [name,args] of reportRequests) before.push(normalized(await rpc(clientA,name,args)));
       const retries=[];
       for(const [source,column,number,date,reference] of [
@@ -549,6 +556,7 @@ test("full migration stack supports authenticated finance reads and the browser"
         for(const [client,email] of [[restoredA,emailA],[restoredB,emailB],[restoredReviewer,emailReviewer]]) {
           const result=await client.auth.signInWithPassword({email,password});assert.equal(result.error,null,"Restored identities must support a fresh login");
         }
+        assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",customerAdjustmentEvidence.decision),customerAdjustmentEvidence.result,"Customer credit approval must survive recovery without duplicate balances");
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",contractEvidence.billingDecision),contractEvidence.billingResult,"Approved billing retry must survive recovery without new posting");
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",providerEvidence.decision),providerEvidence.result,"Provider approval retry must survive recovery without duplicate receipt");
         assert.deepEqual(await rpc(restoredReviewer,"decide_finance_action",closeEvidence.decision),closeEvidence.result,"Fiscal close approval must survive recovery without duplicate closing entries");
@@ -568,7 +576,7 @@ test("full migration stack supports authenticated finance reads and the browser"
         assert.ok((await restoredA.rpc("post_manual_journal",{p_entity_id:ids.usd,p_entry_number:"RECOVERY-CLOSED",p_entry_date:"2026-11-05",p_memo:"Synthetic closed-period rejection",p_lines:[{account_id:ids.cash,debit:"1.00",credit:"0.00"},{account_id:ids.revenue,debit:"0.00",credit:"1.00"}],p_idempotency_key:"recovery-closed"})).error);
         const health=(await restoredDb.query("SELECT count(*)::int AS count FROM public.journal_entries WHERE entry_number='RECOVERY-CLOSED'")).rows[0];assert.equal(health.count,0);
       }});
-      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,60);assert.ok(evidence.rows>1000);
+      assert.equal(evidence.result,"pass");assert.equal(evidence.financialGraphs,68);assert.ok(evidence.rows>1000);
     });
 
   } finally {
