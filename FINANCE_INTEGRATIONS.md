@@ -156,3 +156,11 @@ Clearing balances always cover the full dated ledger and must not be summed twic
 across unrelated views. Report failures hide stale data and exports. Deferred
 database checks validate approval/source/journal lineage; populated recovery
 revalidates every inbox item and compares reports and retry results after restore.
+
+## Approved outbound refunds
+
+The separate provider-refund worker can execute supported approved USD Stripe card
+refunds, retain provider and balance evidence, and queue independent clearing and
+returned-fund accounting review. FINANCE_PROVIDER_REFUNDS.md defines its original
+invoice binding, reservations, bounded retries, credentials and release acceptance.
+Do not treat an inbound receipt, generic journal or worker retry as refund approval.

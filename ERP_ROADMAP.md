@@ -281,3 +281,12 @@ scheduled polling, retained corrections and complete posted-window statement imp
 are implemented. Real provider activation and acceptance remain release work;
 see FINANCE_BANK_FEEDS.md. External payment/refund dispatch and tax integration
 remain separate build work.
+
+## Approved provider refund increment
+
+FINANCE_PROVIDER_REFUNDS.md defines the dispatch, reservation, recovery and reviewed
+accounting contract for direct USD Stripe card refunds. The workflow verifies the
+original invoice payment, prevents blind resends after provider-key expiry, retains
+provider and balance evidence, and independently posts successful/returned funds.
+This completes the supported refund execution path in code; real provider test-mode
+acceptance, secrets, staging, throughput and operating acceptance remain required.

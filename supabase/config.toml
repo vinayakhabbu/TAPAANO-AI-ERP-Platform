@@ -34,3 +34,7 @@ verify_jwt = false
 # Scheduled workers authenticate with a separate, server-only bearer secret.
 [functions.bank-feed-worker]
 verify_jwt = false
+
+# Authenticated by the dedicated provider refund worker secret before any database or provider access.
+[functions.provider-refund-worker]
+verify_jwt = false

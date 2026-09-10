@@ -23,6 +23,7 @@ export type Database = {
 
       finance_schedules: { Row: { id: string; org_id: string; entity_id: string; reference: string; kind: string; currency: string; terms: Json; state: string; creation_request: string }; Insert: never; Update: never; Relationships: [] }
       finance_year_closes: { Row: { id: string; org_id: string; entity_id: string; starts_on: string; ends_on: string; retained_account_id: string; request_id: string; journal_id: string | null; lines: Json; active: boolean; reopen_request: string | null; reversal_journal: string | null }; Insert: never; Update: never; Relationships: [] }
+      finance_inbox: { Row: { id: string; org_id: string; connection_id: string; operation: string; object_id: string; source: Json; state: string; received_at: string; request_id: string | null; result: Json | null; reversal_request: string | null; reversal_result: Json | null }; Insert: never; Update: never; Relationships: [] }
       finance_connections: { Row: { id: string; org_id: string; entity_id: string; label: string; provider: string; provider_account: string; environment: string; currency: string; timezone: string; clearing_account_id: string; enabled: boolean; version: number; request_id: string }; Insert: never; Update: never; Relationships: [] }
       finance_requests: { Row: { id: string; org_id: string; entity_id: string; kind: string; payload: Json; source_snapshot: Json; reason: string; requested_by: string; requested_at: string; state: string; decided_by: string | null; decided_at: string | null; decision_reason: string | null; result: Json }; Insert: never; Update: never; Relationships: [] }
       finance_approval_policies: { Row: { id: string; org_id: string; entity_id: string; journals_required: boolean; payments_required: boolean; version: number; request_id: string; updated_at: string }; Insert: never; Update: never; Relationships: [] }
@@ -8450,6 +8451,9 @@ export type Database = {
       }
     }
     Functions: {
+      get_provider_refund_evidence: { Args: { p_job: string; p_cursor?: string | null; p_limit?: number }; Returns: Json }
+      get_provider_refund_report: { Args: { p_entity: string; p_cursor?: string | null; p_limit?: number }; Returns: Json }
+      request_provider_refund_check: { Args: { p_job: string; p_provider_id?: string | null }; Returns: undefined }
       get_bank_feed_report: { Args: { p_feed: string; p_from: string; p_through: string; p_cursor?: string | null; p_limit?: number }; Returns: Json }
       request_bank_feed_sync: { Args: { p_feed: string }; Returns: undefined }
       import_bank_feed_statement: { Args: { p_feed: string; p_statement: Json; p_revision: string; p_evidence: string; p_key: string }; Returns: string }

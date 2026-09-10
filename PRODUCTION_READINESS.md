@@ -403,8 +403,8 @@ and go-live authorization remain separate release requirements.
 The customer-credit extension adds policy, credit and use source graphs, exact AR
 capacity, liability reconciliation and browser/recovery qualification. See
 FINANCE_CUSTOMER_ADJUSTMENTS.md and the increment PR checks for the qualified
-commit. It records confirmed refunds; external payment automation and real-provider
-acceptance remain release work. No managed environment has been deployed here.
+commit. It records confirmed refunds. FINANCE_PROVIDER_REFUNDS.md adds the separate
+approved Stripe dispatch workflow; real-provider acceptance remains release work. No managed environment has been deployed here.
 
 ## Subscription lifecycle increment
 
@@ -425,3 +425,17 @@ activation, monitoring and real Sandbox/managed-production acceptance. CI substi
 only the provider HTTP transport while exercising real local Auth, PostgREST,
 browser workflows and populated recovery. No bank connection or deployment was
 activated as part of this code increment.
+
+## Approved provider refund acceptance
+
+The provider-refund extension reserves approved customer credit, binds the original
+Stripe invoice payment, recovers uncertain dispatches before retry, and posts
+verified refunds and returned funds through independent accounting review. Its
+worker, optional scheduler, retained evidence and source validation are implemented;
+see FINANCE_PROVIDER_REFUNDS.md for supported methods and operational recovery.
+No live Stripe credentials, worker deployment or money movement was configured.
+Before activation, qualify a real Stripe test account and the managed runtime,
+review timeout/volume budgets, confirm refund/return ledger dates and clearing,
+exercise provider failure recovery and production restore procedures, and assign
+exception monitoring and incident ownership. Repository checks cannot establish
+those external operating facts.

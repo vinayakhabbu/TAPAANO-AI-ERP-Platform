@@ -8,11 +8,12 @@ acceptance.
 | Requested area | Implemented workflows | Evidence and operating contract |
 | --- | --- | --- |
 | Bank statement import and reconciliation | CSV import, duplicate/control checks, cash matching, timing items, independent close/reopen/void, partial AR/AP settlements and corrections | PR #30; FINANCE_WORKFLOWS.md |
-| Bank feed automation | Reviewed Plaid account mappings, leased paginated synchronization, exact source revisions, scheduler, posted-window imports and correction-aware reconciliation | Bank-feed increment; FINANCE_BANK_FEEDS.md |
+| Bank feed automation | Reviewed Plaid account mappings, leased paginated synchronization, exact source revisions, scheduler, posted-window imports and correction-aware reconciliation | PR #38; FINANCE_BANK_FEEDS.md |
 | Subscription/usage billing and revenue recognition | Approved contracts and performance obligations, recurring fixed/usage cycles, invoicing, deferred/unbilled revenue, recognition, prospective amendments and supported credits | PR #31; FINANCE_WORKFLOWS.md |
 | Integrations and approval workflows | Signed Stripe and generic financial events, usage ingestion, source deduplication, reviewed mappings/postings, processor clearing, linked reversals and two-person finance policies | PR #31–32; FINANCE_INTEGRATIONS.md |
 | Consolidation and agreed finance features | Prepaids/assets, recurring journals/accruals, fiscal close, intercompany transactions/settlements, wholly owned groups, FX translation, eliminations and retained approved reports | PR #33–34; FINANCE_CLOSE.md and FINANCE_GROUPS.md |
 | Subscription lifecycle | Mid-cycle upgrades/downgrades, quantities, discounts, anchored proration, cancellation, finite renewals and linked corrections | Subscription increment; FINANCE_SUBSCRIPTIONS.md |
+| Approved provider refunds | Reserved Stripe refund jobs, verified original-card dispatch, recovery before retry, retained balance evidence, reviewed clearing posting and returned-fund corrections | Provider-refund increment; FINANCE_PROVIDER_REFUNDS.md |
 | Customer credits and refunds | Partial original-line credits, paid-invoice customer balances, confirmed refunds, applications, dated corrections and contract concessions | Customer-adjustment increment; FINANCE_CUSTOMER_ADJUSTMENTS.md |
 | Financial statements and cash flow | Approved native/group presentation, restricted cash, split cash allocations, transfer controls, translated group cash flow, source reconciliation and frozen statement packets | Financial-statement increment; FINANCE_STATEMENTS.md. Use its completed PR checks as release evidence. |
 
@@ -38,9 +39,10 @@ a customer's accounting decisions, provider completeness or production environme
 
 ## Boundaries that require a separate accepted scope
 
-Provider ingestion does not create external subscriptions, charge cards or move
-money. Native sales-tax determination/filing, payroll calculation, CRM synchronization,
-automated chargebacks, indefinite automatic renewals, provider-initiated refunds and tax-bearing credit allocations are not supplied by
+Provider ingestion does not create external subscriptions or charge cards. The
+separate approved Stripe refund worker can send supported refunds once an operator
+configures and activates it; FINANCE_PROVIDER_REFUNDS.md defines its contract. Native sales-tax determination/filing, payroll calculation, CRM synchronization,
+automated chargebacks, indefinite automatic renewals, unsupported refund methods and tax-bearing credit allocations are not supplied by
 the generic journal protocol. The initial revenue contract does not cover every
 variable-consideration or retrospective contract modification policy. Consolidation
 supports wholly owned groups and functional-currency translation; noncontrolling
