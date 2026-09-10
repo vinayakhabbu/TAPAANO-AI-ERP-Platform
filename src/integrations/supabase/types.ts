@@ -8449,6 +8449,8 @@ export type Database = {
       }
     }
     Functions: {
+      get_subscription_history: { Args: { p_contract: string }; Returns: Json }
+      preview_subscription_action: { Args: { p_entity: string; p_kind: string; p_payload: Json }; Returns: Json }
       get_customer_adjustments: { Args: { p_entity: string; p_as_of: string }; Returns: Json }
       get_customer_credit_balances: { Args: { p_entity: string; p_as_of: string }; Returns: Json }
       get_statement_policy_context: { Args: { p_entity: string; p_group?: string | null }; Returns: Json }
