@@ -181,3 +181,9 @@ and paid-invoice credits, confirmed refunds, customer balance applications and
 contract concessions. This supersedes the original unpaid/full-credit boundary
 for the explicit new approved workflow; the legacy full-credit RPC retains its
 original narrower contract.
+
+## Subscription lifecycle extension
+
+[FINANCE_SUBSCRIPTIONS.md](FINANCE_SUBSCRIPTIONS.md) defines the new daily-service
+subscription change, proration, quantity/discount, finite renewal and correction
+workflows. This extends the previous future-cycle-only amendment boundary.

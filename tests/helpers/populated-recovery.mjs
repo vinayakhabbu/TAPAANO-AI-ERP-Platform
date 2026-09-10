@@ -21,6 +21,8 @@ async function command(file, args, options = {}) {
 }
 
 const graphChecks = [
+  ["finance_subscription_changes","validate_subscription_change_graph","true"],
+  ["finance_subscription_actions","validate_subscription_action_graph","true"],
   ["finance_customer_credit_controls","validate_customer_credit_control_graph","true"],
   ["finance_customer_credits","validate_customer_credit_graph","true"],
   ["finance_customer_credit_uses","validate_customer_credit_use_graph","true"],

@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {AppLayout} from '@/components/layout/AppLayout';
 import {FinanceActionForm} from '@/components/finance/FinanceActionForm';
+import {SubscriptionLifecycle} from '@/components/finance/SubscriptionLifecycle';
 import {FinanceApprovals} from '@/components/finance/FinanceApprovals';
 import {useAuth} from '@/hooks/useAuth';
 import {useAccounts} from '@/hooks/useGeneralLedger';
@@ -15,7 +16,7 @@ import {Table,TableBody,TableCell,TableHead,TableHeader,TableRow} from '@/compon
 
 export default function ContractFinance(){const {user,profile}=useAuth();return <AppLayout title="Contracts, billing and revenue" subtitle="Approved terms, traceable invoices and earned revenue"><ContractEditor key={`${user?.id}:${profile?.org_id}`}/></AppLayout>;}
 function ContractEditor(){
- const {user,profile}=useAuth(),entities=useReportEntities(),accounts=useAccounts();const [selected,setSelected]=useState(''),[asOf,setAsOf]=useState(new Date().toISOString().slice(0,10)),[obligations,setObligations]=useState([0]);
+ const {user,profile}=useAuth(),entities=useReportEntities(),accounts=useAccounts();const [selected,setSelected]=useState(new URLSearchParams(window.location.search).get('contract')??''),[asOf,setAsOf]=useState(new Date().toISOString().slice(0,10)),[obligations,setObligations]=useState([0]);
  const canWrite=profile?.role==='admin'||profile?.role==='moderator';
  const history=useQuery({queryKey:['contracts',user?.id,profile?.org_id],enabled:Boolean(user&&profile?.org_id),queryFn:async()=>{
   const org=profile!.org_id!;const [contracts,customers]=await Promise.all([
@@ -57,6 +58,7 @@ function ContractEditor(){
 function ContractDetail({report:r,canWrite}:{report:Report;canWrite:boolean}){
  return <section className="space-y-5"><h2 className="text-lg font-semibold">{r.reference} · {r.currency} · as of {r.asOf}</h2><dl className="grid gap-3 sm:grid-cols-4">{[['Net billed',r.billed],['Recognized revenue',r.recognized],['Deferred revenue',r.deferred],['Unbilled receivable',r.unbilled]].map(([label,value])=><div key={label} className="rounded border p-3"><dt>{label}</dt><dd className="font-mono">{value}</dd></div>)}</dl>
   <h3 className="font-semibold">Entity revenue control accounts</h3><Table><TableHeader><TableRow><TableHead>Account</TableHead><TableHead>All contracts</TableHead><TableHead>GL balance</TableHead><TableHead>Variance</TableHead></TableRow></TableHeader><TableBody>{r.controls.map(a=><TableRow key={a.accountId}><TableCell>{a.code} {a.name}</TableCell><TableCell>{a.expected}</TableCell><TableCell>{a.ledger}</TableCell><TableCell>{a.variance}</TableCell></TableRow>)}</TableBody></Table>{r.controls.some(a=>a.variance!=="0.00")?<p role="alert" className="text-destructive">Revenue control accounts do not reconcile. Investigate manual entries and opening balances before close.</p>:<p>Revenue control accounts reconcile to the ledger.</p>}
+  <SubscriptionLifecycle contractId={r.id} entityId={r.entityId} canWrite={canWrite}/>
   {canWrite?<details><summary>Prospective contract amendment</summary><FinanceActionForm title="Request contract amendment" fields={[
    {name:'cycle',label:'Effective billing cycle',options:r.cycles.filter(c=>!c.billingRequest&&!c.cancelled&&!c.recognitions.length&&!c.usage.count).map(c=>({value:String(c.number),label:`Cycle ${c.number}: ${c.startsOn}`}))},
    {name:'action',label:'Amendment',options:[{value:'REPRICE',label:'Change fixed cycle price'},{value:'CANCEL',label:'Cancel remaining cycles'}]},{name:'price',label:'New cycle price (repricing only)',value:'0.00'},{name:'reason',label:'Amendment evidence'},

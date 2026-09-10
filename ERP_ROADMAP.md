@@ -271,3 +271,7 @@ opening balances, provider activation and finance/security sign-off listed above
 Customer adjustment increment: independently approved partial credits, paid-invoice
 customer balances, confirmed refunds, credit applications and dated corrections
 are implemented with net contract concessions. See FINANCE_CUSTOMER_ADJUSTMENTS.md.
+
+Subscription lifecycle increment: approved mid-cycle service/seat changes, exact
+discounts and proration, cancellations, finite renewals and linked corrections are
+implemented. See FINANCE_SUBSCRIPTIONS.md for the supported accounting contract.

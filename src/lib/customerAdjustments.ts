@@ -6,7 +6,7 @@ const schema=z.object({entityId:id,asOf:date,currency:z.string().regex(/^[A-Z]{3
  invoices:z.array(z.object({id,number:z.string(),customerId:id,customerName:z.string(),date,original:amount,remaining:amount,legacyCredited:z.boolean(),contractId:id.nullable(),
   lines:z.array(z.object({id,description:z.string(),original:amount,available:amount})),
   receipts:z.array(z.object({id,kind:z.enum(['RECEIPT','REPLACEMENT']),date,amount,available:amount}))})),
- credits:z.array(z.object({id,invoiceId:id,customerId:id,reference:z.string(),date,amount,arAmount:amount,balanceAmount:amount,remaining:amount,reversedOn:date.nullable(),journalId:id,
+ credits:z.array(z.object({subscriptionChangeId:id.nullable().default(null),subscriptionContractId:id.nullable().default(null),id,invoiceId:id,customerId:id,reference:z.string(),date,amount,arAmount:amount,balanceAmount:amount,remaining:amount,reversedOn:date.nullable(),journalId:id,
   lines:z.array(z.object({lineId:id,description:z.string(),amount,revenueAccountId:id})),obligations:z.array(z.object({key:z.string(),amount,recognized:amount})),
   uses:z.array(z.object({id,kind:z.enum(['REFUND','APPLY']),date,amount,reference:z.string(),invoiceId:id.nullable(),cashAccountId:id.nullable(),settlementId:id.nullable(),settlementKind:z.enum(['RECEIPT','REPLACEMENT']).nullable(),journalId:id,reversedOn:date.nullable()}))}))});
 export type CustomerAdjustments=z.infer<typeof schema>;

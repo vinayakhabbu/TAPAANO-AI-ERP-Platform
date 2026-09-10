@@ -405,3 +405,11 @@ capacity, liability reconciliation and browser/recovery qualification. See
 FINANCE_CUSTOMER_ADJUSTMENTS.md and the increment PR checks for the qualified
 commit. It records confirmed refunds; external payment automation and real-provider
 acceptance remain release work. No managed environment has been deployed here.
+
+## Subscription lifecycle increment
+
+Approved subscription changes now execute reviewed earned-service recognition,
+unused-service credits and anchored replacement terms atomically. Finite renewals
+and corrections retain parent/child source lineage. See FINANCE_SUBSCRIPTIONS.md
+and the increment PR for exact validation evidence. Automatic external billing,
+indefinite renewals, tax integration and production acceptance remain separate work.
