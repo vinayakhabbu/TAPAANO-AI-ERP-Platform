@@ -98,3 +98,22 @@ test('a zero-cent partial cycle can be marked billed and replaced without invent
   parseSubscriptionHistory(await call(db,'get_subscription_history',first.replacementId));await approve(db,'SUBSCRIPTION_REVERSE',{change_id:next.changeId,date:'2026-01-31'});assert.equal((await report(db,first.replacementId)).cycles[0].cancelled,false);
  }finally{await db.close();}
 });
+
+test('subscription reports reject missing approved source links and detached correction children after a damaged restore',async()=>{
+ const db=await database();try{
+  const id=await create(db,'SOURCE-LINKS');await bill(db,(await report(db,id)).cycles[0].id);
+  const change=await approve(db,'SUBSCRIPTION_CHANGE',modification(id));
+  const damage=sql=>db.exec(`RESET ROLE;SET session_replication_role=replica;${sql};SET session_replication_role=origin;SET ROLE authenticated`);
+  for(const [column,value] of [['credit_id',change.creditId],['replacement_id',change.replacementId]]){
+   await damage(`UPDATE public.finance_subscription_changes SET ${column}=NULL WHERE id='${change.changeId}'`);
+   await assert.rejects(call(db,'get_subscription_history',id),/subscription.*(source|consideration|credit|plan)/i);
+   await assert.rejects(call(db,'get_customer_adjustments',ids.entityA,'2026-01-31'),/subscription.*(source|consideration|credit|plan)/i);
+   await damage(`UPDATE public.finance_subscription_changes SET ${column}='${value}' WHERE id='${change.changeId}'`);
+  }
+  await approve(db,'SUBSCRIPTION_REVERSE',{change_id:change.changeId,date:'2026-01-16'});
+  const link=(await db.query("SELECT * FROM public.finance_subscription_actions WHERE slot='RESTORE_CREDIT'")).rows[0];
+  await damage(`DELETE FROM public.finance_subscription_actions WHERE id='${link.id}'`);
+  await assert.rejects(call(db,'get_subscription_history',id),/subscription correction.*(plan|credit|action)/i);
+  await assert.rejects(call(db,'get_customer_adjustments',ids.entityA,'2026-01-31'),/subscription correction.*(plan|credit|action)/i);
+ }finally{await db.close();}
+});

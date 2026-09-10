@@ -247,12 +247,14 @@ BEGIN
 END; $$;
 CREATE OR REPLACE FUNCTION public.validate_subscription_change_graph(p_id uuid)
 RETURNS void LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
-DECLARE v_s public.finance_subscription_changes%ROWTYPE;v_r public.finance_requests%ROWTYPE;v_c public.finance_contracts%ROWTYPE;v_p jsonb;v_a record;v_credit public.finance_customer_credits%ROWTYPE;
+DECLARE v_s public.finance_subscription_changes%ROWTYPE;v_r public.finance_requests%ROWTYPE;v_restore public.finance_requests%ROWTYPE;v_c public.finance_contracts%ROWTYPE;v_p jsonb;v_a record;v_credit public.finance_customer_credits%ROWTYPE;
 BEGIN
  SELECT * INTO v_s FROM public.finance_subscription_changes WHERE id=p_id;SELECT * INTO v_r FROM public.finance_requests WHERE id=v_s.request_id;v_p:=v_r.source_snapshot;
  SELECT * INTO v_c FROM public.finance_contracts WHERE id=v_s.contract_id;
  IF v_s.id IS NULL OR v_c.org_id IS DISTINCT FROM v_s.org_id OR v_c.entity_id IS DISTINCT FROM v_s.entity_id OR v_r.org_id IS DISTINCT FROM v_s.org_id OR v_r.entity_id IS DISTINCT FROM v_s.entity_id OR v_r.kind<>(CASE WHEN v_s.action='RENEW' THEN 'SUBSCRIPTION_RENEW' ELSE 'SUBSCRIPTION_CHANGE' END) OR v_r.state NOT IN ('APPROVED','EXECUTING') OR v_r.requested_by=v_r.decided_by OR
   (v_p->>'contractId')::uuid IS DISTINCT FROM v_s.contract_id OR (v_p->>'cycleId')::uuid IS DISTINCT FROM v_s.cycle_id OR (v_p->>'effectiveOn')::date IS DISTINCT FROM v_s.effective_on OR v_p->>'action' IS DISTINCT FROM v_s.action OR to_jsonb(v_s.cancelled_cycles) IS DISTINCT FROM v_p->'cancelledCycles' THEN RAISE EXCEPTION 'subscription change approval graph is invalid'; END IF;
+ IF (v_s.replacement_id IS NOT NULL) IS DISTINCT FROM coalesce(v_p->'replacementTerms'<>'null'::jsonb,false) OR
+  (v_s.credit_id IS NOT NULL) IS DISTINCT FROM coalesce((v_p->>'unusedCredit')::numeric>0,false) THEN RAISE EXCEPTION 'subscription approved source links are missing or unexpected'; END IF;
  FOR v_a IN SELECT id FROM public.finance_subscription_actions WHERE parent_request=v_s.request_id LOOP PERFORM public.validate_subscription_action_graph(v_a.id);END LOOP;
  IF (SELECT count(*) FROM public.finance_subscription_actions WHERE parent_request=v_s.request_id)<>jsonb_array_length(v_p->'actions') THEN RAISE EXCEPTION 'subscription plan did not execute every approved action'; END IF;
  IF v_s.replacement_id IS NOT NULL THEN
@@ -270,6 +272,10 @@ BEGIN
   IF v_s.reversal_date IS NOT NULL OR v_credit.reversal_date IS NOT NULL OR EXISTS(SELECT 1 FROM public.finance_contract_cycles WHERE id=ANY(v_s.cancelled_cycles) AND cancel_request IS DISTINCT FROM v_s.request_id) THEN RAISE EXCEPTION 'active subscription cancellation or unused credit was detached'; END IF;
  ELSE
   IF v_s.reversal_date IS DISTINCT FROM v_s.effective_on OR NOT EXISTS(SELECT 1 FROM public.finance_requests WHERE id=v_s.reversal_request AND org_id=v_s.org_id AND entity_id=v_s.entity_id AND kind='SUBSCRIPTION_REVERSE' AND payload->>'change_id'=v_s.id::text AND (payload->>'date')::date=v_s.reversal_date AND state IN ('APPROVED','EXECUTING') AND requested_by<>decided_by) THEN RAISE EXCEPTION 'subscription correction approval graph is invalid'; END IF;
+  SELECT * INTO v_restore FROM public.finance_requests WHERE id=v_s.reversal_request;
+  IF (SELECT count(*) FROM public.finance_subscription_actions WHERE parent_request=v_s.reversal_request)<>jsonb_array_length(v_restore.source_snapshot->'actions') THEN RAISE EXCEPTION 'subscription correction plan did not execute every approved action'; END IF;
+  FOR v_a IN SELECT id FROM public.finance_subscription_actions WHERE parent_request=v_s.reversal_request LOOP PERFORM public.validate_subscription_action_graph(v_a.id);END LOOP;
+  IF v_s.credit_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.finance_subscription_actions WHERE parent_request=v_s.reversal_request AND child_request=v_credit.reversal_request AND slot='RESTORE_CREDIT') THEN RAISE EXCEPTION 'subscription correction credit is detached from its approved action'; END IF;
   IF v_s.credit_id IS NOT NULL AND v_credit.reversal_date IS DISTINCT FROM v_s.reversal_date THEN RAISE EXCEPTION 'subscription correction did not restore its unused credit'; END IF;
   IF EXISTS(SELECT 1 FROM public.finance_contract_cycles WHERE contract_id=v_s.replacement_id AND cancel_request IS DISTINCT FROM v_s.reversal_request) THEN RAISE EXCEPTION 'corrected replacement subscription remains active'; END IF;
  END IF;

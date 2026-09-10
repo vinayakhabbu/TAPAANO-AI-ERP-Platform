@@ -4,7 +4,7 @@ import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const migrationsDirectory = new URL("../supabase/migrations/", import.meta.url);
-const expectedManifestHash = "0a3bf758c22749edfbf5294da3f37bbb297558d941ab24604fa8824ae858fa6e";
+const expectedManifestHash = "e02f63daad89138d5554cdd87ca49e36975cfd65c019319813806316eaa34afe";
 
 async function migrationManifest() {
   const names = (await readdir(migrationsDirectory))
