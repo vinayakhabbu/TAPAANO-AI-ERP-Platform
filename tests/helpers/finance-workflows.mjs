@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import {nativeFinanceDatabase} from "./native-finance-database.mjs";
 import { PGlite } from "@electric-sql/pglite";
 import { ids, fixture } from "./subledger-fixture.mjs";
 
@@ -7,10 +8,12 @@ const names = ["20260825010000_recovery_journal_periods", "20260825020000_recove
   "20260825120000_recovery_supplier_bill_credit", "20260825130000_recovery_supplier_payment", "20260825140000_recovery_customer_receipt_correction",
   "20260825150000_recovery_supplier_payment_correction", "20260825160000_recovery_customer_receipt_replacement", "20260825170000_recovery_supplier_payment_replacement",
   "20260906030000_recovery_deferred_validation_privileges", "20260906040000_recovery_posting_source_modules", "20260906050000_recovery_trial_balance", "20260906060000_finance_account_ledger",
-  "20260906070000_finance_period_controls", "20260906080000_finance_manual_journal", "20260906090000_finance_subledger_aging", "20260907010000_partial_settlements", "20260907020000_cash_reconciliation", "20260907030000_finance_approvals", "20260907040000_contract_billing_revenue", "20260907050000_finance_integrations", "20260907060000_finance_schedules", "20260907070000_finance_fiscal_close", "20260907080000_finance_intercompany", "20260907090000_finance_consolidation", "20260907100000_finance_statement_policies", "20260907110000_finance_group_statements", "20260910010000_customer_credits_refunds", "20260910020000_subscription_lifecycle", "20260910030000_bank_feed_automation", "20260910040000_provider_refund_dispatch"];
+  "20260906070000_finance_period_controls", "20260906080000_finance_manual_journal", "20260906090000_finance_subledger_aging", "20260907010000_partial_settlements", "20260907020000_cash_reconciliation", "20260907030000_finance_approvals", "20260907040000_contract_billing_revenue", "20260907050000_finance_integrations", "20260907060000_finance_schedules", "20260907070000_finance_fiscal_close", "20260907080000_finance_intercompany", "20260907090000_finance_consolidation", "20260907100000_finance_statement_policies", "20260907110000_finance_group_statements", "20260910010000_customer_credits_refunds", "20260910020000_subscription_lifecycle", "20260910030000_bank_feed_automation", "20260910040000_provider_refund_dispatch", "20260912010000_tax_accounting", "20260912020000_refund_methods_and_fees", "20260912030000_revenue_revisions", "20260912040000_foreign_currency_subledger", "20260912050000_noncontrolling_consolidation"];
 const migrations = await Promise.all(names.map(name => readFile(new URL(`../../supabase/migrations/${name}.sql`, import.meta.url), "utf8")));
 export async function financeDatabase() {
-  const db = new PGlite(); await db.exec(fixture);
+  const db = process.env.TAPAANO_TEST_DATABASE_URL ? await nativeFinanceDatabase(fixture) : new PGlite();
+  try {
+  if(!process.env.TAPAANO_TEST_DATABASE_URL)await db.exec(fixture);
   for (const migration of migrations) await db.exec(migration);
   await db.exec(migrations.at(-1));
   await db.exec("GRANT USAGE ON SCHEMA public,auth TO authenticated,anon,service_role;");
@@ -24,6 +27,7 @@ export async function financeDatabase() {
   await db.query("SELECT public.configure_entity_supplier_payment_accounts($1,$2,'payment')", [ids.entityA, ids.cashA]);
   await db.exec("RESET ROLE; INSERT INTO auth.users VALUES ('20000000-0000-4000-8000-000000000004'); INSERT INTO public.profiles VALUES ('20000000-0000-4000-8000-000000000004','"+ids.orgA+"','admin'); INSERT INTO public.user_roles(user_id,role) VALUES('20000000-0000-4000-8000-000000000004','admin'); SET ROLE authenticated");
   return db;
+  }catch(error){await db.close().catch(()=>{});throw error;}
 }
 export { ids };
 export const reviewer = "20000000-0000-4000-8000-000000000004";

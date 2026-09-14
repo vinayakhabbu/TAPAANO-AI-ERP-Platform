@@ -8459,6 +8459,8 @@ export type Database = {
       import_bank_feed_statement: { Args: { p_feed: string; p_statement: Json; p_revision: string; p_evidence: string; p_key: string }; Returns: string }
       get_subscription_history: { Args: { p_contract: string }; Returns: Json }
       preview_subscription_action: { Args: { p_entity: string; p_kind: string; p_payload: Json }; Returns: Json }
+      get_foreign_currency_report: { Args: { p_entity: string; p_as_of: string }; Returns: Json };
+      get_tax_register: { Args: { p_entity: string; p_from: string; p_through: string }; Returns: Json }
       get_customer_adjustments: { Args: { p_entity: string; p_as_of: string }; Returns: Json }
       get_customer_credit_balances: { Args: { p_entity: string; p_as_of: string }; Returns: Json }
       get_statement_policy_context: { Args: { p_entity: string; p_group?: string | null }; Returns: Json }

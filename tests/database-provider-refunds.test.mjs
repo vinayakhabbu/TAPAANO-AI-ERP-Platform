@@ -10,16 +10,16 @@ async function approve(db,kind,payload){await actor(db,ids.adminA);const req=awa
 async function service(db,fn,...args){await db.exec('RESET ROLE;SET ROLE service_role');try{return await call(db,fn,...args);}finally{await db.exec('RESET ROLE;SET ROLE authenticated');}}
 const report=db=>call(db,'get_provider_refund_report',ids.entityA,null,100);
 async function ready(db,id){await db.exec("RESET ROLE;SELECT set_config('tapaano.accounting_write','trusted',false)");await db.query("UPDATE public.finance_provider_refunds SET next_attempt_at=now()-INTERVAL '1 second' WHERE id=$1",[id]);await db.exec('SET ROLE authenticated');}
-async function database(){
+async function database(options={}){
  const db=await financeDatabase();await db.exec(`RESET ROLE;INSERT INTO public.accounts VALUES('${liability}','${ids.orgA}','2395','Customer credit reserve','liability',true),('${clearing}','${ids.orgA}','1186','Stripe clearing','asset',true);SET ROLE authenticated`);
  await approve(db,'CUSTOMER_CREDIT_POLICY',{liability_account_id:liability});await call(db,'create_cash_register',ids.entityA,ids.cashA,'Operating bank');
  const connection=randomUUID();await approve(db,'INTEGRATION_CONFIG',{id:connection,label:'Stripe acceptance',provider:'STRIPE',provider_account:'acct_acceptance',environment:'TEST',timezone:'UTC',clearing_account_id:clearing,enabled:true,expected_version:0});
  const invoice=await call(db,'post_customer_invoice',ids.entityA,ids.customerA,'PROVIDER-INVOICE','2026-01-01','2026-01-01','USD',0,'Synthetic invoice',[{description:'Service',quantity:'1',unit_price:'100.00'}],'provider-invoice');
  const event=await service(db,'enqueue_finance_event',connection,'evt_acceptance','RECEIPT','in_acceptance',{currency:'USD',date:'2026-01-02',amount:'100.00'},'a'.repeat(64));
  const received=await approve(db,'INTEGRATION_APPLY',{event_id:event,target_id:invoice});const line=(await call(db,'get_customer_adjustments',ids.entityA,today)).invoices[0].lines[0].id;
- const credit=(await approve(db,'CUSTOMER_CREDIT',{invoice_id:invoice,reference:'PROVIDER-CREDIT',date:'2026-01-03',lines:[{line_id:line,amount:'60.00'}]})).creditId;
- const id=randomUUID(),payload={id,credit_id:credit,event_id:event,amount:'20.00',reference:'STRIPE-REFUND',date:today};const approved=await approve(db,'PROVIDER_REFUND',payload);
- const fixture=stripeRefundFixture(),token='synthetic_provider_refund_token_'+randomUUID();const worker=createProviderRefundWorker({token,secrets:{[connection]:{environment:'TEST',accountId:'acct_acceptance',secretKey:'sk_test_syntheticcredential'}},fetch:fixture.fetch,rpc:(name,args)=>service(db,name,...Object.values(args))});
+ const credit=(await approve(db,'CUSTOMER_CREDIT',{invoice_id:invoice,reference:'PROVIDER-CREDIT',date:'2026-01-03',lines:[{line_id:line,amount:options.ach?'100.00':'60.00'}]})).creditId;
+ const id=randomUUID(),payload={id,credit_id:credit,event_id:event,amount:options.ach?'100.00':'20.00',reference:'STRIPE-REFUND',date:today,...(options.ach?{payment_method:'US_BANK_ACCOUNT',customer_notice:'Synthetic confirmation of ACH credit and timing'}:{}),...(options.fee?{maximum_fee:options.fee,fee_account_id:ids.expenseA}:{})};const approved=await approve(db,'PROVIDER_REFUND',payload);
+ const fixture=stripeRefundFixture(options.ach?{refundCents:10000,paymentMethod:'us_bank_account'}:{}),token='synthetic_provider_refund_token_'+randomUUID();const worker=createProviderRefundWorker({token,secrets:{[connection]:{environment:'TEST',accountId:'acct_acceptance',secretKey:'sk_test_syntheticcredential'}},fetch:fixture.fetch,rpc:(name,args)=>service(db,name,...Object.values(args))});
  const invoke=()=>worker(new Request('https://erp.example/functions/v1/provider-refund-worker',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({jobId:id})}));
  return {db,id,invoice,credit,event,receipt:received.receiptId,connection,payload,approved,fixture,invoke};
 }
@@ -78,5 +78,22 @@ test('reports reject damaged provider amounts and missing retained observations 
   await db.exec("RESET ROLE;SET session_replication_role=replica");await db.query("UPDATE public.finance_provider_refund_observations SET proof=jsonb_set(proof,'{amount}','\"21.00\"') WHERE refund_id=$1",[id]);await db.exec('SET session_replication_role=origin;SET ROLE authenticated');
   await assert.rejects(report(db),/approved dispatch/);await assert.rejects(call(db,'get_finance_close_check',ids.entityA,'2026-01-01',today),/approved dispatch/);
   await db.exec("RESET ROLE;SET session_replication_role=replica");await db.query('DELETE FROM public.finance_provider_refund_observations WHERE refund_id=$1',[id]);await db.exec('SET session_replication_role=origin;SET ROLE authenticated');await assert.rejects(call(db,'get_provider_refund_evidence',id,null,1),/latest evidence/);
+ }finally{await db.close();}
+});
+
+test('ACH refunds carry independent method approval and gross fees through posting and returned funds',async()=>{
+ const {db,id,fixture,invoke}=await database({ach:true,fee:'1.00'});try{
+  fixture.state.fee=25;fixture.state.status='pending';assert.equal((await invoke()).status,200);await assert.rejects(approve(db,'PROVIDER_REFUND_POST',{job_id:id,date:today}),/successful provider refund/);
+  fixture.state.status='succeeded';await ready(db,id);assert.equal((await invoke()).status,200);let j=(await report(db)).refunds[0];assert.equal(j.paymentMethod,'US_BANK_ACCOUNT');assert.equal(j.proof.balance.net,'-100.25');const posted=await approve(db,'PROVIDER_REFUND_POST',{job_id:id,date:j.postingDate});
+  const lines=await db.query('SELECT account_id,debit::text,credit::text FROM public.journal_lines WHERE journal_entry_id=$1 ORDER BY account_id',[posted.journalId]);assert.equal(lines.rows.find(l=>l.account_id===clearing).credit,'100.25');assert.equal(lines.rows.find(l=>l.account_id===ids.expenseA).debit,'0.25');
+  fixture.state.status='failed';await ready(db,id);assert.equal((await invoke()).status,200);j=(await report(db)).refunds[0];await approve(db,'CUSTOMER_CREDIT_USE_REVERSE',{use_id:posted.useId,date:j.returnDate});j=(await report(db)).refunds[0];assert.ok(j.returnFeeJournalId);assert.equal((await call(db,'get_customer_adjustments',ids.entityA,today)).control.expected,'100.00');assert.equal(fixture.state.posts.length,1);
+  await assert.rejects(call(db,'reverse_posted_journal',j.returnFeeJournalId,today,'Unlinked fee','fee-reverse'),/retained refund/);
+ }finally{await db.close();}
+});
+test('credited provider fees leave no retained-fee journal and changed balance evidence is rejected',async()=>{
+ const {db,id,fixture,invoke}=await database({fee:'1.00'});try{
+  fixture.state.fee=25;assert.equal((await invoke()).status,200);let j=(await report(db)).refunds[0];const posted=await approve(db,'PROVIDER_REFUND_POST',{job_id:id,date:j.postingDate});
+  fixture.state.fee=26;await ready(db,id);assert.equal((await invoke()).status,503);assert.equal((await report(db)).refunds[0].proof.balance.fee,'0.25');
+  fixture.state.fee=25;fixture.state.status='failed';fixture.state.returnFee=-25;await ready(db,id);assert.equal((await invoke()).status,200);j=(await report(db)).refunds[0];await approve(db,'CUSTOMER_CREDIT_USE_REVERSE',{use_id:posted.useId,date:j.returnDate});assert.equal((await report(db)).refunds[0].returnFeeJournalId,null);
  }finally{await db.close();}
 });

@@ -8,6 +8,8 @@ export const scheduleSchema=z.object({id,entityId:id,reference:z.string(),kind:z
 export type FinanceSchedule=z.infer<typeof scheduleSchema>;
 export const acquisitionSchema=z.object({hasMore:z.boolean(),rows:z.array(z.object({id,accountId:id,code:z.string(),name:z.string(),journal:z.string(),date:z.string(),cost:amount}))});
 export const closeCheckSchema=z.object({entityId:id,from:z.string(),through:z.string(),canClose:z.boolean(),revision:z.string(),generatedAt:z.string().datetime({offset:true}),trialBalance:z.record(z.unknown()),ar:z.unknown().nullable(),ap:z.unknown().nullable(),assetControls:z.array(control),revenueControls:z.array(control),intercompanyControls:z.array(control).default([]),
+ fxReconciled:z.boolean().default(true),fxControls:z.array(control).default([]),pendingFxRemeasurement:z.number().int().nonnegative().default(0),
+ taxReconciled:z.boolean().default(true),taxControls:z.array(control).default([]),
  customerCredits:z.record(z.unknown()).optional(),
  providerRefundExceptions:z.number().int().nonnegative().default(0),
  bankFeedConflicts:z.number().int().nonnegative().default(0),

@@ -7,8 +7,8 @@ const {createProviderRefundWorker,stripeInteger}=await loadTypescript('../../sup
 const {parseProviderJson}=await loadTypescript('../../supabase/functions/_shared/providerJson.ts');
 const token='synthetic_provider_worker_'+randomUUID(),connection=randomUUID();
 const request=(auth=token,body={})=>new Request('https://erp.example/functions/v1/provider-refund-worker',{method:'POST',headers:{Authorization:'Bearer '+auth,'Content-Type':'application/json'},body:JSON.stringify(body)});
-function harness(){
- const fixture=stripeRefundFixture(),observations=[],marks=[],releases=[],calls=[];
+function harness(options={}){
+ const fixture=stripeRefundFixture(options),observations=[],marks=[],releases=[],calls=[];
  const claim={jobId:randomUUID(),connectionId:connection,leaseToken:randomUUID(),environment:'TEST',accountId:'acct_acceptance',invoiceId:'in_acceptance',receiptAmount:'100.00',amount:'20.00',approvalDigest:'a'.repeat(32),providerId:null,recoveryId:null,preflight:null,dispatchStartedAt:null,mayDispatch:true};
  const deps={token,secrets:{[connection]:{environment:'TEST',accountId:'acct_acceptance',secretKey:'sk_test_syntheticcredential'}},fetch:fixture.fetch,rpc:async(name,args)=>{
   calls.push({name,args});if(name==='claim_provider_refund')return {...claim};if(name==='mark_provider_refund_dispatch'){marks.push(args);claim.preflight=args.p_preflight;claim.dispatchStartedAt??=new Date().toISOString();return {maySend:true,startedAt:claim.dispatchStartedAt};}if(name==='record_provider_refund_observation'){observations.push(args);claim.providerId=args.p_proof.id;return {observationId:randomUUID(),status:args.p_proof.status};}if(name==='release_provider_refund'){releases.push(args);return null;}throw Error('Unexpected worker RPC');
@@ -40,4 +40,16 @@ test('ambiguous allocations, disputes, unexpected fees and mismatched refund own
 });
 test('successful refunds continue verification after connection disablement and failures retain the returned balance evidence',async()=>{
  const h=harness(),worker=createProviderRefundWorker(h.deps);assert.equal((await worker(request())).status,200);h.claim.mayDispatch=false;h.fixture.state.status='failed';assert.equal((await worker(request())).status,200);assert.equal(h.fixture.state.posts.length,1);assert.equal(h.observations.at(-1).p_proof.failureBalance.amount,'20.00');
+});
+
+test('ACH dispatch requires the full successful original bank payment, a valid age and undisputed recovery',async()=>{
+ const good=()=>{const h=harness({refundId:'re_achacceptance',refundCents:10000,paymentMethod:'us_bank_account'});Object.assign(h.claim,{amount:'100.00',paymentMethod:'US_BANK_ACCOUNT',maximumFee:'1.00'});return h;};
+ const h=good();h.fixture.state.status='pending';const worker=createProviderRefundWorker(h.deps);assert.equal((await worker(request())).status,200);assert.equal(h.observations[0].p_proof.id,'re_achacceptance');assert.equal(h.observations[0].p_proof.balance,null);assert.equal(h.marks[0].p_preflight.paymentMethod,'US_BANK_ACCOUNT');
+ h.fixture.state.status='succeeded';h.fixture.state.fee=25;assert.equal((await worker(request())).status,200);assert.equal(h.observations.at(-1).p_proof.balance.net,'-100.25');assert.equal(h.fixture.state.posts.length,1);
+ h.fixture.state.invalidCharge=true;assert.equal((await worker(request())).status,503);assert.equal(h.fixture.state.posts.length,1);
+ for(const change of [h=>h.claim.amount='20.00',h=>h.fixture.state.paymentMethod='card',h=>h.fixture.state.chargeCreated=Math.floor(Date.now()/1000)-180*86400,h=>h.fixture.state.chargeCreated=Math.floor(Date.now()/1000)+1]){const bad=good();change(bad);assert.equal((await createProviderRefundWorker(bad.deps)(request())).status,503);assert.equal(bad.fixture.state.posts.length,0);}
+});
+test('approved fees reconcile original and returned net funds, including credited fees and caps',async()=>{
+ for(const returned of [-25,0,50]){const h=harness();h.claim.maximumFee='1.00';h.fixture.state.fee=25;const worker=createProviderRefundWorker(h.deps);assert.equal((await worker(request())).status,200);assert.equal(h.observations[0].p_proof.balance.net,'-20.25');h.fixture.state.status='failed';h.fixture.state.returnFee=returned;assert.equal((await worker(request())).status,200);assert.equal(h.observations.at(-1).p_proof.failureBalance.net,((2000-returned)/100).toFixed(2));}
+ const h=harness();h.claim.maximumFee='0.25';h.fixture.state.fee=25;const worker=createProviderRefundWorker(h.deps);assert.equal((await worker(request())).status,200);h.fixture.state.status='failed';h.fixture.state.returnFee=1;assert.equal((await worker(request())).status,503);assert.equal(h.observations.length,1);
 });
