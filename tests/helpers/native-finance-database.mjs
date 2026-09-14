@@ -20,6 +20,19 @@ export async function nativeFinanceDatabase(fixture){
   // executed under a lock above. All schema, grants and policies are unchanged.
   for(const role of ['anon','authenticated','service_role']){const sql='CREATE ROLE '+role+' NOLOGIN;';assert.equal(fixture.split(sql).length,2);fixture=fixture.replace(sql,'');}
   await client.query(fixture);
-  return {query:(sql,args)=>client.query(sql,args),exec:async sql=>{const r=await client.query(sql);return Array.isArray(r)?r:[r];},close:async()=>{try{await client.end();await maintenance.query('DROP DATABASE "'+name+'"');}finally{await maintenance.end();}}};
+  let sequence=0;
+  async function query(sql,args){
+   if(args?.some(Array.isArray)){
+    // PGlite serializes against the server's parameter types. node-postgres
+    // otherwise sends every JS array as a PostgreSQL array, including JSONB
+    // journal lines and empty rate lists. Ask PostgreSQL for the actual types;
+    // UUID arrays used for bank matching must remain native arrays.
+    const statement='tapaano_parameters_'+(++sequence);await client.query('PREPARE '+statement+' AS '+sql);
+    let types;try{types=(await client.query('SELECT parameter_types::oid[] AS types FROM pg_prepared_statements WHERE name=$1',[statement])).rows[0].types;}finally{await client.query('DEALLOCATE '+statement);}
+    args=args.map((value,i)=>Array.isArray(value)&&[114,3802].includes(Number(types[i]))?JSON.stringify(value):value);
+   }
+   return client.query(sql,args);
+  }
+  return {query,exec:async sql=>{const r=await client.query(sql);return Array.isArray(r)?r:[r];},close:async()=>{try{await client.end();await maintenance.query('DROP DATABASE "'+name+'"');}finally{await maintenance.end();}}};
  }catch(error){if(client)await client.end().catch(()=>{});await maintenance.query('ROLLBACK').catch(()=>{});if(created)await maintenance.query('DROP DATABASE "'+name+'"').catch(()=>{});await maintenance.end();throw error;}
 }
