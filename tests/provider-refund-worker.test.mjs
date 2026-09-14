@@ -43,8 +43,8 @@ test('successful refunds continue verification after connection disablement and 
 });
 
 test('ACH dispatch requires the full successful original bank payment, a valid age and undisputed recovery',async()=>{
- const good=()=>{const h=harness({refundCents:10000,paymentMethod:'us_bank_account'});Object.assign(h.claim,{amount:'100.00',paymentMethod:'US_BANK_ACCOUNT',maximumFee:'1.00'});return h;};
- const h=good();h.fixture.state.status='pending';const worker=createProviderRefundWorker(h.deps);assert.equal((await worker(request())).status,200);assert.equal(h.observations[0].p_proof.balance,null);assert.equal(h.marks[0].p_preflight.paymentMethod,'US_BANK_ACCOUNT');
+ const good=()=>{const h=harness({refundId:'re_achacceptance',refundCents:10000,paymentMethod:'us_bank_account'});Object.assign(h.claim,{amount:'100.00',paymentMethod:'US_BANK_ACCOUNT',maximumFee:'1.00'});return h;};
+ const h=good();h.fixture.state.status='pending';const worker=createProviderRefundWorker(h.deps);assert.equal((await worker(request())).status,200);assert.equal(h.observations[0].p_proof.id,'re_achacceptance');assert.equal(h.observations[0].p_proof.balance,null);assert.equal(h.marks[0].p_preflight.paymentMethod,'US_BANK_ACCOUNT');
  h.fixture.state.status='succeeded';h.fixture.state.fee=25;assert.equal((await worker(request())).status,200);assert.equal(h.observations.at(-1).p_proof.balance.net,'-100.25');assert.equal(h.fixture.state.posts.length,1);
  h.fixture.state.invalidCharge=true;assert.equal((await worker(request())).status,503);assert.equal(h.fixture.state.posts.length,1);
  for(const change of [h=>h.claim.amount='20.00',h=>h.fixture.state.paymentMethod='card',h=>h.fixture.state.chargeCreated=Math.floor(Date.now()/1000)-180*86400,h=>h.fixture.state.chargeCreated=Math.floor(Date.now()/1000)+1]){const bad=good();change(bad);assert.equal((await createProviderRefundWorker(bad.deps)(request())).status,503);assert.equal(bad.fixture.state.posts.length,0);}

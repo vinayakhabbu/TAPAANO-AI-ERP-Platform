@@ -42,13 +42,15 @@ a customer's accounting decisions, provider completeness or production environme
 
 Provider ingestion does not create external subscriptions or charge cards. The
 separate approved Stripe refund worker can send supported refunds once an operator
-configures and activates it; FINANCE_PROVIDER_REFUNDS.md defines its contract. Native sales-tax determination/filing, payroll calculation, CRM synchronization,
-automated chargebacks, indefinite automatic renewals, unqualified automated refund methods are not supplied by
-the generic journal protocol. The initial revenue contract does not cover every
-variable-consideration or retrospective contract modification policy. Consolidation
-supports wholly owned groups and functional-currency translation; noncontrolling
-interests, hyperinflation and native transaction-currency remeasurement require
-additional accepted accounting workflows. Statutory notes, noncash disclosures and
+configures and activates it; FINANCE_PROVIDER_REFUNDS.md defines its contract.
+Native sales-tax determination/filing, payroll calculation, CRM synchronization,
+automated chargebacks, indefinite automatic renewals and refund methods beyond
+the supported card/ACH workflows require additional implementation. Reviewed
+revenue revisions cover existing obligations in billed fixed cycles; arbitrary
+obligation changes and usage-cycle revisions require separate policies and tests.
+Foreign monetary balances use the dedicated AR/AP subledger. Indirect/cross
+ownership, mid-period ownership changes, loss of control and hyperinflation remain
+outside the static direct-majority consolidation policy. Statutory notes, noncash disclosures and
 filing formats require finance review and reporting extensions where applicable.
 
 These boundaries remain visible instead of being represented by simulated or

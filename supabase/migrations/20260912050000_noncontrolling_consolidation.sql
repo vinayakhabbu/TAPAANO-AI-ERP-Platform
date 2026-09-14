@@ -150,7 +150,17 @@ BEGIN
  amount:=(ownership->>'noncontrollingEquity')::numeric;
  IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(c.report->'rows') r WHERE r->>'accountId'=grp.terms->>'nci_account_id' AND (r->>'closing')::numeric=-amount AND (r->>'adjustmentClosing')::numeric=-amount) OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(c.report->'rows') r WHERE r->>'accountId'=grp.terms->>'parent_equity_account_id' AND (r->>'closing')::numeric=amount AND (r->>'adjustmentClosing')::numeric=amount) THEN RAISE EXCEPTION 'noncontrolling equity reclassification is invalid';END IF;
 END; $$;
+-- These accounts only exist in the consolidated report. Reject source posting
+-- immediately so later activity cannot invalidate a retained ownership snapshot.
+CREATE OR REPLACE FUNCTION public.guard_ownership_source_accounts()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.journal_entries j JOIN public.finance_groups g ON g.org_id=j.org_id AND j.entity_id=ANY(g.member_ids) WHERE j.id=NEW.journal_entry_id AND g.terms->>'ownership_basis'='CONTROLLED' AND NEW.account_id::text IN (g.terms->>'nci_account_id',g.terms->>'parent_equity_account_id')) THEN RAISE EXCEPTION 'ownership equity accounts are reserved for group reports; choose a source-book equity account';END IF;
+ RETURN NEW;
+END; $$;
+DROP TRIGGER IF EXISTS guard_ownership_source_accounts ON public.journal_lines;
+CREATE TRIGGER guard_ownership_source_accounts BEFORE INSERT OR UPDATE OF account_id,journal_entry_id ON public.journal_lines FOR EACH ROW EXECUTE FUNCTION public.guard_ownership_source_accounts();
 DO $$ DECLARE f record;BEGIN
- FOR f IN SELECT oid::regprocedure signature FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname IN ('pre_ownership_validate','pre_ownership_execute','pre_ownership_core_report','pre_ownership_final_graph','validate_group_ownership_terms','validate_finance_extension','execute_finance_extension','ownership_adjustment_sources','group_ownership_attribution','get_core_consolidation_report','validate_finance_group','validate_group_adjustment','validate_consolidation_graph') LOOP EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated,service_role',f.signature);END LOOP;
+ FOR f IN SELECT oid::regprocedure signature FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname IN ('guard_ownership_source_accounts','pre_ownership_validate','pre_ownership_execute','pre_ownership_core_report','pre_ownership_final_graph','validate_group_ownership_terms','validate_finance_extension','execute_finance_extension','ownership_adjustment_sources','group_ownership_attribution','get_core_consolidation_report','validate_finance_group','validate_group_adjustment','validate_consolidation_graph') LOOP EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated,service_role',f.signature);END LOOP;
 END; $$;
 COMMIT;

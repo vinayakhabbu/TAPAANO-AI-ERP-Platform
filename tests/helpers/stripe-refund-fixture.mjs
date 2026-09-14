@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 /** Substitute provider transport only. Never use this fixture against a real provider. */
-export function stripeRefundFixture({accountId='acct_acceptance',invoiceId='in_acceptance',receiptCents=10000,refundCents=2000,paymentMethod='card'}={}){
+export function stripeRefundFixture({accountId='acct_acceptance',invoiceId='in_acceptance',refundId='re_acceptance',receiptCents=10000,refundCents=2000,paymentMethod='card'}={}){
  const state={status:'succeeded',refund:null,posts:[],calls:[],losePost:false,created:Math.floor(Date.now()/1000),chargeId:'ch_acceptance',paymentIntentId:'pi_acceptance',invalidCharge:false,fee:0,returnFee:0,chargeCreated:Math.floor(Date.now()/1000)-86400,paymentMethod,multiplePayments:false};
  const json=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
  const refund=()=>({...state.refund,status:state.status,balance_transaction:state.status==='pending'?null:'txn_refund',failure_balance_transaction:['failed','canceled'].includes(state.status)?'txn_return':null});
@@ -14,12 +14,12 @@ export function stripeRefundFixture({accountId='acct_acceptance',invoiceId='in_a
   if(u.pathname==='/v1/refunds'&&init.method==='POST'){
    const p=new URLSearchParams(init.body);assert.equal(p.get('charge'),state.chargeId);assert.equal(p.get('amount'),String(refundCents));assert.match(init.headers['Idempotency-Key'],/^tapaano-refund-/);
    state.posts.push({body:init.body,key:init.headers['Idempotency-Key']});
-   if(!state.refund)state.refund={object:'refund',id:'re_acceptance',charge:state.chargeId,payment_intent:state.paymentIntentId,amount:refundCents,currency:'usd',created:state.created,metadata:{tapaano_refund_job:p.get('metadata[tapaano_refund_job]'),tapaano_approval:p.get('metadata[tapaano_approval]')}};
+   if(!state.refund)state.refund={object:'refund',id:refundId,charge:state.chargeId,payment_intent:state.paymentIntentId,amount:refundCents,currency:'usd',created:state.created,metadata:{tapaano_refund_job:p.get('metadata[tapaano_refund_job]'),tapaano_approval:p.get('metadata[tapaano_approval]')}};
    if(state.losePost){state.losePost=false;throw new Error('Synthetic lost provider POST response');}return json(refund());
   }
   if(u.pathname==='/v1/refunds'){assert.equal(u.searchParams.get('charge'),state.chargeId);return json({object:'list',has_more:false,data:state.refund?[refund()]:[]});}
-  if(u.pathname==='/v1/refunds/re_acceptance')return json(refund());
-  if(u.pathname.startsWith('/v1/balance_transactions/')){const failure=u.pathname.endsWith('txn_return'),amount=failure?refundCents:-refundCents,fee=failure?state.returnFee:state.fee;return json({object:'balance_transaction',id:failure?'txn_return':'txn_refund',source:'re_acceptance',amount,currency:'usd',fee,net:amount-fee,exchange_rate:null,type:failure?'refund_failure':'refund',created:state.created});}
+  if(u.pathname==='/v1/refunds/'+refundId)return json(refund());
+  if(u.pathname.startsWith('/v1/balance_transactions/')){const failure=u.pathname.endsWith('txn_return'),amount=failure?refundCents:-refundCents,fee=failure?state.returnFee:state.fee;return json({object:'balance_transaction',id:failure?'txn_return':'txn_refund',source:refundId,amount,currency:'usd',fee,net:amount-fee,exchange_rate:null,type:failure?'refund_failure':'refund',created:state.created});}
   throw new Error('Unexpected synthetic Stripe endpoint '+u.pathname);
  };
  return {state,fetch};

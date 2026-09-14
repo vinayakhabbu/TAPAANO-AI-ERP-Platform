@@ -154,7 +154,7 @@ docker run --rm -d --name tapaano-finance-tests \
   -p 127.0.0.1:55432:5432 postgres:17
 docker exec tapaano-finance-tests pg_isready -U postgres -d tapaano_regression_fixture
 TAPAANO_TEST_DATABASE_URL=postgres://postgres:synthetic_regression_password@127.0.0.1:55432/tapaano_regression_fixture \
-  node --test --test-concurrency=4 --test-timeout=180000 tests/*.test.mjs
+  npm test
 docker stop tapaano-finance-tests
 ```
 

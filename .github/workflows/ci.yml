@@ -47,7 +47,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Run regression tests
-        run: node --test --test-concurrency=4 --test-timeout=180000 tests/*.test.mjs
+        run: npm test
 
       - name: Run TypeScript
         run: npm run typecheck
