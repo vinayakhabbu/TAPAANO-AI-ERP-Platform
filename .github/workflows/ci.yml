@@ -17,6 +17,22 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      finance-regressions:
+        image: postgres:17
+        env:
+          POSTGRES_DB: tapaano_regression_fixture
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_regression_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tapaano_regression_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TAPAANO_TEST_DATABASE_URL: postgres://postgres:synthetic_regression_password@127.0.0.1:5432/tapaano_regression_fixture
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -31,7 +47,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Run regression tests
-        run: npm test
+        run: node --test --test-concurrency=4 tests/*.test.mjs
 
       - name: Run TypeScript
         run: npm run typecheck

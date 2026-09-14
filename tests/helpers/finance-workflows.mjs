@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import {nativeFinanceDatabase} from "./native-finance-database.mjs";
 import { PGlite } from "@electric-sql/pglite";
 import { ids, fixture } from "./subledger-fixture.mjs";
 
@@ -10,7 +11,7 @@ const names = ["20260825010000_recovery_journal_periods", "20260825020000_recove
   "20260906070000_finance_period_controls", "20260906080000_finance_manual_journal", "20260906090000_finance_subledger_aging", "20260907010000_partial_settlements", "20260907020000_cash_reconciliation", "20260907030000_finance_approvals", "20260907040000_contract_billing_revenue", "20260907050000_finance_integrations", "20260907060000_finance_schedules", "20260907070000_finance_fiscal_close", "20260907080000_finance_intercompany", "20260907090000_finance_consolidation", "20260907100000_finance_statement_policies", "20260907110000_finance_group_statements", "20260910010000_customer_credits_refunds", "20260910020000_subscription_lifecycle", "20260910030000_bank_feed_automation", "20260910040000_provider_refund_dispatch", "20260912010000_tax_accounting", "20260912020000_refund_methods_and_fees", "20260912030000_revenue_revisions", "20260912040000_foreign_currency_subledger", "20260912050000_noncontrolling_consolidation"];
 const migrations = await Promise.all(names.map(name => readFile(new URL(`../../supabase/migrations/${name}.sql`, import.meta.url), "utf8")));
 export async function financeDatabase() {
-  const db = new PGlite(); await db.exec(fixture);
+  const db = process.env.TAPAANO_TEST_DATABASE_URL ? await nativeFinanceDatabase(fixture) : new PGlite(); if(!process.env.TAPAANO_TEST_DATABASE_URL)await db.exec(fixture);
   for (const migration of migrations) await db.exec(migration);
   await db.exec(migrations.at(-1));
   await db.exec("GRANT USAGE ON SCHEMA public,auth TO authenticated,anon,service_role;");

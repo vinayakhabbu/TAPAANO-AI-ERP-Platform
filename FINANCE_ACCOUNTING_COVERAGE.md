@@ -138,6 +138,13 @@ an earlier approved interval.
 
 ## Qualification and volume limits
 
+The CI regression job uses isolated PostgreSQL 17 databases for the complete finance
+fixture: its nested approval workflows exceed the embedded WebAssembly engine's
+reliable execution in this suite. The same assertions run against the production
+database engine; no accounting cases are skipped. Other unit fixtures continue
+to use PGlite. Set TAPAANO_TEST_DATABASE_URL to the dedicated local test service
+to reproduce the finance regression job.
+
 The test suite covers native SQL graph integrity, exact rounding, approval retry,
 source changes, tenant denial, worker payment eligibility, fee returns, browser
 submission, unavailable reports, and retained source recovery. The managed-stack
