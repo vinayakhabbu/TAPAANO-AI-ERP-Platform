@@ -2,8 +2,9 @@ import {limitedProviderBody,parseProviderJson,providerObject,ProviderNumber} fro
 
 export const STRIPE_REFUND_API_VERSION='2026-08-26.dahlia';
 export type ProviderRefundSecret={environment:'TEST'|'LIVE';accountId:string;secretKey:string};
-type Preflight={invoiceId:string;paymentId:string;paymentIntentId:string;chargeId:string;receiptAmount:string;currency:'USD';accountId:string;environment:'TEST'|'LIVE'};
-type Claim={jobId:string;connectionId:string;leaseToken:string;environment:'TEST'|'LIVE';accountId:string;invoiceId:string;receiptAmount:string;amount:string;approvalDigest:string;providerId:string|null;recoveryId:string|null;preflight:Preflight|null;dispatchStartedAt:string|null;mayDispatch:boolean};
+type PaymentMethod='CARD'|'US_BANK_ACCOUNT';
+type Preflight={invoiceId:string;paymentId:string;paymentIntentId:string;chargeId:string;receiptAmount:string;currency:'USD';accountId:string;environment:'TEST'|'LIVE';paymentMethod?:PaymentMethod;chargeCreated?:string};
+type Claim={jobId:string;connectionId:string;leaseToken:string;environment:'TEST'|'LIVE';accountId:string;invoiceId:string;receiptAmount:string;amount:string;paymentMethod:PaymentMethod;maximumFee:string;approvalDigest:string;providerId:string|null;recoveryId:string|null;preflight:Preflight|null;dispatchStartedAt:string|null;mayDispatch:boolean};
 type Dependencies={token:string;secrets:Record<string,ProviderRefundSecret>;rpc:(name:string,args:Record<string,unknown>)=>Promise<unknown>;fetch?:typeof fetch};
 class Failure extends Error{constructor(readonly code:string){super(code);}}
 const requireSource=(ok:unknown)=>{if(!ok)throw new Failure('INVALID_SOURCE');};
@@ -16,10 +17,11 @@ const money=(c:bigint)=>`${c<0n?'-':''}${(c<0n?-c:c)/100n}.${((c<0n?-c:c)%100n).
 const cents=(v:unknown)=>{requireSource(typeof v==='string'&&/^\d{1,13}\.\d{2}$/.test(v));return BigInt((v as string).replace('.',''));};
 const timestamp=(v:unknown)=>{const n=stripeInteger(v);requireSource(n>0n&&n<=253402300799n);return n.toString();};
 function claimValue(raw:unknown):Claim{
- const v=providerObject(raw);requireSource(uuid(v.jobId)&&uuid(v.connectionId)&&uuid(v.leaseToken)&&['TEST','LIVE'].includes(String(v.environment))&&typeof v.mayDispatch==='boolean'&&typeof v.approvalDigest==='string'&&/^[a-f0-9]{32}$/.test(v.approvalDigest));
+ const v={paymentMethod:'CARD',maximumFee:'0.00',...providerObject(raw)};requireSource(uuid(v.jobId)&&uuid(v.connectionId)&&uuid(v.leaseToken)&&['TEST','LIVE'].includes(String(v.environment))&&typeof v.mayDispatch==='boolean'&&typeof v.approvalDigest==='string'&&/^[a-f0-9]{32}$/.test(v.approvalDigest));
+ requireSource(['CARD','US_BANK_ACCOUNT'].includes(String(v.paymentMethod)));cents(v.maximumFee);if(v.paymentMethod==='US_BANK_ACCOUNT')requireSource(v.amount===v.receiptAmount);
  sourceId(v.accountId,'acct');sourceId(v.invoiceId,'in');requireSource(cents(v.amount)>0n&&cents(v.amount)<=cents(v.receiptAmount));
  if(v.providerId!==null)sourceId(v.providerId,'re');if(v.recoveryId!==null)sourceId(v.recoveryId,'re');
- if(v.preflight!==null){const p=providerObject(v.preflight);requireSource(p.accountId===v.accountId&&p.environment===v.environment&&p.invoiceId===v.invoiceId&&p.receiptAmount===v.receiptAmount&&p.currency==='USD');sourceId(p.paymentId,'inpay');sourceId(p.paymentIntentId,'pi');sourceId(p.chargeId,'ch');}
+ if(v.preflight!==null){const p=providerObject(v.preflight);requireSource(p.accountId===v.accountId&&p.environment===v.environment&&p.invoiceId===v.invoiceId&&p.receiptAmount===v.receiptAmount&&p.currency==='USD');sourceId(p.paymentId,'inpay');sourceId(p.paymentIntentId,'pi');sourceId(p.chargeId,'ch');requireSource((p.paymentMethod??'CARD')===v.paymentMethod);if(v.paymentMethod==='US_BANK_ACCOUNT')requireSource(typeof p.chargeCreated==='string'&&/^\d{1,12}$/.test(p.chargeCreated));}
  requireSource((v.preflight===null)===(v.dispatchStartedAt===null));return v as unknown as Claim;
 }
 async function digest(text:string){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
@@ -63,9 +65,9 @@ export function createProviderRefundWorker(deps:Dependencies){
     const pi=(await provider('/v1/payment_intents/'+paymentIntentId)).value;
     requireSource(pi.object==='payment_intent'&&pi.id===paymentIntentId&&pi.status==='succeeded'&&pi.currency==='usd'&&pi.livemode===(job.environment==='LIVE')&&pi.customer===inv.customer&&stripeInteger(pi.amount_received)===cents(job.receiptAmount));
     const chargeId=sourceId(pi.latest_charge,'ch'),charge=(await provider('/v1/charges/'+chargeId)).value;
-    requireSource(charge.object==='charge'&&charge.id===chargeId&&charge.payment_intent===paymentIntentId&&charge.customer===inv.customer&&charge.currency==='usd'&&charge.livemode===(job.environment==='LIVE')&&charge.paid===true&&charge.captured===true&&charge.status==='succeeded'&&charge.disputed===false&&stripeInteger(charge.amount_captured)===cents(job.receiptAmount)&&stripeInteger(charge.amount)===cents(job.receiptAmount)&&providerObject(charge.payment_method_details).type==='card');
+    requireSource(charge.object==='charge'&&charge.id===chargeId&&charge.payment_intent===paymentIntentId&&charge.customer===inv.customer&&charge.currency==='usd'&&charge.livemode===(job.environment==='LIVE')&&charge.paid===true&&charge.captured===true&&charge.status==='succeeded'&&charge.disputed===false&&stripeInteger(charge.amount_captured)===cents(job.receiptAmount)&&stripeInteger(charge.amount)===cents(job.receiptAmount)&&providerObject(charge.payment_method_details).type===(job.paymentMethod==='CARD'?'card':'us_bank_account'));
     requireSource(['application','application_fee','application_fee_amount','on_behalf_of','source_transfer','transfer','transfer_data'].every(k=>charge[k]==null));
-    preflight={invoiceId:job.invoiceId,paymentId,paymentIntentId,chargeId,receiptAmount:job.receiptAmount,currency:'USD',accountId:job.accountId,environment:job.environment};
+    preflight={invoiceId:job.invoiceId,paymentId,paymentIntentId,chargeId,receiptAmount:job.receiptAmount,currency:'USD',accountId:job.accountId,environment:job.environment,paymentMethod:job.paymentMethod,chargeCreated:timestamp(charge.created)};
    }
    const findExisting=async()=>{
     let cursor='',found:string|null=null;const seen=new Set<string>();
@@ -79,12 +81,15 @@ export function createProviderRefundWorker(deps:Dependencies){
     throw new Failure('RECOVERY_REQUIRED');
    };
    let existing=job.providerId??job.recoveryId??await findExisting();
+   if(existing&&job.paymentMethod==='US_BANK_ACCOUNT'){const charge=(await provider('/v1/charges/'+preflight.chargeId)).value;requireSource(charge.id===preflight.chargeId&&charge.disputed===false&&charge.paid===true&&charge.status==='succeeded'&&charge.payment_intent===preflight.paymentIntentId&&providerObject(charge.payment_method_details).type==='us_bank_account');}
    if(!existing){
     if(!job.mayDispatch)throw new Failure('CONFIGURATION');
     // Recheck remaining captured funds immediately before POST, including refunds
     // initiated outside this ERP. The provider enforces its final balance atomically.
     const charge=(await provider('/v1/charges/'+preflight.chargeId)).value;
     requireSource(charge.id===preflight.chargeId&&charge.currency==='usd'&&charge.livemode===(job.environment==='LIVE')&&charge.disputed===false&&charge.paid===true&&charge.captured===true&&stripeInteger(charge.amount_captured)===cents(job.receiptAmount)&&stripeInteger(charge.amount_refunded)>=0n&&stripeInteger(charge.amount_captured)-stripeInteger(charge.amount_refunded)>=cents(job.amount));
+    requireSource(charge.payment_intent===preflight.paymentIntentId&&charge.status==='succeeded'&&providerObject(charge.payment_method_details).type===(job.paymentMethod==='CARD'?'card':'us_bank_account'));
+    if(job.paymentMethod==='US_BANK_ACCOUNT'){const created=stripeInteger(charge.created),now=BigInt(Math.floor(Date.now()/1000));requireSource(created.toString()===preflight.chargeCreated&&created<=now&&now<created+180n*86400n&&stripeInteger(charge.amount_refunded)===0n);}
     const markArgs={p_job:job.jobId,p_lease:job.leaseToken,p_preflight:preflight};
     let marked:unknown;try{marked=await deps.rpc('mark_provider_refund_dispatch',markArgs);}catch{try{marked=await deps.rpc('mark_provider_refund_dispatch',markArgs);}catch{throw new Failure('DATABASE_UNAVAILABLE');}}
     const maySend=providerObject(marked).maySend;if(maySend!==true)throw new Failure('RECOVERY_REQUIRED');
@@ -98,10 +103,12 @@ export function createProviderRefundWorker(deps:Dependencies){
    const bodies=[refundResult.body];
    const balance=async(raw:unknown,failure=false)=>{
     if(raw==null)return null;const id=sourceId(raw,'txn'),result=await provider('/v1/balance_transactions/'+id),b=result.value;bodies.push(result.body);
-    requireSource(b.object==='balance_transaction'&&b.id===id&&b.source===existing&&b.currency==='usd'&&stripeInteger(b.amount)===(failure?cents(job.amount):-cents(job.amount))&&stripeInteger(b.fee)===0n&&stripeInteger(b.net)===stripeInteger(b.amount)&&b.exchange_rate==null&&(failure?['refund_failure','payment_failure_refund']:['refund','payment_refund']).includes(String(b.type)));
-    return {id,source:existing,amount:money(stripeInteger(b.amount)),currency:'USD',type:b.type,created:timestamp(b.created)};
+    requireSource(b.object==='balance_transaction'&&b.id===id&&b.source===existing&&b.currency==='usd'&&stripeInteger(b.amount)===(failure?cents(job.amount):-cents(job.amount))&&stripeInteger(b.net)===stripeInteger(b.amount)-stripeInteger(b.fee)&&b.exchange_rate==null&&(failure?['refund_failure','payment_failure_refund']:['refund','payment_refund']).includes(String(b.type)));
+    const fee=stripeInteger(b.fee);if(!failure)requireSource(fee>=0n&&fee<=cents(job.maximumFee));
+    return {id,source:existing,amount:money(stripeInteger(b.amount)),fee:money(fee),net:money(stripeInteger(b.net)),currency:'USD',type:b.type,created:timestamp(b.created)};
    };
    const originalBalance=await balance(refund.balance_transaction),failureBalance=await balance(refund.failure_balance_transaction,true);
+   if(failureBalance){const retained=BigInt((originalBalance?.fee??'0.00').replace('.',''))+BigInt(failureBalance.fee.replace('.',''));requireSource(retained>=0n&&retained<=cents(job.maximumFee));}
    requireSource(refund.status!=='succeeded'||originalBalance!==null&&failureBalance===null);
    requireSource(!['failed','canceled'].includes(String(refund.status))||originalBalance===null||failureBalance!==null);
    const proof={id:existing,chargeId:preflight.chargeId,paymentIntentId:preflight.paymentIntentId,amount:job.amount,currency:'USD',status:refund.status,created:timestamp(refund.created),jobId:job.jobId,approvalDigest:job.approvalDigest,balance:originalBalance,failureBalance};

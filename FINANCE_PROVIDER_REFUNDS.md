@@ -1,5 +1,9 @@
 # Approved Stripe refunds
 
+The assessed-tax, ACH/fee, revenue-revision, foreign-currency and noncontrolling-interest
+extensions are described in FINANCE_ACCOUNTING_COVERAGE.md. Its supported-policy
+matrix supersedes the corresponding baseline limitations below.
+
 This increment connects an approved customer credit to an actual provider refund,
 its processor balance entries, and independently reviewed accounting. It uses
 synthetic acceptance fixtures; it has not connected or sent money through a real

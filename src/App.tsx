@@ -15,6 +15,8 @@ const Receivables = lazy(() => import("./pages/Receivables"));
 const Payables = lazy(() => import("./pages/Payables"));
 const GeneralLedger = lazy(() => import("./pages/GeneralLedger"));
 const TrialBalance = lazy(() => import("./pages/TrialBalance"));
+const ForeignCurrency = lazy(() => import("./pages/ForeignCurrency"));
+const TaxAccounting = lazy(() => import("./pages/TaxAccounting"));
 const CustomerAdjustments = lazy(() => import("./pages/CustomerAdjustments"));
 const ContractFinance = lazy(() => import("./pages/ContractFinance"));
 const FinanceOperations = lazy(() => import("./pages/FinanceOperations"));
@@ -89,6 +91,8 @@ function AppRoutes() {
           <Route path="/gl" element={<GeneralLedger />} />
           <Route path="/reports" element={<TrialBalance />} />
           <Route path="/banking" element={<Banking />} />
+          <Route path="/foreign-currency" element={<ForeignCurrency />} />
+          <Route path="/tax-accounting" element={<TaxAccounting />} />
           <Route path="/customer-adjustments" element={<CustomerAdjustments />} />
           <Route path="/contracts" element={<ContractFinance />} />
           <Route path="/finance-operations" element={<FinanceOperations />} />

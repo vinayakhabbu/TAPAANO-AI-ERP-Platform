@@ -66,6 +66,8 @@ const navCategories = [
       { icon: Building2, label: "Banking", href: "/banking" },
       { icon: Receipt, label: "Contracts and Revenue", href: "/contracts" },
       { icon: Receipt, label: "Customer Credits and Refunds", href: "/customer-adjustments" },
+      { icon: Receipt, label: "Foreign Currency", href: "/foreign-currency" },
+      { icon: Receipt, label: "Tax Accounting", href: "/tax-accounting" },
       { icon: BookOpen, label: "Finance Approvals", href: "/finance-operations" },
       { icon: BookOpen, label: "Finance Integrations", href: "/finance-integrations" },
       { icon: BookOpen, label: "Finance Schedules", href: "/finance-schedules" },

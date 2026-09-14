@@ -36,6 +36,8 @@ function CloseWorkspace(){
     <h2 className="text-lg font-semibold">{report.data.canClose?'Automated close checks passed.':'Close checks require attention.'}</h2><p>Period net income: {report.data.income} {report.data.currency}</p>
     <div className="grid gap-2 sm:grid-cols-2">{[['Unregistered cash accounts',report.data.unregisteredCashAccounts],['Due schedule postings',report.data.pendingSchedules],['Unfinalized usage cycles',report.data.unfinalizedUsage],['Unrecognized service revenue',report.data.unrecognizedRevenue],['Unresolved provider events',report.data.unresolvedProviderEvents],['Pending finance decisions',report.data.pendingFinanceRequests]].map(([label,value])=><p key={label}>{label}: {value}</p>)}</div>
     {report.data.banks.map(b=><p key={b.registerId}>{b.name}: {b.complete?'Approved through '+b.approvedThrough:'Statement approval required'}</p>)}
+    <p>Foreign currency controls: {report.data.fxReconciled?'Reconciled':'Unresolved differences'} · Pending cutoff valuations: {report.data.pendingFxRemeasurement}</p>
+    <p>Tax control accounts: {report.data.taxReconciled?'Reconciled':'Unresolved differences'}</p>
     <p>Provider refunds requiring verification or accounting review: {report.data.providerRefundExceptions}</p>
     <p>Statements affected by bank-feed changes: {report.data.bankFeedConflicts}</p>
     <p>Active bank feeds requiring synchronization: {report.data.bankFeedUnavailable}</p>

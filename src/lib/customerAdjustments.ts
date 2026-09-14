@@ -4,10 +4,10 @@ const id=z.string().uuid(),amount=z.string().regex(/^\d+\.\d{2}$/),signed=z.stri
 const schema=z.object({entityId:id,asOf:date,currency:z.string().regex(/^[A-Z]{3}$/),revision:z.string(),
  control:z.object({configured:z.boolean(),accountId:id.nullable(),expected:amount,ledger:signed,variance:signed,reconciled:z.boolean()}),
  invoices:z.array(z.object({id,number:z.string(),customerId:id,customerName:z.string(),date,original:amount,remaining:amount,legacyCredited:z.boolean(),contractId:id.nullable(),
-  lines:z.array(z.object({id,description:z.string(),original:amount,available:amount})),
+  lines:z.array(z.object({id,description:z.string(),original:amount,available:amount,netOriginal:amount.optional(),netAvailable:amount.optional(),originalTax:amount.optional()})),
   receipts:z.array(z.object({id,kind:z.enum(['RECEIPT','REPLACEMENT']),date,amount,available:amount}))})),
  credits:z.array(z.object({subscriptionChangeId:id.nullable().default(null),subscriptionContractId:id.nullable().default(null),id,invoiceId:id,customerId:id,reference:z.string(),date,amount,arAmount:amount,balanceAmount:amount,remaining:amount,providerReserved:amount.default('0.00'),availableToUse:amount.optional(),reversedOn:date.nullable(),journalId:id,
-  lines:z.array(z.object({lineId:id,description:z.string(),amount,revenueAccountId:id})),obligations:z.array(z.object({key:z.string(),amount,recognized:amount})),
+  lines:z.array(z.object({lineId:id,description:z.string(),amount,netAmount:amount.optional(),taxAmount:amount.optional(),taxComponents:z.array(z.object({jurisdiction:z.string(),amount,accountId:id})).optional(),revenueAccountId:id})),obligations:z.array(z.object({key:z.string(),amount,recognized:amount})),
   uses:z.array(z.object({id,providerRefundId:id.nullable().default(null),kind:z.enum(['REFUND','APPLY']),date,amount,reference:z.string(),invoiceId:id.nullable(),cashAccountId:id.nullable(),settlementId:id.nullable(),settlementKind:z.enum(['RECEIPT','REPLACEMENT']).nullable(),journalId:id,reversedOn:date.nullable()}))}))});
 export type CustomerAdjustments=z.infer<typeof schema>;
 export function parseCustomerAdjustments(value:unknown){
@@ -17,7 +17,7 @@ export function parseCustomerAdjustments(value:unknown){
  for(const c of r.credits){const i=invoices.get(c.invoiceId);check(!seen.has(c.id)&&Boolean(i)&&i?.customerId===c.customerId&&c.date<=r.asOf&&(!c.reversedOn||(c.reversedOn>=c.date&&c.reversedOn<=r.asOf)));seen.add(c.id);
   check(signedCents(c.amount)===signedCents(c.arAmount)+signedCents(c.balanceAmount)&&signedCents(c.amount)>0n);
   check(c.lines.reduce((s,l)=>s+signedCents(l.amount),0n)===signedCents(c.amount)&&new Set(c.lines.map(l=>l.lineId)).size===c.lines.length);for(const l of c.lines)check(Boolean(i?.lines.some(x=>x.id===l.lineId))&&signedCents(l.amount)>0n);
-  if(c.obligations.length){check(c.obligations.reduce((s,o)=>s+signedCents(o.amount),0n)===signedCents(c.amount));for(const o of c.obligations)check(signedCents(o.recognized)<=signedCents(o.amount));}
+  if(c.obligations.length){check(c.obligations.reduce((s,o)=>s+signedCents(o.amount),0n)===c.lines.reduce((s,l)=>s+signedCents(l.netAmount??l.amount),0n));for(const o of c.obligations)check(signedCents(o.recognized)<=signedCents(o.amount));}
   let remaining=c.reversedOn?0n:signedCents(c.balanceAmount);
   for(const u of c.uses){check(!seen.has(u.id)&&u.date>=c.date&&u.date<=r.asOf&&signedCents(u.amount)>0n&&(!u.reversedOn||(u.reversedOn>=u.date&&u.reversedOn<=r.asOf)));seen.add(u.id);
    if(u.kind==='APPLY')check(Boolean(u.invoiceId)&&invoices.get(u.invoiceId!)?.customerId===c.customerId&&!u.cashAccountId&&!u.settlementId&&!u.settlementKind);

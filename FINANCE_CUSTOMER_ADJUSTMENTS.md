@@ -1,5 +1,9 @@
 # Customer credits and refunds
 
+The assessed-tax, ACH/fee, revenue-revision, foreign-currency and noncontrolling-interest
+extensions are described in FINANCE_ACCOUNTING_COVERAGE.md. Its supported-policy
+matrix supersedes the corresponding baseline limitations below.
+
 This increment adds `/customer-adjustments` for independently approved, exact-cent
 adjustments to posted functional-currency, zero-tax customer invoices. Original
 invoices, invoice lines, receipts and revenue entries remain retained evidence.

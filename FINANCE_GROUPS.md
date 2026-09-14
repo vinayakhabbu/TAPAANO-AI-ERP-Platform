@@ -1,5 +1,9 @@
 # Intercompany and consolidation operations
 
+The assessed-tax, ACH/fee, revenue-revision, foreign-currency and noncontrolling-interest
+extensions are described in FINANCE_ACCOUNTING_COVERAGE.md. Its supported-policy
+matrix supersedes the corresponding baseline limitations below.
+
 ## Bilateral books
 
 Intercompany Accounting posts service or funding between two distinct tenant

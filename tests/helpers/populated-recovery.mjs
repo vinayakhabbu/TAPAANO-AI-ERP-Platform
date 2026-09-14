@@ -21,6 +21,13 @@ async function command(file, args, options = {}) {
 }
 
 const graphChecks = [
+  ["finance_tax_policies","validate_tax_policy","true"],
+  ["finance_tax_documents","validate_tax_document_graph","true"],
+  ["finance_tax_settlements","validate_tax_settlement_graph","true"],
+  ["finance_revenue_revisions","validate_revenue_revision_graph","true"],
+  ["finance_revenue_supplements","validate_revenue_supplement_graph","true"],
+  ["finance_fx_policies","validate_fx_policy","true"],
+  ["finance_fx_documents","validate_fx_document_graph","true"],
   ["finance_provider_refunds","validate_provider_refund_graph","true"],
   ["finance_bank_feeds","validate_bank_feed_graph","true"],
   ["finance_bank_sync_runs","validate_bank_sync_run_graph","true"],

@@ -1,5 +1,9 @@
 # Verified finance workflows
 
+The assessed-tax, ACH/fee, revenue-revision, foreign-currency and noncontrolling-interest
+extensions are described in FINANCE_ACCOUNTING_COVERAGE.md. Its supported-policy
+matrix supersedes the corresponding baseline limitations below.
+
 ## Banking
 
 Open Banking and create a named cash register for one entity and one active asset
