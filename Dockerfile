@@ -19,6 +19,7 @@ COPY --from=build /app/dist /srv
 # so the executable also works when the host removes all process capabilities.
 RUN setcap -r /usr/bin/caddy && caddy fmt --overwrite /etc/caddy/Caddyfile
 ENV PORT=8080
+ENV XDG_DATA_HOME=/tmp/caddy-data XDG_CONFIG_HOME=/tmp/caddy-config
 USER 10001:10001
 EXPOSE 8080
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

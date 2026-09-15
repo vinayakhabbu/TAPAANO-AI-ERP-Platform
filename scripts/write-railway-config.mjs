@@ -24,8 +24,8 @@ export function renderRailwayConfig(environment) {
   header {
 ${headers}
     Cache-Control "no-store"
-    -Server
   }
+  header -Server
 
   @unsupported not method GET HEAD
   respond @unsupported 405
@@ -44,6 +44,14 @@ ${headers}
     header Cache-Control "no-cache, no-store, must-revalidate"
     try_files {path} /index.html
     file_server
+  }
+  handle_errors {
+    header {
+${headers}
+      Cache-Control "no-store"
+    }
+    header -Server
+    respond "{err.status_text}" {err.status_code}
   }
 }
 `;
