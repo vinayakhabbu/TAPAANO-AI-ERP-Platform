@@ -39,6 +39,31 @@ data, or mark unapplied migrations as applied.
 
 ## Verification and activation
 
+The initial deployment succeeded on 2026-09-15 at merge
+`e6b49ca913ac818ddcffdf9d35fb3c73ea2b8674` (PR #42). The Supabase GitHub
+check completed successfully, all 92 original migration versions matched,
+all 194 public tables had RLS enabled, and all 12 declared functions were active
+with the expected JWT settings. No Auth users, organizations, journal entries,
+or Storage objects were present. This establishes deployment, not user acceptance.
+
+The managed security review identified the legacy `organizations_safe` view's
+owner-privilege bypass and unnecessary direct execution grants on two trigger
+helpers. Follow-up migration `20260915010000_managed_access_hardening.sql`
+makes the view use caller RLS, limits it to authenticated/service reads, makes
+timestamp maintenance an invoker function, and restricts the optional hosted
+`rls_auto_enable` helper without changing its DDL behavior. The 93-file manifest
+is `c4c8d1cf9286ffc6c09e5c204fccd1f6906e72e08c309fedfbeac98c41af7f08`.
+Record qualification and actual deployment of this follow-up in its PR.
+
+Advisor notices for tables deliberately denied direct client access and approved
+SECURITY DEFINER finance RPCs require interpretation against their grants and
+actor checks; adding permissive policies or removing required RPC privileges
+is not a remedy. The legacy `vector` extension remains in `public`; relocating
+its dependent types/functions requires a separate compatibility qualification.
+See [view isolation](https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view),
+[RPC grants](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable),
+and [extension placement](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public).
+
 After deployment, compare all managed migration versions with the repository,
 check the resulting application tables and RLS/grants, inspect security advisors,
 and verify the deployed function names and authentication settings. Record the
