@@ -88,6 +88,25 @@ test("full migration stack supports authenticated finance reads and the browser"
       const { error } = await client.auth.signInWithPassword({ email, password });
       assert.equal(error, null, "Local Auth login must succeed: " + (error?.message ?? ""));
     }
+    await t.test("organization view applies real JWT tenant isolation and rejects anonymous reads and writes", async () => {
+      for (const [client, org] of [[clientA, ids.orgA], [clientB, ids.orgB]]) {
+        const { data, error } = await client.from("organizations_safe").select("id,name");
+        assert.equal(error, null, error?.message);
+        assert.deepEqual(data.map((row) => row.id), [org]);
+        assert.ok((await client.from("organizations_safe").update({ name: "Forbidden" }).eq("id", org)).error);
+        assert.ok((await client.from("organizations_safe").delete().eq("id", org)).error);
+        assert.ok((await client.from("organizations_safe").insert({ id: randomUUID(), name: "Forbidden" })).error);
+        assert.ok((await client.from("organizations").select("openai_api_key")).error);
+      }
+      const anonymous = createClient(api, status.ANON_KEY, options);
+      assert.ok((await anonymous.from("organizations_safe").select("id")).error);
+      const grants = await db.query(`SELECT p.proname, has_function_privilege('anon',p.oid,'EXECUTE') AS anon,
+        has_function_privilege('authenticated',p.oid,'EXECUTE') AS authenticated,
+        has_function_privilege('service_role',p.oid,'EXECUTE') AS service_role
+        FROM pg_proc p WHERE p.pronamespace='public'::regnamespace AND p.proname IN ('update_updated_at','rls_auto_enable')`);
+      assert.ok(grants.rows.some((row) => row.proname === "update_updated_at"));
+      for (const row of grants.rows) assert.deepEqual([row.anon,row.authenticated,row.service_role], [false,false,false]);
+    });
     for (const entity of [ids.usd, ids.eur]) {
       await rpc(clientA, "create_accounting_period", { p_entity_id: entity, p_period_start: "2026-09-01", p_period_end: "2026-09-30", p_idempotency_key: "period-" + entity });
       await rpc(clientA, "configure_entity_invoice_accounts", { p_entity_id: entity, p_ar_account_id: ids.ar, p_revenue_account_id: ids.revenue, p_idempotency_key: "controls-" + entity });
