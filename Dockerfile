@@ -15,6 +15,9 @@ RUN VITE_RELEASE_SHA="${VITE_RELEASE_SHA:-$RAILWAY_GIT_COMMIT_SHA}" npm run buil
 FROM caddy:2.11.4-alpine AS runtime
 COPY --from=build /app/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/dist /srv
+# Railway uses an unprivileged port. Drop the official image's file capability
+# so the executable also works when the host removes all process capabilities.
+RUN setcap -r /usr/bin/caddy && caddy fmt --overwrite /etc/caddy/Caddyfile
 ENV PORT=8080
 USER 10001:10001
 EXPOSE 8080
