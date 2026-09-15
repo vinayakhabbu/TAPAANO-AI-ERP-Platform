@@ -1,3 +1,5 @@
+# Local CLI stack identifier; managed deployment is selected by the Supabase
+# GitHub integration. See MANAGED_DEPLOYMENT.md for the verified remote target.
 project_id = "hmjfkdyxrapbteowszvg"
 
 [functions.global-search]
