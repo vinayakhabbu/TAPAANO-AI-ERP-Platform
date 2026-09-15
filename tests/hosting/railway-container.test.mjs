@@ -16,6 +16,7 @@ test("Railway container serves the release securely on its assigned port", { tim
       "--build-arg", "VITE_SUPABASE_PUBLISHABLE_KEY=" + key,
       "--build-arg", "RAILWAY_GIT_COMMIT_SHA=0123456789abcdef0123456789abcdef01234567", ".");
     assert.equal(docker("image", "inspect", name, "--format", "{{.Config.User}}"), "10001:10001");
+    docker("run", "--rm", "--entrypoint", "caddy", name, "validate", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile");
     docker("run", "--detach", "--name", name, "--read-only", "--tmpfs", "/tmp", "--cap-drop", "ALL",
       "--security-opt", "no-new-privileges", "--env", "PORT=9090", "--publish", "127.0.0.1::9090", name);
     running = true;
@@ -78,7 +79,10 @@ test("Railway container serves the release securely on its assigned port", { tim
       assert.equal(JSON.parse(config).admin.disabled, true);
     });
   } finally {
-    if (running) docker("rm", "--force", name);
+    if (running) {
+      process.stdout.write(docker("logs", name) + "\n");
+      docker("rm", "--force", name);
+    }
     docker("image", "rm", "--force", name);
   }
 });
