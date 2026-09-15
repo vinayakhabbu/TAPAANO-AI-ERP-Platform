@@ -75,6 +75,7 @@ test("Railway container serves the release securely on its assigned port", { tim
       const head = await request("/", { method: "HEAD" });
       assert.equal(head.status, 200); assert.equal(await head.text(), "");
       assert.equal((await request("/finance/ledger", { method: "POST" })).status, 405);
+      assert.equal((await request("/healthz", { method: "POST" })).status, 405);
       const config = docker("exec", name, "caddy", "adapt", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile");
       assert.equal(JSON.parse(config).admin.disabled, true);
     });

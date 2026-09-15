@@ -27,6 +27,8 @@ ${headers}
   }
   header -Server
 
+  # Preserve this order: denial checks must run before the SPA fallback.
+  route {
   @unsupported not method GET HEAD
   respond @unsupported 405
   @internal path /_headers /_redirects /Caddyfile /.* /assets/*.map
@@ -44,6 +46,7 @@ ${headers}
     header Cache-Control "no-cache, no-store, must-revalidate"
     try_files {path} /index.html
     file_server
+  }
   }
   handle_errors {
     header {
