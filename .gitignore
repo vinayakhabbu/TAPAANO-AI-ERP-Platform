@@ -28,3 +28,12 @@ dist-ssr
 
 # Disposable test evidence; CI retains only sanitized reports
 /test-results/
+
+# Local BMAD preferences and Python caches; shared workflows stay versioned.
+/_bmad/config.user.toml
+/_bmad/**/*.user.toml
+/.bmad-help-setup-*.toml
+__pycache__/
+.pytest_cache/
+*.py[cod]
+/.venv/

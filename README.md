@@ -1,5 +1,8 @@
 # TAPAANO AI ERP Platform
 
+Development workflows: [BMAD setup and usage](./BMAD.md),
+[project knowledge index](./docs/README.md), and [agent guidance](./AGENTS.md).
+
 > **Production-readiness warning:** this repository is under accounting and
 > authorization reconstruction. It is not ready for production deployment or
 > financial reliance. Unsupported workflows are intentionally disabled. See

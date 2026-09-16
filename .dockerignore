@@ -9,3 +9,12 @@ test-results
 .github
 tests
 supabase
+
+# Development workflows and planning do not belong in the application image.
+.agents
+_bmad
+_bmad-output
+skills-lock.json
+BMAD.md
+AGENTS.md
+docs
