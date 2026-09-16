@@ -59,6 +59,10 @@ Please be respectful and considerate in all interactions. We aim to maintain a w
 
 ## Development Setup
 
+BMAD Method is available as project-scoped Codex skills. See [BMAD.md](BMAD.md)
+for setup, planning, implementation and review workflows. For current finance
+scope, use the [project knowledge index](docs/README.md) before extending a domain.
+
 ### Prerequisites
 
 - Node.js 20.19+ or 22.12+
