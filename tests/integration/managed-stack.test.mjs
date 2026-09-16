@@ -57,10 +57,13 @@ test("full migration stack supports authenticated finance reads and the browser"
   try {
     assert.equal((await db.query("SELECT count(*)::int AS count FROM public.organizations")).rows[0].count, 0,
       "Integration fixture requires an empty disposable stack");
+    let firstAdminReady=false;
     await t.test("owner-authorized first admin activates through real Auth and browser password setup",async()=>{
       const first=await qualifyFirstAdmin({db,status,api,email:emailA,password});
       ids.orgA=first.orgId;ids.adminA=first.userId;
+      firstAdminReady=true;
     });
+    assert.ok(firstAdminReady,"First-admin activation must complete before the finance fixture");
     await db.query("BEGIN");
     // Local test bootstrap only: public tenant provisioning is intentionally closed.
     await db.query("SET LOCAL session_replication_role = replica");

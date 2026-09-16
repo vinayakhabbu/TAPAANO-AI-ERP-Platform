@@ -45,6 +45,9 @@ export async function qualifyFirstAdmin({db,status,api,email,password}) {
     assert.equal(await page.getByRole("button",{name:"Save password",exact:true}).count(),0);
     const session=activated.data.session;
     const fragment=new URLSearchParams({access_token:session.access_token,refresh_token:session.refresh_token,token_type:"bearer",expires_in:"3600",type:"invite"});
+    // An email opens a fresh document. A hash-only navigation on the already
+    // initialized missing-link page would not rerun Supabase URL initialization.
+    await page.goto("about:blank");
     await page.goto(origin+"/auth/setup#"+fragment);
     await page.getByLabel("New password",{exact:true}).fill(password);
     await page.getByLabel("Confirm password",{exact:true}).fill(password+"-mismatch");
