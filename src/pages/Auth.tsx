@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { reportClientError } from "@/lib/clientDiagnostics";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -56,8 +57,10 @@ const Auth = () => {
           </h2>
 
           <p className="mb-6 text-sm text-muted-foreground">
-            Self-service registration is unavailable while controlled tenant onboarding is being built.
+            Self-service registration is unavailable. Contact your administrator for an invitation.
           </p>
+
+          {location.state?.passwordSet === true && <p role="status" className="mb-4 text-sm">Password saved. Sign in with your new password.</p>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">

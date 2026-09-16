@@ -11,6 +11,7 @@ import { reportClientError } from "@/lib/clientDiagnostics";
 
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
+const AccountSetup = lazy(() => import("./pages/AccountSetup"));
 const Receivables = lazy(() => import("./pages/Receivables"));
 const Payables = lazy(() => import("./pages/Payables"));
 const GeneralLedger = lazy(() => import("./pages/GeneralLedger"));
@@ -82,6 +83,7 @@ function AppRoutes() {
     )}>
       <Routes>
         <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/setup" element={<AccountSetup />} />
         <Route element={<AuthenticatedRoute />}>
           <Route path="/" element={<Index />} />
           <Route path="/ar" element={<Receivables />} />
