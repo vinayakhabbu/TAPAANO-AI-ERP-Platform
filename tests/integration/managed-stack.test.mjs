@@ -19,6 +19,7 @@ import { qualifyStatementWorkflow } from "./statement-workflow.mjs";
 import { qualifyGroupWorkflow } from "./group-workflow.mjs";
 import { qualifyCashWorkflow } from "./cash-workflow.mjs";
 import { rehearsePopulatedRecovery } from "../helpers/populated-recovery.mjs";
+import { qualifyFirstAdmin } from "./first-admin-workflow.mjs";
 
 const { JOURNAL_HISTORY_SELECT } = await loadTypescript("../../src/lib/journalQuery.ts");
 const { POSTED_INVOICE_SELECT, POSTED_BILL_SELECT, LEGACY_BILL_SELECT } = await loadTypescript("../../src/lib/documentQueries.ts");
@@ -56,11 +57,18 @@ test("full migration stack supports authenticated finance reads and the browser"
   try {
     assert.equal((await db.query("SELECT count(*)::int AS count FROM public.organizations")).rows[0].count, 0,
       "Integration fixture requires an empty disposable stack");
+    let firstAdminReady=false;
+    await t.test("owner-authorized first admin activates through real Auth and browser password setup",async()=>{
+      const first=await qualifyFirstAdmin({db,status,api,email:emailA,password});
+      ids.orgA=first.orgId;ids.adminA=first.userId;
+      firstAdminReady=true;
+    });
+    assert.ok(firstAdminReady,"First-admin activation must complete before the finance fixture");
     await db.query("BEGIN");
     // Local test bootstrap only: public tenant provisioning is intentionally closed.
     await db.query("SET LOCAL session_replication_role = replica");
-    await db.query("INSERT INTO public.organizations(id,name) VALUES($1,'Synthetic A'),($2,'Synthetic B')", [ids.orgA, ids.orgB]);
-    for (const [id, org, email] of [[ids.adminA, ids.orgA, emailA], [ids.adminB, ids.orgB, emailB], [ids.reviewer,ids.orgA,emailReviewer]]) {
+    await db.query("INSERT INTO public.organizations(id,name) VALUES($1,'Synthetic B')", [ids.orgB]);
+    for (const [id, org, email] of [[ids.adminB, ids.orgB, emailB], [ids.reviewer,ids.orgA,emailReviewer]]) {
       await db.query(`INSERT INTO auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,
         raw_app_meta_data,raw_user_meta_data,created_at,updated_at,confirmation_token,recovery_token,email_change_token_new,email_change)
         VALUES('00000000-0000-0000-0000-000000000000',$1,'authenticated','authenticated',$2,

@@ -8690,7 +8690,7 @@ export type Database = {
         Returns: {
           cancel_reason: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           display_name: string
           email: string
           expires_at: string

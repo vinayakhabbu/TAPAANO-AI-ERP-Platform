@@ -26,9 +26,9 @@ export interface TenantInvitation {
   id: string;
   email: string;
   displayName: string;
-  role: Exclude<TenantMemberRole, "admin">;
+  role: TenantMemberRole;
   status: "PENDING" | "CONSUMED" | "CANCELLED" | "EXPIRED";
-  createdBy: string;
+  createdBy: string | null;
   createdAt: string;
   expiresAt: string;
   resolvedAt: string | null;
@@ -109,7 +109,7 @@ export function useIdentityAdministration() {
         id: invitation.invitation_id,
         email: invitation.email,
         displayName: invitation.display_name,
-        role: invitation.role as Exclude<TenantMemberRole, "admin">,
+        role: invitation.role,
         status: invitation.status as TenantInvitation["status"],
         createdBy: invitation.created_by,
         createdAt: invitation.created_at,
